@@ -75,14 +75,13 @@ db.connect((err) => {
           const query = `INSERT INTO usuarios (nombre, paterno, materno, campana, username, password, nivel, estatus, gruposAsignados) VALUES ?`;
           db.query(query, [defaultUsers], (err) => {
             if (err) console.error('Error al insertar usuarios por defecto:', err);
-            else console.log('Tabla de usuarios recreada e inicializada correctamente.');
           });
         }
       });
     }
   });
 
-  // 3. Tabla de Grupos (Con valores por defecto si está vacía)
+  // 3. Tabla de Grupos
   db.query(`
     CREATE TABLE IF NOT EXISTS grupos (
       id INT AUTO_INCREMENT PRIMARY KEY,
@@ -97,16 +96,13 @@ db.connect((err) => {
             ['CONTROL ESTADISTICO'], ['SOPORTE TECNICO'], ['BASES E INFORMES'],
             ['CLAVES'], ['FOLIOS BIT'], ['MANTENIMIENTO'], ['CENTINELA']
           ];
-          db.query('INSERT IGNORE INTO grupos (nombre) VALUES ?', [defaultGrupos], (err) => {
-            if (err) console.error('Error al insertar grupos por defecto:', err);
-            else console.log('Grupos iniciales insertados en la base de datos.');
-          });
+          db.query('INSERT IGNORE INTO grupos (nombre) VALUES ?', [defaultGrupos], (err) => {});
         }
       });
     }
   });
 
-  // 4. Otras tablas de Catálogos
+  // 4. Tablas de Categorías, Subcategorías, Elementos y Campañas
   db.query(`CREATE TABLE IF NOT EXISTS categorias (id INT AUTO_INCREMENT PRIMARY KEY, nombre VARCHAR(150) NOT NULL, estatus VARCHAR(50) DEFAULT 'ACTIVO');`, (err) => {});
   db.query(`CREATE TABLE IF NOT EXISTS subcategorias (id INT AUTO_INCREMENT PRIMARY KEY, categoria VARCHAR(150) NOT NULL, nombre VARCHAR(150) NOT NULL, estatus VARCHAR(50) DEFAULT 'ACTIVO');`, (err) => {});
   db.query(`CREATE TABLE IF NOT EXISTS elementos (id INT AUTO_INCREMENT PRIMARY KEY, subcategoria VARCHAR(150) NOT NULL, nombre VARCHAR(150) NOT NULL);`, (err) => {});
@@ -212,30 +208,60 @@ app.delete('/api/grupos/:nombre', (req, res) => {
   });
 });
 
-// --- API ROUTES: OTROS CATÁLOGOS ---
+// --- API ROUTES: CATEGORÍAS ---
 app.get('/api/categorias', (req, res) => {
-  db.query('SELECT * FROM categorias ORDER BY id DESC', (err, results) => res.json(results));
+  db.query('SELECT * FROM categorias ORDER BY id DESC', (err, results) => {
+    if (err) return res.status(500).json({ error: err.message });
+    res.json(results);
+  });
 });
 app.post('/api/categorias', (req, res) => {
-  db.query('INSERT INTO categorias (nombre, estatus) VALUES (?, ?)', [req.body.nombre, req.body.estatus || 'ACTIVO'], (err, result) => res.json({ id: result.insertId }));
+  db.query('INSERT INTO categorias (nombre, estatus) VALUES (?, ?)', [req.body.nombre, req.body.estatus || 'ACTIVO'], (err, result) => {
+    if (err) return res.status(500).json({ error: err.message });
+    res.status(201).json({ id: result.insertId });
+  });
 });
+
+// --- API ROUTES: SUBCATEGORÍAS ---
 app.get('/api/subcategorias', (req, res) => {
-  db.query('SELECT * FROM subcategorias ORDER BY id DESC', (err, results) => res.json(results));
+  db.query('SELECT * FROM subcategorias ORDER BY id DESC', (err, results) => {
+    if (err) return res.status(500).json({ error: err.message });
+    res.json(results);
+  });
 });
 app.post('/api/subcategorias', (req, res) => {
-  db.query('INSERT INTO subcategorias (categoria, nombre, estatus) VALUES (?, ?, ?)', [req.body.categoria, req.body.nombre, req.body.estatus || 'ACTIVO'], (err, result) => res.json({ id: result.insertId }));
+  db.query('INSERT INTO subcategorias (categoria, nombre, estatus) VALUES (?, ?, ?)', [req.body.categoria, req.body.nombre, req.body.estatus || 'ACTIVO'], (err, result) => {
+    if (err) return res.status(500).json({ error: err.message });
+    res.status(201).json({ id: result.insertId });
+  });
 });
+
+// --- API ROUTES: ELEMENTOS ---
 app.get('/api/elementos', (req, res) => {
-  db.query('SELECT * FROM elementos ORDER BY id DESC', (err, results) => res.json(results));
+  db.query('SELECT * FROM elementos ORDER BY id DESC', (err, results) => {
+    if (err) return res.status(500).json({ error: err.message });
+    res.json(results);
+  });
 });
 app.post('/api/elementos', (req, res) => {
-  db.query('INSERT INTO elementos (subcategoria, nombre) VALUES (?, ?)', [req.body.subcategoria, req.body.nombre], (err, result) => res.json({ id: result.insertId }));
+  db.query('INSERT INTO elementos (subcategoria, nombre) VALUES (?, ?)', [req.body.subcategoria, req.body.nombre], (err, result) => {
+    if (err) return res.status(500).json({ error: err.message });
+    res.status(201).json({ id: result.insertId });
+  });
 });
+
+// --- API ROUTES: CAMPAÑAS ---
 app.get('/api/campanas', (req, res) => {
-  db.query('SELECT * FROM campanas ORDER BY id DESC', (err, results) => res.json(results));
+  db.query('SELECT * FROM campanas ORDER BY id DESC', (err, results) => {
+    if (err) return res.status(500).json({ error: err.message });
+    res.json(results);
+  });
 });
 app.post('/api/campanas', (req, res) => {
-  db.query('INSERT INTO campanas (nombre) VALUES (?)', [req.body.nombre], (err, result) => res.json({ id: result.insertId }));
+  db.query('INSERT INTO campanas (nombre) VALUES (?)', [req.body.nombre], (err, result) => {
+    if (err) return res.status(500).json({ error: err.message });
+    res.status(201).json({ id: result.insertId });
+  });
 });
 
 // --- CONFIGURACIÓN DE PRODUCCIÓN (REACT) ---
