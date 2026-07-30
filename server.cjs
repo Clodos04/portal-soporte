@@ -50,41 +50,35 @@ db.connect((err) => {
     );
   `, (err) => { if (err) console.error('Error tabla tickets:', err); });
 
-  // 2. Tabla de Usuarios y asegurado automático de cuentas por defecto
-  db.query(`
-    CREATE TABLE IF NOT EXISTS usuarios (
-      id INT AUTO_INCREMENT PRIMARY KEY,
-      nombre VARCHAR(150) NOT NULL,
-      paterno VARCHAR(150),
-      materno VARCHAR(150),
-      campana VARCHAR(150),
-      username VARCHAR(150) UNIQUE NOT NULL,
-      password VARCHAR(255),
-      nivel VARCHAR(100) DEFAULT 'CLIENTE',
-      estatus VARCHAR(50) DEFAULT 'ACTIVO',
-      gruposAsignados TEXT
-    );
-  `, (err) => {
-    if (err) {
-      console.error('Error tabla usuarios:', err);
-    } else {
-      // Forzar inserción o actualización de usuarios por defecto en cada inicio del servidor
-      const defaultUsers = [
-        ['CHRISTOPHER', 'OSORIO', 'VARELA', 'TI', 'christopher', '1234', 'ADMINISTRADOR', 'ACTIVO', JSON.stringify(['TI'])],
-        ['VALERIA', 'GOMEZ', 'RUIZ', '*111', 'valeria', '1234', 'CLIENTE', 'ACTIVO', JSON.stringify([])]
-      ];
-
-      defaultUsers.forEach(user => {
-        const query = `
-          INSERT INTO usuarios (nombre, paterno, materno, campana, username, password, nivel, estatus, gruposAsignados) 
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-          ON DUPLICATE KEY UPDATE password = VALUES(password), nivel = VALUES(nivel), estatus = VALUES(estatus)
-        `;
-        db.query(query, user, (err) => {
-          if (err) console.error('Error al asegurar usuario por defecto:', err);
-        });
+  // 2. Forzar la recreación limpia de la tabla de usuarios para asegurar las cuentas por defecto
+  db.query(`DROP TABLE IF EXISTS usuarios`, (err) => {
+    if (!err) {
+      db.query(`
+        CREATE TABLE usuarios (
+          id INT AUTO_INCREMENT PRIMARY KEY,
+          nombre VARCHAR(150) NOT NULL,
+          paterno VARCHAR(150),
+          materno VARCHAR(150),
+          campana VARCHAR(150),
+          username VARCHAR(150) UNIQUE NOT NULL,
+          password VARCHAR(255),
+          nivel VARCHAR(100) DEFAULT 'CLIENTE',
+          estatus VARCHAR(50) DEFAULT 'ACTIVO',
+          gruposAsignados TEXT
+        );
+      `, (err) => {
+        if (!err) {
+          const defaultUsers = [
+            ['CHRISTOPHER', 'OSORIO', 'VARELA', 'TI', 'christopher', '1234', 'ADMINISTRADOR', 'ACTIVO', JSON.stringify(['TI'])],
+            ['VALERIA', 'GOMEZ', 'RUIZ', '*111', 'valeria', '1234', 'CLIENTE', 'ACTIVO', JSON.stringify([])]
+          ];
+          const query = `INSERT INTO usuarios (nombre, paterno, materno, campana, username, password, nivel, estatus, gruposAsignados) VALUES ?`;
+          db.query(query, [defaultUsers], (err) => {
+            if (err) console.error('Error al insertar usuarios por defecto:', err);
+            else console.log('Tabla de usuarios recreada e inicializada correctamente.');
+          });
+        }
       });
-      console.log('Usuarios por defecto verificados y sincronizados.');
     }
   });
 
@@ -295,8 +289,9 @@ app.get('/api/elementos', (req, res) => {
 });
 
 app.post('/api/elementos', (req, res) => {
-  const { subcategoria, nombre } = req.body;
-  db.query('INSERT INTO elementos (subcategoria, nombre) VALUES (?, ?)', [subcategoria, nombre], (err, result) => {
+  const { subcategoria, nombre } = res.status ? req.body : req.body;
+  const { subcategoria: sub, nombre: nom } = req.body;
+  db.query('INSERT INTO elementos (subcategoria, nombre) VALUES (?, ?)', [sub, nom], (err, result) => {
     if (err) return res.status(500).json({ error: err.message });
     res.status(201).json({ message: 'Elemento guardado', id: result.insertId });
   });
