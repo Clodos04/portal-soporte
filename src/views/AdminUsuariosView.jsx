@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { listaCampanas } from '../data/campanasData';
 
 function AdminUsuariosView({ grupos = [], usuarios = [], setUsuarios }) {
-  const [modo, setModo] = useState('lista'); // 'lista', 'form'
+  const [modo, setModo] = useState('lista');
   const [usuarioActual, setUsuarioActual] = useState(null);
 
   const [formNombre, setFormNombre] = useState('');
@@ -96,7 +96,6 @@ function AdminUsuariosView({ grupos = [], usuarios = [], setUsuarios }) {
         });
         setUsuarios(usuarios.map(u => u.id === usuarioActual.id ? { ...u, ...datosUsuario } : u));
       }
-
       setModo('lista');
     } catch (error) {
       console.error('Error al guardar usuario:', error);
@@ -108,7 +107,6 @@ function AdminUsuariosView({ grupos = [], usuarios = [], setUsuarios }) {
     return (
       <div className="animate-fade-in max-w-7xl mx-auto space-y-6 text-slate-200">
         <h1 className="text-3xl font-light text-white tracking-wide uppercase">Usuarios</h1>
-
         <div className="bg-slate-800 rounded-xl shadow-lg border border-slate-700 p-6 space-y-4">
           <div className="flex justify-between items-center">
             <p className="text-slate-400 text-sm">Listado oficial de usuarios registrados en el sistema</p>
@@ -186,60 +184,26 @@ function AdminUsuariosView({ grupos = [], usuarios = [], setUsuarios }) {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
             <label className="block text-xs font-bold text-slate-300 mb-1 uppercase">Nombre:</label>
-            <input 
-              type="text" 
-              required
-              value={formNombre} 
-              onChange={(e) => setFormNombre(e.target.value)} 
-              placeholder="Ej. JUAN"
-              className="w-full px-3 py-2 rounded bg-slate-900 border border-slate-700 text-white outline-none uppercase text-sm" 
-            />
+            <input type="text" required value={formNombre} onChange={(e) => setFormNombre(e.target.value)} placeholder="Ej. JUAN" className="w-full px-3 py-2 rounded bg-slate-900 border border-slate-700 text-white outline-none uppercase text-sm" />
           </div>
           <div>
             <label className="block text-xs font-bold text-slate-300 mb-1 uppercase">Apellido Paterno:</label>
-            <input 
-              type="text" 
-              required
-              value={formPaterno} 
-              onChange={(e) => setFormPaterno(e.target.value)} 
-              placeholder="Ej. PÉREZ"
-              className="w-full px-3 py-2 rounded bg-slate-900 border border-slate-700 text-white outline-none uppercase text-sm" 
-            />
+            <input type="text" required value={formPaterno} onChange={(e) => setFormPaterno(e.target.value)} placeholder="Ej. PÉREZ" className="w-full px-3 py-2 rounded bg-slate-900 border border-slate-700 text-white outline-none uppercase text-sm" />
           </div>
           <div>
             <label className="block text-xs font-bold text-slate-300 mb-1 uppercase">Apellido Materno:</label>
-            <input 
-              type="text" 
-              value={formMaterno} 
-              onChange={(e) => setFormMaterno(e.target.value)} 
-              placeholder="Ej. LÓPEZ"
-              className="w-full px-3 py-2 rounded bg-slate-900 border border-slate-700 text-white outline-none uppercase text-sm" 
-            />
+            <input type="text" value={formMaterno} onChange={(e) => setFormMaterno(e.target.value)} placeholder="Ej. LÓPEZ" className="w-full px-3 py-2 rounded bg-slate-900 border border-slate-700 text-white outline-none uppercase text-sm" />
           </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <label className="block text-xs font-bold text-slate-300 mb-1 uppercase">Nombre de Usuario (Username):</label>
-            <input 
-              type="text" 
-              required
-              value={formUsername} 
-              onChange={(e) => setFormUsername(e.target.value)} 
-              placeholder="Ej. jperez"
-              className="w-full px-3 py-2 rounded bg-slate-900 border border-slate-700 text-white outline-none text-sm" 
-            />
+            <input type="text" required value={formUsername} onChange={(e) => setFormUsername(e.target.value)} placeholder="Ej. jperez" className="w-full px-3 py-2 rounded bg-slate-900 border border-slate-700 text-white outline-none text-sm" />
           </div>
           <div>
             <label className="block text-xs font-bold text-slate-300 mb-1 uppercase">Contraseña:</label>
-            <input 
-              type="password" 
-              required={!usuarioActual}
-              value={formPassword} 
-              onChange={(e) => setFormPassword(e.target.value)} 
-              placeholder={usuarioActual ? "Dejar en blanco para mantener" : "Contraseña"}
-              className="w-full px-3 py-2 rounded bg-slate-900 border border-slate-700 text-white outline-none text-sm" 
-            />
+            <input type="password" required={!usuarioActual} value={formPassword} onChange={(e) => setFormPassword(e.target.value)} placeholder={usuarioActual ? "Dejar en blanco para mantener" : "Contraseña"} className="w-full px-3 py-2 rounded bg-slate-900 border border-slate-700 text-white outline-none text-sm" />
           </div>
         </div>
 
@@ -251,8 +215,6 @@ function AdminUsuariosView({ grupos = [], usuarios = [], setUsuarios }) {
               <option value="ADMINISTRADOR">ADMINISTRADOR</option>
             </select>
           </div>
-          
-          {/* CAMPAÑA CON LISTA DINÁMICA */}
           <div>
             <label className="block text-xs font-bold text-slate-300 mb-1 uppercase">Campaña:</label>
             <select value={formCampana} onChange={(e) => setFormCampana(e.target.value)} className="w-full px-3 py-2 rounded bg-slate-900 border border-slate-700 text-white text-sm outline-none">
@@ -261,7 +223,6 @@ function AdminUsuariosView({ grupos = [], usuarios = [], setUsuarios }) {
               ))}
             </select>
           </div>
-
           <div>
             <label className="block text-xs font-bold text-slate-300 mb-1 uppercase">Estatus:</label>
             <select value={formEstatus} onChange={(e) => setFormEstatus(e.target.value)} className="w-full px-3 py-2 rounded bg-slate-900 border border-slate-700 text-white text-sm outline-none">
@@ -276,12 +237,7 @@ function AdminUsuariosView({ grupos = [], usuarios = [], setUsuarios }) {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-2 max-h-40 overflow-y-auto pr-2">
             {grupos.map((g, idx) => (
               <label key={idx} className="flex items-center gap-2 cursor-pointer text-sm text-slate-300 hover:text-white">
-                <input 
-                  type="checkbox" 
-                  checked={formGrupos.includes(g)}
-                  onChange={() => toggleGrupoAsignado(g)}
-                  className="accent-blue-500 w-4 h-4 rounded"
-                />
+                <input type="checkbox" checked={formGrupos.includes(g)} onChange={() => toggleGrupoAsignado(g)} className="accent-blue-500 w-4 h-4 rounded" />
                 <span className="truncate">{g}</span>
               </label>
             ))}
