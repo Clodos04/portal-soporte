@@ -22,8 +22,6 @@ import AdminCategoriasView from './views/AdminCategoriasView';
 import AdminSubcategoriasView from './views/AdminSubcategoriasView';
 import AdminCampanasView from './views/AdminCampanasView';
 
-import { listaCampanas } from './data/campanasData';
-
 function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false); 
   const [user, setUser] = useState(null); 
@@ -50,35 +48,34 @@ function App() {
   const [tickets, setTickets] = useState([]);
   const [usuarios, setUsuarios] = useState([]);
   const [grupos, setGrupos] = useState([]);
+  const [campanas, setCampanas] = useState([]);
   const [categorias, setCategorias] = useState([]);
   const [estadisticasEncuestas, setEstadisticasEncuestas] = useState([]);
 
-  // Cargar todos los datos desde MySQL al iniciar o recargar (F5)
+  // Carga de todos los datos desde MySQL al iniciar o recargar (F5)
   useEffect(() => {
     fetch('/api/tickets')
       .then(res => res.json())
-      .then(data => { if (Array.isArray(data)) setTickets(data); })
-      .catch(err => console.error('Error al cargar tickets:', err));
+      .then(data => { if (Array.isArray(data)) setTickets(data); });
 
     fetch('/api/usuarios')
       .then(res => res.json())
-      .then(data => { if (Array.isArray(data)) setUsuarios(data); })
-      .catch(err => console.error('Error al cargar usuarios:', err));
+      .then(data => { if (Array.isArray(data)) setUsuarios(data); });
 
     fetch('/api/grupos')
       .then(res => res.json())
-      .then(data => { if (Array.isArray(data)) setGrupos(data); })
-      .catch(err => console.error('Error al cargar grupos:', err));
+      .then(data => { if (Array.isArray(data)) setGrupos(data); });
+
+    fetch('/api/campanas')
+      .then(res => res.json())
+      .then(data => { if (Array.isArray(data)) setCampanas(data); });
 
     fetch('/api/categorias')
       .then(res => res.json())
-      .then(data => { if (Array.isArray(data)) setCategorias(data); })
-      .catch(err => console.error('Error al cargar categorías:', err));
+      .then(data => { if (Array.isArray(data)) setCategorias(data); });
   }, []);
 
-  const [campanas, setCampanas] = useState(listaCampanas);
-
-  // Función envolvente para actualizar y sincronizar el árbol de categorías con MySQL automáticamente
+  // Función sincronizada para categorías, subcategorías y elementos
   const handleSetCategorias = (nuevasCategorias) => {
     setCategorias(nuevasCategorias);
     fetch('/api/categorias/sincronizar', {
@@ -142,7 +139,6 @@ function App() {
     setEstadisticasEncuestas([...estadisticasEncuestas, nuevaEncuesta]);
   };
 
-  // Login validado directamente contra el servidor MySQL
   const handleLogin = async (username, password) => {
     try {
       const response = await fetch('/api/login', {
