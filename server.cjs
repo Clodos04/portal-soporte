@@ -50,7 +50,7 @@ db.connect((err) => {
     );
   `, (err) => { if (err) console.error('Error tabla tickets:', err); });
 
-  // 2. Tabla de Usuarios (Actualizada con todos tus campos)
+  // 2. Tabla de Usuarios y autollenado inicial si está vacía
   db.query(`
     CREATE TABLE IF NOT EXISTS usuarios (
       id INT AUTO_INCREMENT PRIMARY KEY,
@@ -64,7 +64,26 @@ db.connect((err) => {
       estatus VARCHAR(50) DEFAULT 'ACTIVO',
       gruposAsignados TEXT
     );
-  `, (err) => { if (err) console.error('Error tabla usuarios:', err); });
+  `, (err) => {
+    if (err) {
+      console.error('Error tabla usuarios:', err);
+    } else {
+      // Si la tabla está vacía, insertamos usuarios iniciales por defecto para pruebas
+      db.query('SELECT COUNT(*) as count FROM usuarios', (err, results) => {
+        if (!err && results[0].count === 0) {
+          const defaultUsers = [
+            ['CHRISTOPHER', 'OSORIO', 'VARELA', 'TI', 'christopher', '1234', 'ADMINISTRADOR', 'ACTIVO', JSON.stringify(['TI'])],
+            ['VALERIA', 'GOMEZ', 'RUIZ', '*111', 'valeria', '1234', 'CLIENTE', 'ACTIVO', JSON.stringify([])]
+          ];
+          const insertQuery = `INSERT INTO usuarios (nombre, paterno, materno, campana, username, password, nivel, estatus, gruposAsignados) VALUES ?`;
+          db.query(insertQuery, [defaultUsers], (err) => {
+            if (err) console.error('Error al insertar usuarios por defecto:', err);
+            else console.log('Usuarios iniciales insertados en la base de datos.');
+          });
+        }
+      });
+    }
+  });
 
   // 3. Tabla de Grupos
   db.query(`
@@ -166,7 +185,7 @@ app.put('/api/tickets/:folio', (req, res) => {
 // --- API ROUTES: USUARIOS ---
 app.get('/api/usuarios', (req, res) => {
   db.query('SELECT * FROM usuarios ORDER BY id DESC', (err, results) => {
-    // Convertir gruposAsignados de texto plano a arreglo JSON si es necesario
+    if (err) return res.status(500).json({ error: err.message });
     const formatted = results.map(u => ({
       ...u,
       gruposAsignados: u.gruposAsignados ? JSON.parse(u.gruposAsignados) : []
@@ -257,6 +276,7 @@ app.get('/api/subcategorias', (req, res) => {
 });
 
 app.post('/api/subcategorias', (req, res) => {
+  const { username, ...u } = req.body; // limpieza opcional
   const { categoria, nombre, estatus } = req.body;
   db.query('INSERT INTO subcategorias (categoria, nombre, estatus) VALUES (?, ?, ?)', [categoria, nombre, estatus || 'ACTIVO'], (err, result) => {
     if (err) return res.status(500).json({ error: err.message });
@@ -267,7 +287,7 @@ app.post('/api/subcategorias', (req, res) => {
 // --- API ROUTES: ELEMENTOS ---
 app.get('/api/elementos', (req, res) => {
   db.query('SELECT * FROM elementos ORDER BY id DESC', (err, results) => {
-    if (err) return res.status(500).json({ error: err.message });
+    if (err) return res.status(500).json({ error: res.status(500).json({ error: err.message }) });
     res.json(results);
   });
 });
