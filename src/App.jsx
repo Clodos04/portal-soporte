@@ -22,7 +22,6 @@ import AdminCategoriasView from './views/AdminCategoriasView';
 import AdminSubcategoriasView from './views/AdminSubcategoriasView';
 import AdminCampanasView from './views/AdminCampanasView';
 
-import { categoriasIniciales } from './data/categoriasData';
 import { listaCampanas } from './data/campanasData';
 
 function App() {
@@ -51,27 +50,38 @@ function App() {
   const [tickets, setTickets] = useState([]);
   const [usuarios, setUsuarios] = useState([]);
   const [grupos, setGrupos] = useState([]);
+  const [categorias, setCategorias] = useState([]);
+  const [subcategorias, setSubcategorias] = useState([]);
+  const [elementos, setElementos] = useState([]);
   const [estadisticasEncuestas, setEstadisticasEncuestas] = useState([]);
 
-  // Cargar tickets, usuarios y grupos desde MySQL al iniciar
+  // Cargar todo desde MySQL al iniciar o recargar (F5)
   useEffect(() => {
     fetch('/api/tickets')
       .then(res => res.json())
-      .then(data => { if (Array.isArray(data)) setTickets(data); })
-      .catch(err => console.error('Error al cargar tickets:', err));
+      .then(data => { if (Array.isArray(data)) setTickets(data); });
 
     fetch('/api/usuarios')
       .then(res => res.json())
-      .then(data => { if (Array.isArray(data)) setUsuarios(data); })
-      .catch(err => console.error('Error al cargar usuarios:', err));
+      .then(data => { if (Array.isArray(data)) setUsuarios(data); });
 
     fetch('/api/grupos')
       .then(res => res.json())
-      .then(data => { if (Array.isArray(data)) setGrupos(data); })
-      .catch(err => console.error('Error al cargar grupos:', err));
+      .then(data => { if (Array.isArray(data)) setGrupos(data); });
+
+    fetch('/api/categorias')
+      .then(res => res.json())
+      .then(data => { if (Array.isArray(data)) setCategorias(data); });
+
+    fetch('/api/subcategorias')
+      .then(res => res.json())
+      .then(data => { if (Array.isArray(data)) setSubcategorias(data); });
+
+    fetch('/api/elementos')
+      .then(res => res.json())
+      .then(data => { if (Array.isArray(data)) setElementos(data); });
   }, []);
 
-  const [categorias, setCategorias] = useState(categoriasIniciales);
   const [campanas, setCampanas] = useState(listaCampanas);
 
   const usuariosPorGrupo = grupos.reduce((acc, grupo) => {
@@ -128,7 +138,6 @@ function App() {
     setEstadisticasEncuestas([...estadisticasEncuestas, nuevaEncuesta]);
   };
 
-  // Login validado directamente contra el servidor MySQL
   const handleLogin = async (username, password) => {
     try {
       const response = await fetch('/api/login', {
@@ -286,6 +295,10 @@ function App() {
               categoria={categoriaParaSubcategorias}
               categorias={categorias}
               setCategorias={setCategorias}
+              subcategorias={subcategorias}
+              setSubcategorias={setSubcategorias}
+              elementos={elementos}
+              setElementos={setElementos}
               user={user}
               onBack={(catActualizada) => setCategoriaParaSubcategorias(catActualizada)}
             />
