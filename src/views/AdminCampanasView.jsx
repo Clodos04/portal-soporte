@@ -13,8 +13,16 @@ function AdminCampanasView({ campanas = [], setCampanas }) {
       return;
     }
 
-    setCampanas([...campanas, campanaTrim]);
-    setNuevaCampana('');
+    fetch('/api/campanas', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ nombre: campanaTrim })
+    })
+    .then(() => {
+      setCampanas([...campanas, campanaTrim]);
+      setNuevaCampana('');
+    })
+    .catch(err => console.error('Error al guardar campaña:', err));
   };
 
   const handleEliminar = (campanaAEliminar) => {
@@ -22,8 +30,14 @@ function AdminCampanasView({ campanas = [], setCampanas }) {
       alert('Debe existir al menos una campaña en el sistema.');
       return;
     }
-    if (confirm(`¿Estás seguro de eliminar la campaña ${campanaAEliminar}?`)) {
-      setCampanas(campanas.filter(c => c !== campanaAEliminar));
+    if (window.confirm(`¿Estás seguro de eliminar la campaña ${campanaAEliminar}?`)) {
+      fetch(`/api/campanas/${encodeURIComponent(campanaAEliminar)}`, {
+        method: 'DELETE'
+      })
+      .then(() => {
+        setCampanas(campanas.filter(c => c !== campanaAEliminar));
+      })
+      .catch(err => console.error('Error al eliminar campaña:', err));
     }
   };
 
