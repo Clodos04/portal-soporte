@@ -23,8 +23,8 @@ db.connect((err) => {
   }
   console.log('Conectado exitosamente a la Base de Datos MySQL');
 
-  // Crear la tabla de tickets automáticamente la primera vez si no existe
-  const sqlTabla = `
+  // 1. Tabla de Tickets
+  db.query(`
     CREATE TABLE IF NOT EXISTS tickets (
       id INT AUTO_INCREMENT PRIMARY KEY,
       folio VARCHAR(50) NOT NULL,
@@ -45,18 +45,71 @@ db.connect((err) => {
       elemento VARCHAR(150),
       resolucion TEXT,
       archivoNombre VARCHAR(255),
-      archivoUrl TEXT
+      archivoUrl TEXT,
+      encuesta_respondida TINYINT DEFAULT 0
     );
-  `;
-  db.query(sqlTabla, (err) => {
-    if (err) console.error('Error al crear la tabla:', err);
-    else console.log('Tabla "tickets" verificada o creada correctamente');
-  });
+  `, (err) => { if (err) console.error('Error tabla tickets:', err); });
+
+  // 2. Tabla de Usuarios
+  db.query(`
+    CREATE TABLE IF NOT EXISTS usuarios (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      nombre VARCHAR(150) NOT NULL,
+      correo VARCHAR(150),
+      rol VARCHAR(50) DEFAULT 'client',
+      grupo VARCHAR(150),
+      estatus VARCHAR(50) DEFAULT 'ACTIVO'
+    );
+  `, (err) => { if (err) console.error('Error tabla usuarios:', err); });
+
+  // 3. Tabla de Grupos
+  db.query(`
+    CREATE TABLE IF NOT EXISTS grupos (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      nombre VARCHAR(150) NOT NULL
+    );
+  `, (err) => { if (err) console.error('Error tabla grupos:', err); });
+
+  // 4. Tabla de Categorías
+  db.query(`
+    CREATE TABLE IF NOT EXISTS categorias (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      nombre VARCHAR(150) NOT NULL,
+      estatus VARCHAR(50) DEFAULT 'ACTIVO'
+    );
+  `, (err) => { if (err) console.error('Error tabla categorias:', err); });
+
+  // 5. Tabla de Subcategorías
+  db.query(`
+    CREATE TABLE IF NOT EXISTS subcategorias (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      categoria VARCHAR(150) NOT NULL,
+      nombre VARCHAR(150) NOT NULL,
+      estatus VARCHAR(50) DEFAULT 'ACTIVO'
+    );
+  `, (err) => { if (err) console.error('Error tabla subcategorias:', err); });
+
+  // 6. Tabla de Elementos
+  db.query(`
+    CREATE TABLE IF NOT EXISTS elementos (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      subcategoria VARCHAR(150) NOT NULL,
+      nombre VARCHAR(150) NOT NULL
+    );
+  `, (err) => { if (err) console.error('Error tabla elementos:', err); });
+
+  // 7. Tabla de Campañas
+  db.query(`
+    CREATE TABLE IF NOT EXISTS campanas (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      nombre VARCHAR(150) NOT NULL
+    );
+  `, (err) => { if (err) console.error('Error tabla campanas:', err); });
+
+  console.log('Todas las tablas de la base de datos fueron verificadas o creadas.');
 });
 
-// --- API ROUTES ---
-
-// 1. Obtener todos los tickets
+// --- API ROUTES: TICKETS ---
 app.get('/api/tickets', (req, res) => {
   db.query('SELECT * FROM tickets ORDER BY id DESC', (err, results) => {
     if (err) return res.status(500).json({ error: err.message });
@@ -64,7 +117,6 @@ app.get('/api/tickets', (req, res) => {
   });
 });
 
-// 2. Crear un nuevo ticket
 app.post('/api/tickets', (req, res) => {
   const t = req.body;
   const query = `
@@ -72,25 +124,21 @@ app.post('/api/tickets', (req, res) => {
     (folio, estatus, colorEstatus, tecnico, creador, asunto, descripcion, campana, equipo, nivel, modo, fecha, grupo, categoria, subcategoria, elemento, resolucion) 
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `;
-  
   const values = [
     t.folio, t.estatus, t.colorEstatus, t.tecnico, t.creador,
     t.asunto, t.descripcion, t.campana, t.equipo,
     t.nivel, t.modo, t.fecha, t.grupo,
     t.categoria, t.subcategoria, t.elemento, t.resolucion || ''
   ];
-
   db.query(query, values, (err, result) => {
     if (err) return res.status(500).json({ error: err.message });
     res.status(201).json({ message: 'Ticket guardado con éxito', id: result.insertId });
   });
 });
 
-// 3. Actualizar un ticket existente por folio
 app.put('/api/tickets/:folio', (req, res) => {
   const { folio } = req.params;
   const t = req.body;
-
   const query = `
     UPDATE tickets SET 
       estatus = ?, colorEstatus = ?, tecnico = ?, asunto = ?, 
@@ -99,25 +147,118 @@ app.put('/api/tickets/:folio', (req, res) => {
       elemento = ?, resolucion = ?
     WHERE folio = ?
   `;
-
   const values = [
     t.estatus, t.colorEstatus, t.tecnico, t.asunto,
     t.descripcion, t.campana, t.equipo, t.nivel,
     t.modo, t.grupo, t.categoria, t.subcategoria,
     t.elemento, t.resolucion || '', folio
   ];
-
   db.query(query, values, (err, result) => {
     if (err) return res.status(500).json({ error: err.message });
-    if (result.affectedRows === 0) {
-      return res.status(404).json({ message: 'Ticket no encontrado' });
-    }
     res.json({ message: 'Ticket actualizado correctamente' });
   });
 });
 
+// --- API ROUTES: USUARIOS ---
+app.get('/api/usuarios', (req, res) => {
+  db.query('SELECT * FROM usuarios ORDER BY id DESC', (err, results) => {
+    if (err) return res.status(500).json({ error: err.message });
+    res.json(results);
+  });
+});
+
+app.post('/api/usuarios', (req, res) => {
+  const u = req.body;
+  db.query('INSERT INTO usuarios (nombre, correo, rol, grupo, estatus) VALUES (?, ?, ?, ?, ?)', 
+    [u.nombre, u.correo, u.rol || 'client', u.grupo || '', u.estatus || 'ACTIVO'], 
+    (err, result) => {
+      if (err) return res.status(500).json({ error: err.message });
+      res.status(201).json({ message: 'Usuario guardado', id: result.insertId });
+    }
+  );
+});
+
+// --- API ROUTES: GRUPOS ---
+app.get('/api/grupos', (req, res) => {
+  db.query('SELECT * FROM grupos ORDER BY id DESC', (err, results) => {
+    if (err) return res.status(500).json({ error: err.message });
+    res.json(results);
+  });
+});
+
+app.post('/api/grupos', (req, res) => {
+  const { nombre } = req.body;
+  db.query('INSERT INTO grupos (nombre) VALUES (?)', [nombre], (err, result) => {
+    if (err) return res.status(500).json({ error: err.message });
+    res.status(201).json({ message: 'Grupo guardado', id: result.insertId });
+  });
+});
+
+// --- API ROUTES: CATEGORÍAS ---
+app.get('/api/categorias', (req, res) => {
+  db.query('SELECT * FROM categorias ORDER BY id DESC', (err, results) => {
+    if (err) return res.status(500).json({ error: err.message });
+    res.json(results);
+  });
+});
+
+app.post('/api/categorias', (req, res) => {
+  const { nombre, estatus } = req.body;
+  db.query('INSERT INTO categorias (nombre, estatus) VALUES (?, ?)', [nombre, estatus || 'ACTIVO'], (err, result) => {
+    if (err) return res.status(500).json({ error: err.message });
+    res.status(201).json({ message: 'Categoría guardada', id: result.insertId });
+  });
+});
+
+// --- API ROUTES: SUBCATEGORÍAS ---
+app.get('/api/subcategorias', (req, res) => {
+  db.query('SELECT * FROM subcategorias ORDER BY id DESC', (err, results) => {
+    if (err) return res.status(500).json({ error: err.message });
+    res.json(results);
+  });
+});
+
+app.post('/api/subcategorias', (req, res) => {
+  const { categoria, nombre, estatus } = req.body;
+  db.query('INSERT INTO subcategorias (categoria, nombre, estatus) VALUES (?, ?, ?)', [categoria, nombre, estatus || 'ACTIVO'], (err, result) => {
+    if (err) return res.status(500).json({ error: err.message });
+    res.status(201).json({ message: 'Subcategoría guardada', id: result.insertId });
+  });
+});
+
+// --- API ROUTES: ELEMENTOS ---
+app.get('/api/elementos', (req, res) => {
+  db.query('SELECT * FROM elementos ORDER BY id DESC', (err, results) => {
+    if (err) return res.status(500).json({ error: err.message });
+    res.json(results);
+  });
+});
+
+app.post('/api/elementos', (req, res) => {
+  const { subcategoria, nombre } = req.body;
+  db.query('INSERT INTO elementos (subcategoria, nombre) VALUES (?, ?)', [subcategoria, nombre], (err, result) => {
+    if (err) return res.status(500).json({ error: err.message });
+    res.status(201).json({ message: 'Elemento guardado', id: result.insertId });
+  });
+});
+
+// --- API ROUTES: CAMPAÑAS ---
+app.get('/api/campanas', (req, res) => {
+  db.query('SELECT * FROM campanas ORDER BY id DESC', (err, results) => {
+    if (err) return res.status(500).json({ error: err.message });
+    res.json(results);
+  });
+});
+
+app.post('/api/campanas', (req, res) => {
+  const { nombre } = req.body;
+  db.query('INSERT INTO campanas (nombre) VALUES (?)', [nombre], (err, result) => {
+    if (err) return res.status(500).json({ error: err.message });
+    res.status(201).json({ message: 'Campaña guardada', id: result.insertId });
+  });
+});
+
 // --- CONFIGURACIÓN DE PRODUCCIÓN (REACT) ---
-// Sirve la carpeta 'dist' generada por Vite
 app.use(express.static(path.join(__dirname, 'dist')));
 
 app.get(/(.*)/, (req, res) => {
