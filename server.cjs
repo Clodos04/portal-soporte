@@ -50,15 +50,19 @@ db.connect((err) => {
     );
   `, (err) => { if (err) console.error('Error tabla tickets:', err); });
 
-  // 2. Tabla de Usuarios
+  // 2. Tabla de Usuarios (Actualizada con todos tus campos)
   db.query(`
     CREATE TABLE IF NOT EXISTS usuarios (
       id INT AUTO_INCREMENT PRIMARY KEY,
       nombre VARCHAR(150) NOT NULL,
-      correo VARCHAR(150),
-      rol VARCHAR(50) DEFAULT 'client',
-      grupo VARCHAR(150),
-      estatus VARCHAR(50) DEFAULT 'ACTIVO'
+      paterno VARCHAR(150),
+      materno VARCHAR(150),
+      campana VARCHAR(150),
+      username VARCHAR(150) NOT NULL,
+      password VARCHAR(255),
+      nivel VARCHAR(100) DEFAULT 'CLIENTE',
+      estatus VARCHAR(50) DEFAULT 'ACTIVO',
+      gruposAsignados TEXT
     );
   `, (err) => { if (err) console.error('Error tabla usuarios:', err); });
 
@@ -162,20 +166,54 @@ app.put('/api/tickets/:folio', (req, res) => {
 // --- API ROUTES: USUARIOS ---
 app.get('/api/usuarios', (req, res) => {
   db.query('SELECT * FROM usuarios ORDER BY id DESC', (err, results) => {
-    if (err) return res.status(500).json({ error: err.message });
-    res.json(results);
+    // Convertir gruposAsignados de texto plano a arreglo JSON si es necesario
+    const formatted = results.map(u => ({
+      ...u,
+      gruposAsignados: u.gruposAsignados ? JSON.parse(u.gruposAsignados) : []
+    }));
+    res.json(formatted);
   });
 });
 
 app.post('/api/usuarios', (req, res) => {
   const u = req.body;
-  db.query('INSERT INTO usuarios (nombre, correo, rol, grupo, estatus) VALUES (?, ?, ?, ?, ?)', 
-    [u.nombre, u.correo, u.rol || 'client', u.grupo || '', u.estatus || 'ACTIVO'], 
-    (err, result) => {
-      if (err) return res.status(500).json({ error: err.message });
-      res.status(201).json({ message: 'Usuario guardado', id: result.insertId });
-    }
-  );
+  const gruposStr = JSON.stringify(u.gruposAsignados || []);
+  const query = `
+    INSERT INTO usuarios (nombre, paterno, materno, campana, username, password, nivel, estatus, gruposAsignados) 
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `;
+  const values = [u.nombre, u.paterno, u.materno, u.campana, u.username, u.password, u.nivel, u.estatus, gruposStr];
+
+  db.query(query, values, (err, result) => {
+    if (err) return res.status(500).json({ error: err.message });
+    res.status(201).json({ message: 'Usuario guardado', id: result.insertId });
+  });
+});
+
+app.put('/api/usuarios/:id', (req, res) => {
+  const { id } = req.params;
+  const u = req.body;
+  const gruposStr = JSON.stringify(u.gruposAsignados || []);
+  const query = `
+    UPDATE usuarios SET 
+      nombre = ?, paterno = ?, materno = ?, campana = ?, 
+      username = ?, password = ?, nivel = ?, estatus = ?, gruposAsignados = ?
+    WHERE id = ?
+  `;
+  const values = [u.nombre, u.paterno, u.materno, u.campana, u.username, u.password, u.nivel, u.estatus, gruposStr, id];
+
+  db.query(query, values, (err, result) => {
+    if (err) return res.status(500).json({ error: err.message });
+    res.json({ message: 'Usuario actualizado correctamente' });
+  });
+});
+
+app.delete('/api/usuarios/:id', (req, res) => {
+  const { id } = req.params;
+  db.query('DELETE FROM usuarios WHERE id = ?', [id], (err, result) => {
+    if (err) return res.status(500).json({ error: err.message });
+    res.json({ message: 'Usuario eliminado correctamente' });
+  });
 });
 
 // --- API ROUTES: GRUPOS ---
