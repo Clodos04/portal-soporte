@@ -23,7 +23,6 @@ import AdminSubcategoriasView from './views/AdminSubcategoriasView';
 import AdminCampanasView from './views/AdminCampanasView';
 
 import { categoriasIniciales } from './data/categoriasData';
-import { usuariosIniciales } from './data/usuariosData';
 import { listaCampanas } from './data/campanasData';
 
 function App() {
@@ -50,14 +49,26 @@ function App() {
   const [availableColumns, setAvailableColumns] = useState(['descripcion', 'campana', 'categoria', 'subcategoria']);
 
   const [tickets, setTickets] = useState([]);
+  const [usuarios, setUsuarios] = useState([]); // Inicializado vacío para llenarlo desde la BD
   const [estadisticasEncuestas, setEstadisticasEncuestas] = useState([]);
 
-  // Cargar tickets desde la base de datos al iniciar la aplicación
+  // Cargar tickets y usuarios desde la base de datos al iniciar la aplicación (o al presionar F5)
   useEffect(() => {
+    // Cargar Tickets
     fetch('/api/tickets')
       .then(res => res.json())
-      .then(data => setTickets(data))
+      .then(data => {
+        if (Array.isArray(data)) setTickets(data);
+      })
       .catch(err => console.error('Error al cargar tickets:', err));
+
+    // Cargar Usuarios
+    fetch('/api/usuarios')
+      .then(res => res.json())
+      .then(data => {
+        if (Array.isArray(data)) setUsuarios(data);
+      })
+      .catch(err => console.error('Error al cargar usuarios:', err));
   }, []);
 
   const [grupos, setGrupos] = useState([
@@ -73,7 +84,6 @@ function App() {
     'CENTINELA'
   ]);
 
-  const [usuarios, setUsuarios] = useState(usuariosIniciales);
   const [categorias, setCategorias] = useState(categoriasIniciales);
   const [campanas, setCampanas] = useState(listaCampanas);
 
