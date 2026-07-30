@@ -1,14 +1,15 @@
 import React from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
-function Dashboard({ user, tickets, onIrANuevaSolicitud, onIrAEncuesta, estadisticasEncuestas }) {
-  
+function Dashboard({ user, tickets = [], onIrANuevaSolicitud, onIrAEncuesta, estadisticasEncuestas = [] }) {
+  const safeTickets = tickets || [];
+
   // VISTA DE INICIO PARA EL CLIENTE
   if (user?.role === 'client') {
-    const misTicketsAbiertos = tickets.filter(t => t.estatus !== 'Cerrado');
-    const ultimoTicket = tickets[tickets.length - 1];
-    const ultimaNota = ultimoTicket && ultimoTicket.notas.length > 0 
-      ? ultimoTicket.notas[ultimoTicket.notas.length - 1] 
+    const misTicketsAbiertos = safeTickets.filter(t => t.estatus !== 'Cerrado');
+    const ultimoTicket = safeTickets.length > 0 ? safeTickets[safeTickets.length - 1] : null;
+    const ultimaNota = ultimoTicket && ultimoTicket.notas && ultimoTicket.notas.length > 0  
+      ? ultimoTicket.notas[ultimoTicket.notas.length - 1]  
       : null;
 
     return (
@@ -22,7 +23,7 @@ function Dashboard({ user, tickets, onIrANuevaSolicitud, onIrAEncuesta, estadist
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="bg-slate-800 rounded-xl shadow-lg p-6 border border-slate-700">
-            <h2 className="text-lg font-bold text-indigo-300 mb-4">Mis Tickets Abiertos ({misTicketsAbiertos.length})</h2>
+            <h2 className="text-lg font-bold text-indigo-300 mb-4">Mis Tickets Abiertos ({misTicketsAbiertos?.length || 0})</h2>
             {misTicketsAbiertos.length === 0 ? (
               <p className="text-slate-400 italic">No tienes solicitudes abiertas actualmente.</p>
             ) : (
@@ -33,7 +34,7 @@ function Dashboard({ user, tickets, onIrANuevaSolicitud, onIrAEncuesta, estadist
                       <p className="font-bold text-white">#{t.folio} - {t.asunto}</p>
                       <p className="text-xs text-slate-400">Fecha: {t.fecha}</p>
                     </div>
-                    <span className={`px-2.5 py-1 rounded-full text-xs font-bold text-white ${t.colorEstatus}`}>
+                    <span className={`px-2.5 py-1 rounded-full text-xs font-bold text-white ${t.colorEstatus || 'bg-green-600'}`}>
                       {t.estatus}
                     </span>
                   </div>
@@ -84,13 +85,13 @@ function Dashboard({ user, tickets, onIrANuevaSolicitud, onIrAEncuesta, estadist
   }
 
   // --- VISTA DE INICIO PARA SOPORTE TI (ADMINISTRADOR) ---
-  const totalAbiertas = tickets.filter(t => t.estatus === 'Abierto').length;
-  const totalEnProceso = tickets.filter(t => t.estatus === 'En Proceso').length;
+  const totalAbiertas = safeTickets.filter(t => t.estatus === 'Abierto').length;
+  const totalEnProceso = safeTickets.filter(t => t.estatus === 'En Proceso').length;
 
-  const countSoporte = tickets.filter(t => t.grupo?.toLowerCase().includes('soporte')).length;
-  const countDesarrollo = tickets.filter(t => t.grupo?.toLowerCase().includes('desarrollo')).length;
-  const countCalidad = tickets.filter(t => t.grupo?.toLowerCase().includes('calidad') || t.grupo?.toLowerCase().includes('estadistico')).length;
-  const countAtencion = tickets.filter(t => t.grupo?.toLowerCase().includes('atencion') || t.grupo?.toLowerCase().includes('telefonia')).length;
+  const countSoporte = safeTickets.filter(t => t.grupo?.toLowerCase().includes('soporte')).length;
+  const countDesarrollo = safeTickets.filter(t => t.grupo?.toLowerCase().includes('desarrollo')).length;
+  const countCalidad = safeTickets.filter(t => t.grupo?.toLowerCase().includes('calidad') || t.grupo?.toLowerCase().includes('estadistico')).length;
+  const countAtencion = safeTickets.filter(t => t.grupo?.toLowerCase().includes('atencion') || t.grupo?.toLowerCase().includes('telefonia')).length;
 
   const datosGrupos = [
     { nombre: 'Soporte Técnico', tickets: countSoporte },
@@ -99,10 +100,9 @@ function Dashboard({ user, tickets, onIrANuevaSolicitud, onIrAEncuesta, estadist
     { nombre: 'Atención a Clientes', tickets: countAtencion },
   ];
 
-  // Cálculo dinámico del SLA de respuesta basado en tickets atendidos (con técnico asignado)
-  const ticketsAtendidosSla = tickets.filter(t => t.tecnico && t.tecnico !== 'Sin Asignar').length;
-  const porcentajeSla = tickets.length > 0 
-    ? Math.round((ticketsAtendidosSla / tickets.length) * 100) 
+  const ticketsAtendidosSla = safeTickets.filter(t => t.tecnico && t.tecnico !== 'Sin Asignar').length;
+  const porcentajeSla = safeTickets.length > 0 
+    ? Math.round((ticketsAtendidosSla / safeTickets.length) * 100) 
     : 98;
 
   const encuestasPorTecnico = (estadisticasEncuestas || []).reduce((acc, curr) => {
@@ -146,7 +146,7 @@ function Dashboard({ user, tickets, onIrANuevaSolicitud, onIrAEncuesta, estadist
           <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wide mb-4 text-center">Tickets Hoy</h3>
           <div className="flex justify-center items-center mb-4 px-2">
             <span className="text-5xl font-black text-white">
-              {tickets.filter(t => t.fecha === new Date().toISOString().split('T')[0]).length}
+              {safeTickets.filter(t => t.fecha === new Date().toISOString().split('T')[0]).length}
             </span>
           </div>
           <div className="w-full bg-slate-700 rounded-full h-2"><div className="bg-blue-500 h-2 rounded-full" style={{ width: '50%' }}></div></div>
