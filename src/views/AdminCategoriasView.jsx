@@ -17,7 +17,7 @@ function AdminCategoriasView({ categorias = [], setCategorias, user, onVerSubcat
   const abrirEdicion = (cat) => {
     setCategoriaActual(cat);
     setFormNombre(cat.nombre);
-    setFormEstatus(cat.estatus);
+    setFormEstatus(cat.estatus || 'ACTIVO');
     setModo('form');
   };
 
@@ -104,12 +104,12 @@ function AdminCategoriasView({ categorias = [], setCategorias, user, onVerSubcat
                         <span>{cat.nombre}</span>
                       </td>
                       <td className="px-4 py-3">
-                        <span className={`px-2 py-0.5 rounded text-xs font-bold ${cat.estatus === 'ACTIVO' ? 'bg-green-600/30 text-green-400' : 'bg-red-600/30 text-red-400'}`}>
-                          {cat.estatus}
+                        <span className={`px-2 py-0.5 rounded text-xs font-bold ${(cat.estatus || 'ACTIVO') === 'ACTIVO' ? 'bg-green-600/30 text-green-400' : 'bg-red-600/30 text-red-400'}`}>
+                          {cat.estatus || 'ACTIVO'}
                         </span>
                       </td>
-                      <td className="px-4 py-3 text-slate-400 text-xs">{cat.fecAlta}</td>
-                      <td className="px-4 py-3 text-slate-300">{cat.usuario}</td>
+                      <td className="px-4 py-3 text-slate-400 text-xs">{cat.fecAlta || 'N/D'}</td>
+                      <td className="px-4 py-3 text-slate-300">{cat.usuario || 'SISTEMA'}</td>
                       <td className="px-4 py-3 text-center flex justify-center gap-2">
                         <button onClick={() => abrirEdicion(cat)} className="p-1.5 bg-blue-600/20 text-blue-400 hover:bg-blue-600 hover:text-white rounded transition-colors" title="Editar">
                           ✏️
