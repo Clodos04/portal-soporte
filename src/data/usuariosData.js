@@ -1,4 +1,4 @@
-export const usuariosIniciales = [
+const usuariosIniciales = [
   { 
     id: 1, nombre: 'CHRISTOPHER', paterno: 'OSORIO', materno: 'VARELA', 
     username: 'christopher', password: '123', nivel: 'ADMINISTRADOR', 
@@ -15,3 +15,5 @@ export const usuariosIniciales = [
     campana: '*111R9', estatus: 'ACTIVO', gruposAsignados: [] 
   }
 ];
+
+module.exports = { usuariosIniciales };
