@@ -50,27 +50,25 @@ function Login({ onLogin }) {
           </button>
         </form>
 
-        {/* Accesos rápidos de prueba */}
         <div className="pt-4 border-t border-slate-700 text-center space-y-2">
           <p className="text-xs text-slate-400">Accesos rápidos para pruebas:</p>
           <div className="flex justify-center gap-2">
             <button 
               type="button" 
-              onClick={() => llenarAccesoRapido('christopher', '123')}
+              onClick={() => llenarAccesoRapido('christopher', '1234')}
               className="px-3 py-1 bg-indigo-600/30 hover:bg-indigo-600 text-indigo-300 hover:text-white text-xs rounded border border-indigo-500/50 transition-colors"
             >
               👤 Christopher (Admin)
             </button>
             <button 
               type="button" 
-              onClick={() => llenarAccesoRapido('valeria', '123')}
+              onClick={() => llenarAccesoRapido('valeria', '1234')}
               className="px-3 py-1 bg-blue-600/30 hover:bg-blue-600 text-blue-300 hover:text-white text-xs rounded border border-blue-500/50 transition-colors"
             >
               👤 Valeria (Cliente)
             </button>
           </div>
         </div>
-
       </div>
     </div>
   );
