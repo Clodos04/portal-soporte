@@ -50,7 +50,7 @@ db.connect((err) => {
     );
   `, (err) => { if (err) console.error('Error tabla tickets:', err); });
 
-  // 2. Recreación limpia de la tabla de usuarios e inserción de cuentas por defecto
+  // 2. Tabla de Usuarios (Recreación limpia para asegurar cuentas por defecto)
   db.query(`DROP TABLE IF EXISTS usuarios`, (err) => {
     if (!err) {
       db.query(`
@@ -82,8 +82,31 @@ db.connect((err) => {
     }
   });
 
-  // 3. Tablas de Catálogos y Grupos
-  db.query(`CREATE TABLE IF NOT EXISTS grupos (id INT AUTO_INCREMENT PRIMARY KEY, nombre VARCHAR(150) NOT NULL);`, (err) => {});
+  // 3. Tabla de Grupos (Con valores por defecto si está vacía)
+  db.query(`
+    CREATE TABLE IF NOT EXISTS grupos (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      nombre VARCHAR(150) UNIQUE NOT NULL
+    );
+  `, (err) => {
+    if (!err) {
+      db.query('SELECT COUNT(*) as count FROM grupos', (err, results) => {
+        if (!err && results[0].count === 0) {
+          const defaultGrupos = [
+            ['TI'], ['TELEFONIA, COMUNICACIONES Y REDES'], ['DESARROLLO DE SOFTWARE'],
+            ['CONTROL ESTADISTICO'], ['SOPORTE TECNICO'], ['BASES E INFORMES'],
+            ['CLAVES'], ['FOLIOS BIT'], ['MANTENIMIENTO'], ['CENTINELA']
+          ];
+          db.query('INSERT IGNORE INTO grupos (nombre) VALUES ?', [defaultGrupos], (err) => {
+            if (err) console.error('Error al insertar grupos por defecto:', err);
+            else console.log('Grupos iniciales insertados en la base de datos.');
+          });
+        }
+      });
+    }
+  });
+
+  // 4. Otras tablas de Catálogos
   db.query(`CREATE TABLE IF NOT EXISTS categorias (id INT AUTO_INCREMENT PRIMARY KEY, nombre VARCHAR(150) NOT NULL, estatus VARCHAR(50) DEFAULT 'ACTIVO');`, (err) => {});
   db.query(`CREATE TABLE IF NOT EXISTS subcategorias (id INT AUTO_INCREMENT PRIMARY KEY, categoria VARCHAR(150) NOT NULL, nombre VARCHAR(150) NOT NULL, estatus VARCHAR(50) DEFAULT 'ACTIVO');`, (err) => {});
   db.query(`CREATE TABLE IF NOT EXISTS elementos (id INT AUTO_INCREMENT PRIMARY KEY, subcategoria VARCHAR(150) NOT NULL, nombre VARCHAR(150) NOT NULL);`, (err) => {});
@@ -97,13 +120,11 @@ app.post('/api/login', (req, res) => {
   
   db.query(query, [username, password], (err, results) => {
     if (err) return res.status(500).json({ error: err.message });
-    if (results.length === 0) {
-      return res.status(401).json({ message: 'Usuario o contraseña incorrectos.' });
-    }
+    if (results.length === 0) return res.status(401).json({ message: 'Usuario o contraseña incorrectos.' });
+    
     const usuarioEncontrado = results[0];
-    if (usuarioEncontrado.estatus !== 'ACTIVO') {
-      return res.status(403).json({ message: 'Este usuario se encuentra inactivo (Baja).' });
-    }
+    if (usuarioEncontrado.estatus !== 'ACTIVO') return res.status(403).json({ message: 'Este usuario se encuentra inactivo (Baja).' });
+    
     const formattedUser = {
       ...usuarioEncontrado,
       gruposAsignados: usuarioEncontrado.gruposAsignados ? JSON.parse(usuarioEncontrado.gruposAsignados) : []
@@ -119,43 +140,22 @@ app.get('/api/tickets', (req, res) => {
     res.json(results);
   });
 });
-
 app.post('/api/tickets', (req, res) => {
   const t = req.body;
   const query = `
-    INSERT INTO tickets 
-    (folio, estatus, colorEstatus, tecnico, creador, asunto, descripcion, campana, equipo, nivel, modo, fecha, grupo, categoria, subcategoria, elemento, resolucion) 
+    INSERT INTO tickets (folio, estatus, colorEstatus, tecnico, creador, asunto, descripcion, campana, equipo, nivel, modo, fecha, grupo, categoria, subcategoria, elemento, resolucion) 
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `;
-  const values = [
-    t.folio, t.estatus, t.colorEstatus, t.tecnico, t.creador,
-    t.asunto, t.descripcion, t.campana, t.equipo,
-    t.nivel, t.modo, t.fecha, t.grupo,
-    t.categoria, t.subcategoria, t.elemento, t.resolucion || ''
-  ];
+  const values = [t.folio, t.estatus, t.colorEstatus, t.tecnico, t.creador, t.asunto, t.descripcion, t.campana, t.equipo, t.nivel, t.modo, t.fecha, t.grupo, t.categoria, t.subcategoria, t.elemento, t.resolucion || ''];
   db.query(query, values, (err, result) => {
     if (err) return res.status(500).json({ error: err.message });
     res.status(201).json({ message: 'Ticket guardado con éxito', id: result.insertId });
   });
 });
-
 app.put('/api/tickets/:folio', (req, res) => {
-  const { folio } = req.params;
   const t = req.body;
-  const query = `
-    UPDATE tickets SET 
-      estatus = ?, colorEstatus = ?, tecnico = ?, asunto = ?, 
-      descripcion = ?, campana = ?, equipo = ?, nivel = ?, 
-      modo = ?, grupo = ?, categoria = ?, subcategoria = ?, 
-      elemento = ?, resolucion = ?
-    WHERE folio = ?
-  `;
-  const values = [
-    t.estatus, t.colorEstatus, t.tecnico, t.asunto,
-    t.descripcion, t.campana, t.equipo, t.nivel,
-    t.modo, t.grupo, t.categoria, t.subcategoria,
-    t.elemento, t.resolucion || '', folio
-  ];
+  const query = `UPDATE tickets SET estatus = ?, colorEstatus = ?, tecnico = ?, asunto = ?, descripcion = ?, campana = ?, equipo = ?, nivel = ?, modo = ?, grupo = ?, categoria = ?, subcategoria = ?, elemento = ?, resolucion = ? WHERE folio = ?`;
+  const values = [t.estatus, t.colorEstatus, t.tecnico, t.asunto, t.descripcion, t.campana, t.equipo, t.nivel, t.modo, t.grupo, t.categoria, t.subcategoria, t.elemento, t.resolucion || '', req.params.folio];
   db.query(query, values, (err, result) => {
     if (err) return res.status(500).json({ error: err.message });
     res.json({ message: 'Ticket actualizado correctamente' });
@@ -166,53 +166,76 @@ app.put('/api/tickets/:folio', (req, res) => {
 app.get('/api/usuarios', (req, res) => {
   db.query('SELECT * FROM usuarios ORDER BY id DESC', (err, results) => {
     if (err) return res.status(500).json({ error: err.message });
-    const formatted = results.map(u => ({
-      ...u,
-      gruposAsignados: u.gruposAsignados ? JSON.parse(u.gruposAsignados) : []
-    }));
-    res.json(formatted);
+    res.json(results.map(u => ({ ...u, gruposAsignados: u.gruposAsignados ? JSON.parse(u.gruposAsignados) : [] })));
   });
 });
-
 app.post('/api/usuarios', (req, res) => {
   const u = req.body;
-  const gruposStr = JSON.stringify(u.gruposAsignados || []);
-  const query = `
-    INSERT INTO usuarios (nombre, paterno, materno, campana, username, password, nivel, estatus, gruposAsignados) 
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `;
-  const values = [u.nombre, u.paterno, u.materno, u.campana, u.username, u.password, u.nivel, u.estatus, gruposStr];
-
-  db.query(query, values, (err, result) => {
+  const query = `INSERT INTO usuarios (nombre, paterno, materno, campana, username, password, nivel, estatus, gruposAsignados) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+  db.query(query, [u.nombre, u.paterno, u.materno, u.campana, u.username, u.password, u.nivel, u.estatus, JSON.stringify(u.gruposAsignados || [])], (err, result) => {
     if (err) return res.status(500).json({ error: err.message });
     res.status(201).json({ message: 'Usuario guardado', id: result.insertId });
   });
 });
-
 app.put('/api/usuarios/:id', (req, res) => {
-  const { id } = req.params;
   const u = req.body;
-  const gruposStr = JSON.stringify(u.gruposAsignados || []);
-  const query = `
-    UPDATE usuarios SET 
-      nombre = ?, paterno = ?, materno = ?, campana = ?, 
-      username = ?, password = ?, nivel = ?, estatus = ?, gruposAsignados = ?
-    WHERE id = ?
-  `;
-  const values = [u.nombre, u.paterno, u.materno, u.campana, u.username, u.password, u.nivel, u.estatus, gruposStr, id];
-
-  db.query(query, values, (err, result) => {
+  const query = `UPDATE usuarios SET nombre = ?, paterno = ?, materno = ?, campana = ?, username = ?, password = ?, nivel = ?, estatus = ?, gruposAsignados = ? WHERE id = ?`;
+  db.query(query, [u.nombre, u.paterno, u.materno, u.campana, u.username, u.password, u.nivel, u.estatus, JSON.stringify(u.gruposAsignados || []), req.params.id], (err, result) => {
     if (err) return res.status(500).json({ error: err.message });
     res.json({ message: 'Usuario actualizado correctamente' });
   });
 });
-
 app.delete('/api/usuarios/:id', (req, res) => {
-  const { id } = req.params;
-  db.query('DELETE FROM usuarios WHERE id = ?', [id], (err, result) => {
+  db.query('DELETE FROM usuarios WHERE id = ?', [req.params.id], (err, result) => {
     if (err) return res.status(500).json({ error: err.message });
     res.json({ message: 'Usuario eliminado correctamente' });
   });
+});
+
+// --- API ROUTES: GRUPOS ---
+app.get('/api/grupos', (req, res) => {
+  db.query('SELECT nombre FROM grupos ORDER BY id ASC', (err, results) => {
+    if (err) return res.status(500).json({ error: err.message });
+    res.json(results.map(g => g.nombre));
+  });
+});
+app.post('/api/grupos', (req, res) => {
+  db.query('INSERT IGNORE INTO grupos (nombre) VALUES (?)', [req.body.nombre], (err, result) => {
+    if (err) return res.status(500).json({ error: err.message });
+    res.status(201).json({ message: 'Grupo guardado' });
+  });
+});
+app.delete('/api/grupos/:nombre', (req, res) => {
+  db.query('DELETE FROM grupos WHERE nombre = ?', [req.params.nombre], (err, result) => {
+    if (err) return res.status(500).json({ error: err.message });
+    res.json({ message: 'Grupo eliminado' });
+  });
+});
+
+// --- API ROUTES: OTROS CATÁLOGOS ---
+app.get('/api/categorias', (req, res) => {
+  db.query('SELECT * FROM categorias ORDER BY id DESC', (err, results) => res.json(results));
+});
+app.post('/api/categorias', (req, res) => {
+  db.query('INSERT INTO categorias (nombre, estatus) VALUES (?, ?)', [req.body.nombre, req.body.estatus || 'ACTIVO'], (err, result) => res.json({ id: result.insertId }));
+});
+app.get('/api/subcategorias', (req, res) => {
+  db.query('SELECT * FROM subcategorias ORDER BY id DESC', (err, results) => res.json(results));
+});
+app.post('/api/subcategorias', (req, res) => {
+  db.query('INSERT INTO subcategorias (categoria, nombre, estatus) VALUES (?, ?, ?)', [req.body.categoria, req.body.nombre, req.body.estatus || 'ACTIVO'], (err, result) => res.json({ id: result.insertId }));
+});
+app.get('/api/elementos', (req, res) => {
+  db.query('SELECT * FROM elementos ORDER BY id DESC', (err, results) => res.json(results));
+});
+app.post('/api/elementos', (req, res) => {
+  db.query('INSERT INTO elementos (subcategoria, nombre) VALUES (?, ?)', [req.body.subcategoria, req.body.nombre], (err, result) => res.json({ id: result.insertId }));
+});
+app.get('/api/campanas', (req, res) => {
+  db.query('SELECT * FROM campanas ORDER BY id DESC', (err, results) => res.json(results));
+});
+app.post('/api/campanas', (req, res) => {
+  db.query('INSERT INTO campanas (nombre) VALUES (?)', [req.body.nombre], (err, result) => res.json({ id: result.insertId }));
 });
 
 // --- CONFIGURACIÓN DE PRODUCCIÓN (REACT) ---
