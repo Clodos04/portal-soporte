@@ -51,38 +51,42 @@ function App() {
   const [usuarios, setUsuarios] = useState([]);
   const [grupos, setGrupos] = useState([]);
   const [categorias, setCategorias] = useState([]);
-  const [subcategorias, setSubcategorias] = useState([]);
-  const [elementos, setElementos] = useState([]);
   const [estadisticasEncuestas, setEstadisticasEncuestas] = useState([]);
 
-  // Cargar todo desde MySQL al iniciar o recargar (F5)
+  // Cargar todos los datos desde MySQL al iniciar o recargar (F5)
   useEffect(() => {
     fetch('/api/tickets')
       .then(res => res.json())
-      .then(data => { if (Array.isArray(data)) setTickets(data); });
+      .then(data => { if (Array.isArray(data)) setTickets(data); })
+      .catch(err => console.error('Error al cargar tickets:', err));
 
     fetch('/api/usuarios')
       .then(res => res.json())
-      .then(data => { if (Array.isArray(data)) setUsuarios(data); });
+      .then(data => { if (Array.isArray(data)) setUsuarios(data); })
+      .catch(err => console.error('Error al cargar usuarios:', err));
 
     fetch('/api/grupos')
       .then(res => res.json())
-      .then(data => { if (Array.isArray(data)) setGrupos(data); });
+      .then(data => { if (Array.isArray(data)) setGrupos(data); })
+      .catch(err => console.error('Error al cargar grupos:', err));
 
     fetch('/api/categorias')
       .then(res => res.json())
-      .then(data => { if (Array.isArray(data)) setCategorias(data); });
-
-    fetch('/api/subcategorias')
-      .then(res => res.json())
-      .then(data => { if (Array.isArray(data)) setSubcategorias(data); });
-
-    fetch('/api/elementos')
-      .then(res => res.json())
-      .then(data => { if (Array.isArray(data)) setElementos(data); });
+      .then(data => { if (Array.isArray(data)) setCategorias(data); })
+      .catch(err => console.error('Error al cargar categorías:', err));
   }, []);
 
   const [campanas, setCampanas] = useState(listaCampanas);
+
+  // Función envolvente para actualizar y sincronizar el árbol de categorías con MySQL automáticamente
+  const handleSetCategorias = (nuevasCategorias) => {
+    setCategorias(nuevasCategorias);
+    fetch('/api/categorias/sincronizar', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(nuevasCategorias)
+    }).catch(err => console.error('Error al sincronizar categorías:', err));
+  };
 
   const usuariosPorGrupo = grupos.reduce((acc, grupo) => {
     acc[grupo] = usuarios
@@ -138,6 +142,7 @@ function App() {
     setEstadisticasEncuestas([...estadisticasEncuestas, nuevaEncuesta]);
   };
 
+  // Login validado directamente contra el servidor MySQL
   const handleLogin = async (username, password) => {
     try {
       const response = await fetch('/api/login', {
@@ -294,18 +299,14 @@ function App() {
             <AdminSubcategoriasView 
               categoria={categoriaParaSubcategorias}
               categorias={categorias}
-              setCategorias={setCategorias}
-              subcategorias={subcategorias}
-              setSubcategorias={setSubcategorias}
-              elementos={elementos}
-              setElementos={setElementos}
+              setCategorias={handleSetCategorias}
               user={user}
               onBack={(catActualizada) => setCategoriaParaSubcategorias(catActualizada)}
             />
           ) : (
             <AdminCategoriasView 
               categorias={categorias}
-              setCategorias={setCategorias}
+              setCategorias={handleSetCategorias}
               user={user}
               onVerSubcategorias={(cat) => setCategoriaParaSubcategorias(cat)}
             />
