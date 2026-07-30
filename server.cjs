@@ -3,7 +3,7 @@ const mysql = require('mysql2');
 const cors = require('cors');
 const path = require('path');
 
-// Importamos los datos limpios desde la carpeta data
+// Importamos absolutamente todos los datos desde la carpeta data
 const { categoriasIniciales } = require('./data/categoriasData.js');
 const { listaCampanas } = require('./data/campanasData.js');
 const { usuariosIniciales } = require('./data/usuariosData.js');
@@ -77,9 +77,8 @@ db.connect((err) => {
           const defaultUsers = usuariosIniciales.map(u => [
             u.nombre, u.paterno, u.materno, u.campana, u.username, u.password, u.nivel, u.estatus, JSON.stringify(u.gruposAsignados || [])
           ]);
-          const query = `INSERT INTO usuarios (nombre, paterno, materno, campana, username, password, nivel, estatus, gruposAsignados) VALUES ?`;
-          db.query(query, [defaultUsers], (err) => {
-            if (!err) console.log('Usuarios iniciales cargados desde archivo externo.');
+          db.query(`INSERT INTO usuarios (nombre, paterno, materno, campana, username, password, nivel, estatus, gruposAsignados) VALUES ?`, [defaultUsers], (err) => {
+            if (!err) console.log('Usuarios iniciales cargados.');
           });
         }
       });
@@ -119,7 +118,7 @@ db.connect((err) => {
         if (!err && results[0].count === 0) {
           const defaultCampanas = listaCampanas.map(c => [c]);
           db.query('INSERT IGNORE INTO campanas (nombre) VALUES ?', [defaultCampanas], (err) => {
-            if (!err) console.log('Campañas cargadas desde archivo externo.');
+            if (!err) console.log('Campañas cargadas.');
           });
         }
       });
@@ -139,7 +138,7 @@ db.connect((err) => {
           categoriasIniciales.forEach(cat => {
             db.query('INSERT INTO categorias_tree (id, data) VALUES (?, ?)', [cat.id, JSON.stringify(cat)], (err) => {});
           });
-          console.log('Árbol de categorías cargado desde archivo externo.');
+          console.log('Categorías cargadas.');
         }
       });
     }
@@ -176,7 +175,7 @@ app.post('/api/tickets', (req, res) => {
   });
 });
 
-// --- API ROUTES: EQUIPOS POR CAMPAÑA ---
+// --- API ROUTES: EQUIPOS ---
 app.get('/api/equipos', (req, res) => {
   res.json(equiposPorCampana);
 });
