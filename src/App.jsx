@@ -50,8 +50,10 @@ function App() {
 
   const [tickets, setTickets] = useState([]);
   const [usuarios, setUsuarios] = useState([]);
+  const [grupos, setGrupos] = useState([]);
   const [estadisticasEncuestas, setEstadisticasEncuestas] = useState([]);
 
+  // Cargar tickets, usuarios y grupos desde MySQL al iniciar
   useEffect(() => {
     fetch('/api/tickets')
       .then(res => res.json())
@@ -62,13 +64,12 @@ function App() {
       .then(res => res.json())
       .then(data => { if (Array.isArray(data)) setUsuarios(data); })
       .catch(err => console.error('Error al cargar usuarios:', err));
-  }, []);
 
-  const [grupos, setGrupos] = useState([
-    'TI', 'TELEFONIA, COMUNICACIONES Y REDES', 'DESARROLLO DE SOFTWARE',
-    'CONTROL ESTADISTICO', 'SOPORTE TECNICO', 'BASES E INFORMES',
-    'CLAVES', 'FOLIOS BIT', 'MANTENIMIENTO', 'CENTINELA'
-  ]);
+    fetch('/api/grupos')
+      .then(res => res.json())
+      .then(data => { if (Array.isArray(data)) setGrupos(data); })
+      .catch(err => console.error('Error al cargar grupos:', err));
+  }, []);
 
   const [categorias, setCategorias] = useState(categoriasIniciales);
   const [campanas, setCampanas] = useState(listaCampanas);
@@ -82,11 +83,19 @@ function App() {
 
   const handleAgregarGrupo = (nuevoGrupo) => {
     if (grupos.includes(nuevoGrupo)) return;
-    setGrupos([...grupos, nuevoGrupo]);
+    fetch('/api/grupos', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ nombre: nuevoGrupo })
+    })
+    .then(() => setGrupos([...grupos, nuevoGrupo]))
+    .catch(err => console.error('Error al guardar grupo:', err));
   };
 
   const handleEliminarGrupo = (grupoAEliminar) => {
-    setGrupos(grupos.filter(g => g !== grupoAEliminar));
+    fetch(`/api/grupos/${encodeURIComponent(grupoAEliminar)}`, { method: 'DELETE' })
+    .then(() => setGrupos(grupos.filter(g => g !== grupoAEliminar)))
+    .catch(err => console.error('Error al eliminar grupo:', err));
   };
 
   const guardarNuevaNota = (folio, textoNota) => {
@@ -119,6 +128,7 @@ function App() {
     setEstadisticasEncuestas([...estadisticasEncuestas, nuevaEncuesta]);
   };
 
+  // Login validado directamente contra el servidor MySQL
   const handleLogin = async (username, password) => {
     try {
       const response = await fetch('/api/login', {
@@ -248,15 +258,26 @@ function App() {
         )}
 
         {currentView === 'admin-grupos' && (
-          <AdminGruposView grupos={grupos} onAgregarGrupo={handleAgregarGrupo} onEliminarGrupo={handleEliminarGrupo} />
+          <AdminGruposView 
+            grupos={grupos} 
+            onAgregarGrupo={handleAgregarGrupo} 
+            onEliminarGrupo={handleEliminarGrupo} 
+          />
         )}
 
         {currentView === 'admin-usuarios' && (
-          <AdminUsuariosView grupos={grupos} usuarios={usuarios} setUsuarios={setUsuarios} />
+          <AdminUsuariosView 
+            grupos={grupos} 
+            usuarios={usuarios}
+            setUsuarios={setUsuarios}
+          />
         )}
 
         {currentView === 'admin-campanas' && (
-          <AdminCampanasView campanas={campanas} setCampanas={setCampanas} />
+          <AdminCampanasView 
+            campanas={campanas}
+            setCampanas={setCampanas}
+          />
         )}
 
         {currentView === 'admin-categorias' && (
