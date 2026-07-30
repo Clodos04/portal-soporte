@@ -1,4 +1,4 @@
-export const listaCampanas = [
+const listaCampanas = [
   "*111",
   "*111R1",
   "*111R9",
@@ -13,3 +13,5 @@ export const listaCampanas = [
   "TI",
   "VW Group Academy"
 ];
+
+module.exports = { listaCampanas };
