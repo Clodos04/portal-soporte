@@ -86,6 +86,36 @@ app.post('/api/tickets', (req, res) => {
   });
 });
 
+// 3. Actualizar un ticket existente por folio
+app.put('/api/tickets/:folio', (req, res) => {
+  const { folio } = req.params;
+  const t = req.body;
+
+  const query = `
+    UPDATE tickets SET 
+      estatus = ?, colorEstatus = ?, tecnico = ?, asunto = ?, 
+      descripcion = ?, campana = ?, equipo = ?, nivel = ?, 
+      modo = ?, grupo = ?, categoria = ?, subcategoria = ?, 
+      elemento = ?, resolucion = ?
+    WHERE folio = ?
+  `;
+
+  const values = [
+    t.estatus, t.colorEstatus, t.tecnico, t.asunto,
+    t.descripcion, t.campana, t.equipo, t.nivel,
+    t.modo, t.grupo, t.categoria, t.subcategoria,
+    t.elemento, t.resolucion || '', folio
+  ];
+
+  db.query(query, values, (err, result) => {
+    if (err) return res.status(500).json({ error: err.message });
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ message: 'Ticket no encontrado' });
+    }
+    res.json({ message: 'Ticket actualizado correctamente' });
+  });
+});
+
 // --- CONFIGURACIÓN DE PRODUCCIÓN (REACT) ---
 // Sirve la carpeta 'dist' generada por Vite
 app.use(express.static(path.join(__dirname, 'dist')));
