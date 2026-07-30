@@ -49,39 +49,25 @@ function App() {
   const [availableColumns, setAvailableColumns] = useState(['descripcion', 'campana', 'categoria', 'subcategoria']);
 
   const [tickets, setTickets] = useState([]);
-  const [usuarios, setUsuarios] = useState([]); // Inicializado vacío para llenarlo desde la BD
+  const [usuarios, setUsuarios] = useState([]);
   const [estadisticasEncuestas, setEstadisticasEncuestas] = useState([]);
 
-  // Cargar tickets y usuarios desde la base de datos al iniciar la aplicación (o al presionar F5)
   useEffect(() => {
-    // Cargar Tickets
     fetch('/api/tickets')
       .then(res => res.json())
-      .then(data => {
-        if (Array.isArray(data)) setTickets(data);
-      })
+      .then(data => { if (Array.isArray(data)) setTickets(data); })
       .catch(err => console.error('Error al cargar tickets:', err));
 
-    // Cargar Usuarios
     fetch('/api/usuarios')
       .then(res => res.json())
-      .then(data => {
-        if (Array.isArray(data)) setUsuarios(data);
-      })
+      .then(data => { if (Array.isArray(data)) setUsuarios(data); })
       .catch(err => console.error('Error al cargar usuarios:', err));
   }, []);
 
   const [grupos, setGrupos] = useState([
-    'TI',
-    'TELEFONIA, COMUNICACIONES Y REDES',
-    'DESARROLLO DE SOFTWARE',
-    'CONTROL ESTADISTICO',
-    'SOPORTE TECNICO',
-    'BASES E INFORMES',
-    'CLAVES',
-    'FOLIOS BIT',
-    'MANTENIMIENTO',
-    'CENTINELA'
+    'TI', 'TELEFONIA, COMUNICACIONES Y REDES', 'DESARROLLO DE SOFTWARE',
+    'CONTROL ESTADISTICO', 'SOPORTE TECNICO', 'BASES E INFORMES',
+    'CLAVES', 'FOLIOS BIT', 'MANTENIMIENTO', 'CENTINELA'
   ]);
 
   const [categorias, setCategorias] = useState(categoriasIniciales);
@@ -109,7 +95,6 @@ function App() {
     setTickets(tickets.map(t => t.folio === folio ? { ...t, notas: [...t.notas, nuevaNota] } : t));
   };
 
-  // Guardar nuevo ticket en la base de datos a través de la API
   const handleAgregarTicket = (nuevoTicket) => {
     fetch('/api/tickets', {
       method: 'POST',
@@ -134,31 +119,36 @@ function App() {
     setEstadisticasEncuestas([...estadisticasEncuestas, nuevaEncuesta]);
   };
 
-  const handleLogin = (username, password) => {
-    const usuarioEncontrado = usuarios.find(
-      u => u.username.toLowerCase() === username.toLowerCase() && u.password === password
-    );
+  const handleLogin = async (username, password) => {
+    try {
+      const response = await fetch('/api/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password })
+      });
 
-    if (!usuarioEncontrado) {
-      alert('Usuario o contraseña incorrectos.');
+      if (!response.ok) {
+        const data = await response.json();
+        alert(data.message || 'Usuario o contraseña incorrectos.');
+        return false;
+      }
+
+      const usuarioEncontrado = await response.json();
+      const role = usuarioEncontrado.nivel === 'ADMINISTRADOR' ? 'support' : 'client';
+      
+      setUser({
+        name: `${usuarioEncontrado.nombre} ${usuarioEncontrado.paterno}`,
+        role: role,
+        username: usuarioEncontrado.username
+      });
+      setIsLoggedIn(true);
+      setCurrentView('inicio');
+      return true;
+    } catch (error) {
+      console.error('Error al iniciar sesión:', error);
+      alert('Error de conexión con el servidor.');
       return false;
     }
-
-    if (usuarioEncontrado.estatus !== 'ACTIVO') {
-      alert('Este usuario se encuentra inactivo (Baja).');
-      return false;
-    }
-
-    const role = usuarioEncontrado.nivel === 'ADMINISTRADOR' ? 'support' : 'client';
-    
-    setUser({
-      name: `${usuarioEncontrado.nombre} ${usuarioEncontrado.paterno}`,
-      role: role,
-      username: usuarioEncontrado.username
-    });
-    setIsLoggedIn(true);
-    setCurrentView('inicio');
-    return true;
   };
 
   if (!isLoggedIn) {
@@ -167,7 +157,6 @@ function App() {
 
   return (
     <div className="min-h-screen bg-slate-900 font-sans pb-10 text-slate-200 relative">
-      
       {isColumnCustomizerOpen && (
         <ColumnCustomizerModal 
           activeColumns={activeColumns}
@@ -259,26 +248,15 @@ function App() {
         )}
 
         {currentView === 'admin-grupos' && (
-          <AdminGruposView 
-            grupos={grupos} 
-            onAgregarGrupo={handleAgregarGrupo} 
-            onEliminarGrupo={handleEliminarGrupo} 
-          />
+          <AdminGruposView grupos={grupos} onAgregarGrupo={handleAgregarGrupo} onEliminarGrupo={handleEliminarGrupo} />
         )}
 
         {currentView === 'admin-usuarios' && (
-          <AdminUsuariosView 
-            grupos={grupos} 
-            usuarios={usuarios}
-            setUsuarios={setUsuarios}
-          />
+          <AdminUsuariosView grupos={grupos} usuarios={usuarios} setUsuarios={setUsuarios} />
         )}
 
         {currentView === 'admin-campanas' && (
-          <AdminCampanasView 
-            campanas={campanas}
-            setCampanas={setCampanas}
-          />
+          <AdminCampanasView campanas={campanas} setCampanas={setCampanas} />
         )}
 
         {currentView === 'admin-categorias' && (
@@ -300,15 +278,8 @@ function App() {
           )
         )}
 
-        {currentView === 'admin-formularios' && (
-          <div className="text-center py-20 text-slate-500 uppercase font-bold">Módulo de Formularios (Próximamente)</div>
-        )}
-
         {currentView === 'admin-reportes' && (
-          <AdminReportesView 
-            tickets={tickets} 
-            campanas={campanas} 
-          />
+          <AdminReportesView tickets={tickets} campanas={campanas} />
         )}
 
         {currentView === 'tareas' && <Tareas />}
