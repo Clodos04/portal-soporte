@@ -16,7 +16,7 @@ const db = mysql.createConnection({
   port: process.env.DB_PORT || 3306
 });
 
-// Arreglo completo con todas tus categorías, subcategorías y elementos originales
+// Árbol original de categorías, subcategorías y elementos
 const categoriasIniciales = [
   { 
     id: 1, nombre: 'APLICACIONES INHOUSE', estatus: 'ACTIVO', fecAlta: '05/06/2018 11:06:51', usuario: 'FLORES TEXIS HECTOR',
@@ -703,7 +703,29 @@ db.connect((err) => {
     }
   });
 
-  // 4. Tabla de Categorías (Almacenadas como JSON completo para preservar subcategorías y elementos)
+  // 4. Tabla de Campañas
+  db.query(`
+    CREATE TABLE IF NOT EXISTS campanas (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      nombre VARCHAR(150) UNIQUE NOT NULL
+    );
+  `, (err) => {
+    if (!err) {
+      db.query('SELECT COUNT(*) as count FROM campanas', (err, results) => {
+        if (!err && results[0].count === 0) {
+          const defaultCampanas = [
+            ["*111"], ["*111R1"], ["*111R9"], ["*264"], ["*264R3"],
+            ["administrativo"], ["CorporativoR1"], ["Migraciones R9"],
+            ["Muevete"], ["Portabilidad R9"], ["PortabilidadR1"],
+            ["TI"], ["VW Group Academy"]
+          ];
+          db.query('INSERT IGNORE INTO campanas (nombre) VALUES ?', [defaultCampanas], (err) => {});
+        }
+      });
+    }
+  });
+
+  // 5. Tabla de Categorías (Árbol Completo)
   db.query(`
     CREATE TABLE IF NOT EXISTS categorias_tree (
       id INT PRIMARY KEY,
@@ -716,14 +738,10 @@ db.connect((err) => {
           categoriasIniciales.forEach(cat => {
             db.query('INSERT INTO categorias_tree (id, data) VALUES (?, ?)', [cat.id, JSON.stringify(cat)], (err) => {});
           });
-          console.log('Categorías iniciales cargadas en la base de datos.');
         }
       });
     }
   });
-
-  // Otras tablas
-  db.query(`CREATE TABLE IF NOT EXISTS campanas (id INT AUTO_INCREMENT PRIMARY KEY, nombre VARCHAR(150) NOT NULL);`, (err) => {});
 });
 
 // --- API ROUTES: LOGIN ---
@@ -790,6 +808,17 @@ app.delete('/api/grupos/:nombre', (req, res) => {
   db.query('DELETE FROM grupos WHERE nombre = ?', [req.params.nombre], (err) => res.json({ message: 'Eliminado' }));
 });
 
+// --- API ROUTES: CAMPAÑAS ---
+app.get('/api/campanas', (req, res) => {
+  db.query('SELECT nombre FROM campanas ORDER BY id ASC', (err, results) => res.json(results.map(c => c.nombre)));
+});
+app.post('/api/campanas', (req, res) => {
+  db.query('INSERT IGNORE INTO campanas (nombre) VALUES (?)', [req.body.nombre], (err) => res.json({ message: 'Guardado' }));
+});
+app.delete('/api/campanas/:nombre', (req, res) => {
+  db.query('DELETE FROM campanas WHERE nombre = ?', [req.params.nombre], (err) => res.json({ message: 'Eliminado' }));
+});
+
 // --- API ROUTES: CATEGORÍAS (ÁRBOL COMPLETO) ---
 app.get('/api/categorias', (req, res) => {
   db.query('SELECT data FROM categorias_tree ORDER BY id ASC', (err, results) => {
@@ -797,12 +826,10 @@ app.get('/api/categorias', (req, res) => {
     res.json(results.map(r => typeof r.data === 'string' ? JSON.parse(r.data) : r.data));
   });
 });
-
 app.post('/api/categorias/sincronizar', (req, res) => {
   const categoriasArray = req.body;
   db.query('DELETE FROM categorias_tree', (err) => {
     if (err) return res.status(500).json({ error: err.message });
-    
     if (!categoriasArray || categoriasArray.length === 0) return res.json({ message: 'Sincronizado' });
 
     let count = 0;
@@ -810,7 +837,7 @@ app.post('/api/categorias/sincronizar', (req, res) => {
       db.query('INSERT INTO categorias_tree (id, data) VALUES (?, ?)', [cat.id, JSON.stringify(cat)], (err) => {
         count++;
         if (count === categoriasArray.length) {
-          res.json({ message: 'Árbol de categorías guardado exitosamente' });
+          res.json({ message: 'Árbol sincronizado' });
         }
       });
     });
