@@ -8,6 +8,7 @@ function EditarSolicitudModal({ ticket, user, usuarios = [], grupos = [], usuari
   const [subcategoria, setSubcategoria] = useState(ticket.subcategoria || '');
   const [elemento, setElemento] = useState(ticket.elemento || '');
   const [resolucion, setResolucion] = useState(ticket.resolucion || '');
+  const [cargando, setCargando] = useState(false);
   
   const [nuevoArchivo, setNuevoArchivo] = useState(null);
 
@@ -30,7 +31,7 @@ function EditarSolicitudModal({ ticket, user, usuarios = [], grupos = [], usuari
     }
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (esCliente) {
       onClose();
@@ -55,7 +56,32 @@ function EditarSolicitudModal({ ticket, user, usuarios = [], grupos = [], usuari
       archivoUrl: nuevoArchivo ? URL.createObjectURL(nuevoArchivo) : ticket.archivoUrl
     };
 
-    onActualizar(ticketActualizado);
+    setCargando(true);
+    try {
+      // Petición PUT al servidor para actualizar en MySQL de forma permanente
+      const response = await fetch(`/api/tickets/${ticket.folio}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(ticketActualizado),
+      });
+
+      if (!response.ok) {
+        throw new Error('Error al actualizar el ticket en el servidor');
+      }
+
+      // Actualizamos el estado local en la interfaz
+      if (onActualizar) {
+        onActualizar(ticketActualizado);
+      }
+      onClose();
+    } catch (error) {
+      console.error('Error al guardar:', error);
+      alert('No se pudo guardar el cambio en la base de datos.');
+    } finally {
+      setCargando(false);
+    }
   };
 
   return (
@@ -235,9 +261,10 @@ function EditarSolicitudModal({ ticket, user, usuarios = [], grupos = [], usuari
             {!esCliente && (
               <button 
                 type="submit" 
-                className="bg-green-600 hover:bg-green-500 text-white px-5 py-2 rounded-lg font-bold text-sm shadow-lg shadow-green-600/30 transition-colors"
+                disabled={cargando}
+                className="bg-green-600 hover:bg-green-500 text-white px-5 py-2 rounded-lg font-bold text-sm shadow-lg shadow-green-600/30 transition-colors disabled:opacity-50"
               >
-                Guardar Cambios
+                {cargando ? 'Guardando...' : 'Guardar Cambios'}
               </button>
             )}
           </div>
