@@ -43,9 +43,14 @@ function AdminUsuariosView({ grupos = [], usuarios = [], setUsuarios }) {
     setModo('form');
   };
 
-  const eliminarUsuario = (id) => {
+  const eliminarUsuario = async (id) => {
     if (window.confirm('¿Estás seguro de eliminar este usuario?')) {
-      setUsuarios(usuarios.filter(u => u.id !== id));
+      try {
+        await fetch(`/api/usuarios/${id}`, { method: 'DELETE' });
+        setUsuarios(usuarios.filter(u => u.id !== id));
+      } catch (error) {
+        console.error('Error al eliminar usuario:', error);
+      }
     }
   };
 
@@ -57,40 +62,46 @@ function AdminUsuariosView({ grupos = [], usuarios = [], setUsuarios }) {
     }
   };
 
-  const guardarUsuario = (e) => {
+  const guardarUsuario = async (e) => {
     e.preventDefault();
     if (!formNombre.trim() || !formUsername.trim()) return;
 
-    if (!usuarioActual) {
-      const nuevo = {
-        id: usuarios.length > 0 ? Math.max(...usuarios.map(u => u.id)) + 1 : 1,
-        nombre: formNombre.trim().toUpperCase(),
-        paterno: formPaterno.trim().toUpperCase(),
-        materno: formMaterno.trim().toUpperCase(),
-        username: formUsername.trim().toLowerCase(),
-        password: formPassword.trim(),
-        nivel: formNivel,
-        campana: formCampana,
-        estatus: formEstatus,
-        gruposAsignados: formGrupos
-      };
-      setUsuarios([...usuarios, nuevo]);
-    } else {
-      setUsuarios(usuarios.map(u => u.id === usuarioActual.id ? {
-        ...u,
-        nombre: formNombre.trim().toUpperCase(),
-        paterno: formPaterno.trim().toUpperCase(),
-        materno: formMaterno.trim().toUpperCase(),
-        username: formUsername.trim().toLowerCase(),
-        password: formPassword.trim() || u.password,
-        nivel: formNivel,
-        campana: formCampana,
-        estatus: formEstatus,
-        gruposAsignados: formGrupos
-      } : u));
-    }
+    const datosUsuario = {
+      nombre: formNombre.trim().toUpperCase(),
+      paterno: formPaterno.trim().toUpperCase(),
+      materno: formMaterno.trim().toUpperCase(),
+      username: formUsername.trim().toLowerCase(),
+      password: formPassword.trim(),
+      nivel: formNivel,
+      campana: formCampana,
+      estatus: formEstatus,
+      gruposAsignados: formGrupos
+    };
 
-    setModo('lista');
+    try {
+      if (!usuarioActual) {
+        const res = await fetch('/api/usuarios', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(datosUsuario)
+        });
+        const data = await res.json();
+        const nuevo = { ...datosUsuario, id: data.id };
+        setUsuarios([...usuarios, nuevo]);
+      } else {
+        await fetch(`/api/usuarios/${usuarioActual.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(datosUsuario)
+        });
+        setUsuarios(usuarios.map(u => u.id === usuarioActual.id ? { ...u, ...datosUsuario } : u));
+      }
+
+      setModo('lista');
+    } catch (error) {
+      console.error('Error al guardar usuario:', error);
+      alert('Hubo un error al guardar en la base de datos.');
+    }
   };
 
   if (modo === 'lista') {
