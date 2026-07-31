@@ -4,8 +4,12 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 function Dashboard({ user, tickets = [], onIrANuevaSolicitud, onIrAEncuesta, estadisticasEncuestas = [] }) {
   const safeTickets = tickets || [];
 
+  // Verificamos el rol de manera flexible (soporta 'client', 'CLIENTE', etc.)
+  const rolUsuario = (user?.role || user?.nivel || '').toLowerCase();
+  const esCliente = rolUsuario === 'client' || rolUsuario === 'cliente';
+
   // VISTA DE INICIO PARA EL CLIENTE
-  if (user?.role === 'client') {
+  if (esCliente) {
     const misTicketsAbiertos = safeTickets.filter(t => t.estatus !== 'Cerrado');
     const ultimoTicket = safeTickets.length > 0 ? safeTickets[safeTickets.length - 1] : null;
     const ultimaNota = ultimoTicket && ultimoTicket.notas && ultimoTicket.notas.length > 0  
@@ -84,7 +88,7 @@ function Dashboard({ user, tickets = [], onIrANuevaSolicitud, onIrAEncuesta, est
     );
   }
 
-  // --- VISTA DE INICIO PARA SOPORTE TI (ADMINISTRADOR) ---
+  // --- VISTA DE INICIO PARA SOPORTE TI / TECNICOS / ADMINISTRADORES ---
   const totalAbiertas = safeTickets.filter(t => t.estatus === 'Abierto').length;
   const totalEnProceso = safeTickets.filter(t => t.estatus === 'En Proceso').length;
 
@@ -101,8 +105,8 @@ function Dashboard({ user, tickets = [], onIrANuevaSolicitud, onIrAEncuesta, est
   ];
 
   const ticketsAtendidosSla = safeTickets.filter(t => t.tecnico && t.tecnico !== 'Sin Asignar').length;
-  const porcentajeSla = safeTickets.length > 0 
-    ? Math.round((ticketsAtendidosSla / safeTickets.length) * 100) 
+  const porcentajeSla = safeTickets.length > 0  
+    ? Math.round((ticketsAtendidosSla / safeTickets.length) * 100)  
     : 98;
 
   const encuestasPorTecnico = (estadisticasEncuestas || []).reduce((acc, curr) => {
