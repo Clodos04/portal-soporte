@@ -25,8 +25,9 @@ db.connect((err) => {
   inicializarBaseDeDatos();
 });
 
-// Importar usuarios iniciales desde el archivo correcto
+// Importar datos iniciales
 const { usuariosIniciales } = require('./usuariosData.cjs');
+const { gruposIniciales } = require('./gruposData.cjs');
 
 function inicializarBaseDeDatos() {
   const createTablesQueries = [
@@ -48,7 +49,7 @@ function inicializarBaseDeDatos() {
     )`,
     `CREATE TABLE IF NOT EXISTS grupos (
       id INT AUTO_INCREMENT PRIMARY KEY,
-      nombre VARCHAR(100)
+      nombre VARCHAR(150) UNIQUE
     )`,
     `CREATE TABLE IF NOT EXISTS categorias (
       id INT AUTO_INCREMENT PRIMARY KEY,
@@ -118,11 +119,27 @@ function inicializarBaseDeDatos() {
           );
         });
         console.log('Usuarios iniciales cargados.');
-      } else {
-        console.log('Usuarios ya existentes o cargados.');
       }
     });
   }, 1000);
+
+  // Insertar grupos iniciales si la tabla está vacía
+  setTimeout(() => {
+    db.query(`SELECT COUNT(*) as count FROM grupos`, (err, results) => {
+      if (!err && results[0].count === 0 && gruposIniciales) {
+        gruposIniciales.forEach(nombreGrupo => {
+          db.query(
+            `INSERT IGNORE INTO grupos (nombre) VALUES (?)`,
+            [nombreGrupo],
+            (insertErr) => {
+              if (insertErr) console.error('Error insertando grupo inicial:', insertErr);
+            }
+          );
+        });
+        console.log('Grupos iniciales cargados correctamente.');
+      }
+    });
+  }, 1200);
 }
 
 // --- ENDPOINTS DE AUTENTICACIÓN ---
@@ -166,6 +183,15 @@ app.post('/api/usuarios', (req, res) => {
       res.status(201).json({ message: 'Usuario creado con éxito', id: result.insertId });
     }
   );
+});
+
+// --- ENDPOINTS DE GRUPOS ---
+app.get('/api/grupos', (req, res) => {
+  db.query(`SELECT nombre FROM grupos`, (err, results) => {
+    if (err) return res.status(500).json({ error: err.message });
+    const nombres = results.map(g => g.nombre);
+    res.json(nombres);
+  });
 });
 
 // --- ENDPOINTS DE TICKETS ---
