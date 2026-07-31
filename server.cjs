@@ -112,11 +112,10 @@ app.get('/api/grupos', (req, res) => {
 });
 
 // --- CONFIGURACIÓN PARA SERVIR EL FRONTEND Y EL LOGIN ---
-// Servir los archivos compilados de React desde la carpeta dist
 app.use(express.static(path.join(__dirname, 'dist')));
 
-// Redirigir cualquier otra petición web al index.html para que el Login/Router de React cargue bien
-app.get('*', (req, res) => {
+// Corregido usando expresión regular compatible con Express moderno
+app.get(/(.*)/, (req, res) => {
   res.sendFile(path.join(__dirname, 'dist', 'index.html'));
 });
 
