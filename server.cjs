@@ -6,7 +6,7 @@ const app = express();
 app.use(express.json());
 app.use(cors());
 
-// Configuración de la conexión a la Base de Datos MySQL
+// Configuración de la conexión a la Base de Datos MySQL (usando variables de entorno de Easypanel)
 const db = mysql.createConnection({
   host: process.env.DB_HOST || 'localhost',
   user: process.env.DB_USER || 'root',
@@ -44,7 +44,7 @@ app.post('/api/tickets', (req, res) => {
   });
 });
 
-// Endpoint para actualizar un ticket existente con todos los campos de la tabla
+// Endpoint para actualizar un ticket existente (con todos los campos de tu tabla)
 app.put('/api/tickets/:folio', express.json(), (req, res) => {
   const { folio } = req.params;
   const {
@@ -110,8 +110,8 @@ app.get('/api/grupos', (req, res) => {
   });
 });
 
-// Configurado de vuelta en el puerto 80 tal como lo tenías originalmente
-const PORT = process.env.PORT || 80;
+// Easypanel inyecta el puerto automáticamente mediante process.env.PORT
+const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-  console.log(`Servidor corriendo en el puerto ${PORT}`);
+  console.log(`Servidor de API corriendo en el puerto ${PORT}`);
 });
