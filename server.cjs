@@ -96,8 +96,11 @@ function inicializarBaseDeDatos() {
     });
   });
 
-  // Asegurar que exista la columna subcategorias si la tabla ya fue creada previamente
+  // Asegurar los tipos de columna correctos si la tabla ya existía
   setTimeout(() => {
+    db.query(`ALTER TABLE categorias MODIFY COLUMN fec_alta VARCHAR(100)`, (err) => {
+      if (err) console.error('Nota modificando fec_alta:', err.message);
+    });
     db.query(`ALTER TABLE categorias ADD COLUMN subcategorias LONGTEXT`, (err) => {
       if (err && err.errno !== 1060) {
         console.error('Nota en alteración de tabla categorias:', err.message);
