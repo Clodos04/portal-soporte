@@ -1,4 +1,4 @@
-export const categoriasIniciales = [
+const categoriasIniciales = [
   { 
     id: 1, nombre: 'APLICACIONES INHOUSE', estatus: 'ACTIVO', fecAlta: '05/06/2018 11:06:51', usuario: 'FLORES TEXIS HECTOR',
     subcategorias: [
@@ -600,3 +600,5 @@ export const categoriasIniciales = [
     ]
   }
 ];
+
+module.exports = { categoriasIniciales };
