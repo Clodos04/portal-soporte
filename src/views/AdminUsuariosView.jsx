@@ -1,5 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { listaCampanas } from '../data/campanasData';
+
+const listaCampanas = [
+  "TI",
+  "OPERACIONES",
+  "VENTAS",
+  "ADMINISTRACION"
+];
 
 function AdminUsuariosView({ grupos: gruposProp = [], usuarios = [], setUsuarios }) {
   const [modo, setModo] = useState('lista');
@@ -16,7 +22,6 @@ function AdminUsuariosView({ grupos: gruposProp = [], usuarios = [], setUsuarios
   const [formEstatus, setFormEstatus] = useState('ACTIVO');
   const [formGrupos, setFormGrupos] = useState([]);
 
-  // Cargar grupos desde la API si no vienen como props
   useEffect(() => {
     fetch('/api/grupos')
       .then(res => res.json())
