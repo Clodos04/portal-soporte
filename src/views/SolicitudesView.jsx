@@ -15,7 +15,15 @@ function SolicitudesView({
   const [busqueda, setBusqueda] = useState('');
   const [filtroEstatus, setFiltroEstatus] = useState('activos');
 
-  const ticketsFiltrados = tickets.filter(t => {
+  const rolUsuario = (user?.role || user?.nivel || '').toLowerCase();
+  const esCliente = rolUsuario === 'client' || rolUsuario === 'cliente';
+
+  // Si es cliente, solo ve sus propios tickets. Si es soporte/admin, ve todos.
+  const ticketsBase = esCliente 
+    ? tickets.filter(t => t.creador && user?.name && t.creador.toLowerCase() === user.name.toLowerCase())
+    : tickets;
+
+  const ticketsFiltrados = ticketsBase.filter(t => {
     const estatusLower = t.estatus ? t.estatus.toLowerCase() : '';
     
     const esCerrado = estatusLower.includes('cerrado');
