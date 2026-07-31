@@ -1,262 +1,317 @@
 const express = require('express');
-const mysql = require('mysql2');
 const cors = require('cors');
-const path = require('path');
-
-// Importamos usando la extensión .cjs para evitar conflictos con ES Modules
-const { categoriasIniciales } = require('./categoriasData.cjs');
-const { listaCampanas } = require('./campanasData.cjs');
-const { usuariosIniciales } = require('./usuariosData.cjs');
-const { equiposPorCampana } = require('./equiposData.cjs');
+const mysql = require('mysql2');
 
 const app = express();
-app.use(express.json());
 app.use(cors());
+app.use(express.json());
 
-// Conexión a MySQL usando las variables de entorno de Easypanel
+// Configuración de la Base de Datos MySQL
 const db = mysql.createConnection({
-  host: process.env.DB_HOST,
-  user: process.env.DB_USER,
-  password: process.env.DB_PASSWORD,
-  database: process.env.DB_NAME,
+  host: process.env.DB_HOST || 'sav_db-soporte',
+  user: process.env.DB_USER || 'mysql',
+  password: process.env.DB_PASSWORD || 'db6f98fa1380ced73c0d',
+  database: process.env.DB_NAME || 'sav',
   port: process.env.DB_PORT || 3306
 });
 
 db.connect((err) => {
   if (err) {
-    console.error('Error al conectar a MySQL:', err);
+    console.error('Error al conectar a la Base de Datos:', err);
     return;
   }
   console.log('Conectado exitosamente a la Base de Datos MySQL');
+  inicializarBaseDeDatos();
+});
 
-  // 1. Tabla de Tickets
-  db.query(`
-    CREATE TABLE IF NOT EXISTS tickets (
+// Importar usuarios iniciales
+const { usuariosIniciales } = require('./usuariosIniciales.cjs');
+
+function inicializarBaseDeDatos() {
+  const createTablesQueries = [
+    `CREATE TABLE IF NOT EXISTS usuarios (
       id INT AUTO_INCREMENT PRIMARY KEY,
-      folio VARCHAR(50) NOT NULL,
-      estatus VARCHAR(50) DEFAULT 'Abierto',
-      colorEstatus VARCHAR(50),
-      tecnico VARCHAR(150),
-      creador VARCHAR(150),
+      nombre VARCHAR(100),
+      paterno VARCHAR(100),
+      materno VARCHAR(100),
+      username VARCHAR(150) UNIQUE,
+      password VARCHAR(255),
+      nivel VARCHAR(50),
+      campana VARCHAR(50),
+      estatus VARCHAR(50),
+      gruposAsignados TEXT
+    )`,
+    `CREATE TABLE IF NOT EXISTS campanas (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      nombre VARCHAR(100)
+    )`,
+    `CREATE TABLE IF NOT EXISTS grupos (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      nombre VARCHAR(100)
+    )`,
+    `CREATE TABLE IF NOT EXISTS categorias (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      nombre VARCHAR(100),
+      sla INT DEFAULT 24
+    )`,
+    `CREATE TABLE IF NOT EXISTS categorias_tree (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      nombre VARCHAR(100)
+    )`,
+    `CREATE TABLE IF NOT EXISTS subcategorias (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      nombre VARCHAR(100)
+    )`,
+    `CREATE TABLE IF NOT EXISTS elementos (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      nombre VARCHAR(100)
+    )`,
+    `CREATE TABLE IF NOT EXISTS tickets (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      folio VARCHAR(50),
       asunto VARCHAR(255),
       descripcion TEXT,
-      campana VARCHAR(150),
-      equipo TEXT,
-      nivel VARCHAR(50),
-      modo VARCHAR(50),
-      fecha VARCHAR(50),
-      grupo VARCHAR(150),
-      categoria VARCHAR(150),
-      subcategoria VARCHAR(150),
-      elemento VARCHAR(150),
-      resolucion TEXT,
-      archivoNombre VARCHAR(255),
-      archivoUrl TEXT,
+      categoria VARCHAR(100),
+      subcategoria VARCHAR(100),
+      elemento VARCHAR(100),
+      campana VARCHAR(50),
+      grupo VARCHAR(100),
+      tecnico VARCHAR(150),
+      creador VARCHAR(150),
+      estatus VARCHAR(50) DEFAULT 'Abierto',
+      prioridad VARCHAR(50),
+      fecha_creacion DATETIME DEFAULT CURRENT_TIMESTAMP,
+      fecha_asignacion DATETIME NULL,
+      fecha_cierre DATETIME NULL,
       encuesta_respondida TINYINT DEFAULT 0
-    );
-  `, (err) => { if (err) console.error('Error tabla tickets:', err); });
-
-  // 2. Tabla de Usuarios (Cargados desde usuariosData.cjs si está vacía)
-  db.query(`
-    CREATE TABLE IF NOT EXISTS usuarios (
+    )`,
+    `CREATE TABLE IF NOT EXISTS encuestas (
       id INT AUTO_INCREMENT PRIMARY KEY,
-      nombre VARCHAR(150) NOT NULL,
-      paterno VARCHAR(150),
-      materno VARCHAR(150),
-      campana VARCHAR(150),
-      username VARCHAR(150) UNIQUE NOT NULL,
-      password VARCHAR(255),
-      nivel VARCHAR(100) DEFAULT 'CLIENTE',
-      estatus VARCHAR(50) DEFAULT 'ACTIVO',
-      gruposAsignados TEXT
-    );
-  `, (err) => {
-    if (!err) {
-      db.query('SELECT COUNT(*) as count FROM usuarios', (err, results) => {
-        if (!err && results[0].count === 0) {
-          const defaultUsers = usuariosIniciales.map(u => [
-            u.nombre, u.paterno, u.materno, u.campana, u.username, u.password, u.nivel, u.estatus, JSON.stringify(u.gruposAsignados || [])
-          ]);
-          db.query(`INSERT INTO usuarios (nombre, paterno, materno, campana, username, password, nivel, estatus, gruposAsignados) VALUES ?`, [defaultUsers], (err) => {
-            if (!err) console.log('Usuarios iniciales cargados.');
-          });
-        }
-      });
-    }
+      ticket_id INT NOT NULL,
+      cliente_username VARCHAR(150) NOT NULL,
+      calificacion INT NOT NULL,
+      comentarios TEXT,
+      fecha_respuesta DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (ticket_id) REFERENCES tickets(id) ON DELETE CASCADE
+    )`
+  ];
+
+  createTablesQueries.forEach((query) => {
+    db.query(query, (err) => {
+      if (err) console.error('Error creando tabla:', err);
+    });
   });
 
-  // 3. Tabla de Grupos
-  db.query(`
-    CREATE TABLE IF NOT EXISTS grupos (
-      id INT AUTO_INCREMENT PRIMARY KEY,
-      nombre VARCHAR(150) UNIQUE NOT NULL
-    );
-  `, (err) => {
-    if (!err) {
-      db.query('SELECT COUNT(*) as count FROM grupos', (err, results) => {
-        if (!err && results[0].count === 0) {
-          const defaultGrupos = [
-            ['TI'], ['TELEFONIA, COMUNICACIONES Y REDES'], ['DESARROLLO DE SOFTWARE'],
-            ['CONTROL ESTADISTICO'], ['SOPORTE TECNICO'], ['BASES E INFORMES'],
-            ['CLAVES'], ['FOLIOS BIT'], ['MANTENIMIENTO'], ['CENTINELA']
-          ];
-          db.query('INSERT IGNORE INTO grupos (nombre) VALUES ?', [defaultGrupos], (err) => {});
-        }
-      });
-    }
-  });
+  // Insertar usuarios iniciales si la tabla está vacía
+  setTimeout(() => {
+    db.query(`SELECT COUNT(*) as count FROM usuarios`, (err, results) => {
+      if (!err && results[0].count === 0 && usuariosIniciales) {
+        usuariosIniciales.forEach(user => {
+          const gruposStr = JSON.stringify(user.gruposAsignados || []);
+          db.query(
+            `INSERT INTO usuarios (nombre, paterno, materno, username, password, nivel, campana, estatus, gruposAsignados) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            [user.nombre, user.paterno, user.materno, user.username, user.password, user.nivel, user.campana, user.estatus, gruposStr],
+            (insertErr) => {
+              if (insertErr) console.error('Error insertando usuario inicial:', insertErr);
+            }
+          );
+        });
+        console.log('Usuarios iniciales cargados.');
+      } else {
+        console.log('Usuarios ya existentes o cargados.');
+      }
+    });
+  }, 1000);
+}
 
-  // 4. Tabla de Campañas (Cargadas desde campanasData.cjs)
-  db.query(`
-    CREATE TABLE IF NOT EXISTS campanas (
-      id INT AUTO_INCREMENT PRIMARY KEY,
-      nombre VARCHAR(150) UNIQUE NOT NULL
-    );
-  `, (err) => {
-    if (!err) {
-      db.query('SELECT COUNT(*) as count FROM campanas', (err, results) => {
-        if (!err && results[0].count === 0) {
-          const defaultCampanas = listaCampanas.map(c => [c]);
-          db.query('INSERT IGNORE INTO campanas (nombre) VALUES ?', [defaultCampanas], (err) => {
-            if (!err) console.log('Campañas cargadas.');
-          });
-        }
-      });
-    }
-  });
-
-  // 5. Tabla de Categorías (Cargadas desde categoriasData.cjs)
-  db.query(`
-    CREATE TABLE IF NOT EXISTS categorias_tree (
-      id INT PRIMARY KEY,
-      data JSON NOT NULL
-    );
-  `, (err) => {
-    if (!err) {
-      db.query('SELECT COUNT(*) as count FROM categorias_tree', (err, results) => {
-        if (!err && results[0].count === 0) {
-          categoriasIniciales.forEach(cat => {
-            db.query('INSERT INTO categorias_tree (id, data) VALUES (?, ?)', [cat.id, JSON.stringify(cat)], (err) => {});
-          });
-          console.log('Categorías cargadas.');
-        }
-      });
-    }
-  });
-});
-
-// --- API ROUTES: LOGIN ---
+// --- ENDPOINTS DE AUTENTICACIÓN ---
 app.post('/api/login', (req, res) => {
   const { username, password } = req.body;
-  db.query(`SELECT * FROM usuarios WHERE LOWER(username) = LOWER(?) AND password = ?`, [username, password], (err, results) => {
+  db.query(`SELECT * FROM usuarios WHERE username = ? AND password = ?`, [username, password], (err, results) => {
     if (err) return res.status(500).json({ error: err.message });
-    if (results.length === 0) return res.status(401).json({ message: 'Usuario o contraseña incorrectos.' });
-    
-    const usuarioEncontrado = results[0];
-    if (usuarioEncontrado.estatus !== 'ACTIVO') return res.status(403).json({ message: 'Este usuario se encuentra inactivo.' });
-    
-    res.json({
-      ...usuarioEncontrado,
-      gruposAsignados: usuarioEncontrado.gruposAsignados ? JSON.parse(usuarioEncontrado.gruposAsignados) : []
+    if (results.length === 0) {
+      return res.status(401).json({ message: 'Usuario o contraseña incorrectos.' });
+    }
+    const usuario = results[0];
+    try {
+      usuario.gruposAsignados = JSON.parse(usuario.gruposAsignados || '[]');
+    } catch (e) {
+      usuario.gruposAsignados = [];
+    }
+    res.json(usuario);
+  });
+});
+
+// --- ENDPOINTS DE USUARIOS ---
+app.get('/api/usuarios', (req, res) => {
+  db.query(`SELECT * FROM usuarios`, (err, results) => {
+    if (err) return res.status(500).json({ error: err.message });
+    const usuarios = results.map(u => ({
+      ...u,
+      gruposAsignados: JSON.parse(u.gruposAsignados || '[]')
+    }));
+    res.json(usuarios);
+  });
+});
+
+app.post('/api/usuarios', (req, res) => {
+  const { nombre, paterno, materno, username, password, nivel, campana, estatus, gruposAsignados } = req.body;
+  const gruposStr = JSON.stringify(gruposAsignados || []);
+  db.query(
+    `INSERT INTO usuarios (nombre, paterno, materno, username, password, nivel, campana, estatus, gruposAsignados) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [nombre, paterno, materno, username, password, nivel, campana, estatus, gruposStr],
+    (err, result) => {
+      if (err) return res.status(500).json({ error: err.message });
+      res.status(201).json({ message: 'Usuario creado con éxito', id: result.insertId });
+    }
+  );
+});
+
+// --- ENDPOINTS DE TICKETS ---
+app.get('/api/tickets', (req, res) => {
+  db.query(`SELECT * FROM tickets ORDER BY id DESC`, (err, results) => {
+    if (err) return res.status(500).json({ error: err.message });
+    res.json(results);
+  });
+});
+
+app.post('/api/tickets', (req, res) => {
+  const { folio, asunto, descripcion, categoria, subcategoria, elemento, campana, grupo, creador, prioridad } = req.body;
+  db.query(
+    `INSERT INTO tickets (folio, asunto, descripcion, categoria, subcategoria, elemento, campana, grupo, creador, estatus, prioridad, fecha_creacion) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'Abierto', ?, NOW())`,
+    [folio, asunto, descripcion, categoria, subcategoria, elemento, campana, grupo, creador, prioridad || 'Media'],
+    (err, result) => {
+      if (err) return res.status(500).json({ error: err.message });
+      res.status(201).json({ message: 'Ticket creado con éxito', id: result.insertId });
+    }
+  );
+});
+
+app.put('/api/tickets/:id', (req, res) => {
+  const { id } = req.params;
+  const { tecnico, estatus, grupo } = req.body;
+
+  db.query(`SELECT estatus, tecnico, fecha_asignacion FROM tickets WHERE id = ?`, [id], (err, rows) => {
+    if (err) return res.status(500).json({ error: err.message });
+    if (rows.length === 0) return res.status(404).json({ message: 'Ticket no encontrado' });
+
+    const ticketActual = rows[0];
+    let queryUpdate = `UPDATE tickets SET `;
+    let params = [];
+    let updates = [];
+
+    if (tecnico !== undefined) {
+      updates.push(`tecnico = ?`);
+      params.push(tecnico);
+      if (!ticketActual.fecha_asignacion) {
+        updates.push(`fecha_asignacion = NOW()`);
+      }
+    }
+
+    if (grupo !== undefined) {
+      updates.push(`grupo = ?`);
+      params.push(grupo);
+    }
+
+    if (estatus !== undefined) {
+      updates.push(`estatus = ?`);
+      params.push(estatus);
+      if (estatus === 'Cerrado' && ticketActual.estatus !== 'Cerrado') {
+        updates.push(`fecha_cierre = NOW()`);
+      }
+    }
+
+    if (updates.length === 0) {
+      return res.status(400).json({ message: 'No hay campos para actualizar.' });
+    }
+
+    queryUpdate += updates.join(', ') + ` WHERE id = ?`;
+    params.push(id);
+
+    db.query(queryUpdate, params, (err, result) => {
+      if (err) return res.status(500).json({ error: err.message });
+      res.json({ message: 'Ticket actualizado correctamente' });
     });
   });
 });
 
-// --- API ROUTES: TICKETS ---
-app.get('/api/tickets', (req, res) => {
-  db.query('SELECT * FROM tickets ORDER BY id DESC', (err, results) => res.json(results));
-});
-app.post('/api/tickets', (req, res) => {
-  const t = req.body;
-  const query = `INSERT INTO tickets (folio, estatus, colorEstatus, tecnico, creador, asunto, descripcion, campana, equipo, nivel, modo, fecha, grupo, categoria, subcategoria, elemento, resolucion) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
-  db.query(query, [t.folio, t.estatus, t.colorEstatus, t.tecnico, t.creador, t.asunto, t.descripcion, t.campana, t.equipo, t.nivel, t.modo, t.fecha, t.grupo, t.categoria, t.subcategoria, t.elemento, t.resolucion || ''], (err, result) => {
+// --- MÓDULO DE ENCUESTAS Y KPS / SLA ---
+
+// 1. Registrar encuesta (Valida 1 sola vez por ticket y máximo 7 días desde el cierre)
+app.post('/api/encuestas', (req, res) => {
+  const { ticket_id, cliente_username, calificacion, comentarios } = req.body;
+
+  db.query(`SELECT estatus, fecha_cierre FROM tickets WHERE id = ?`, [ticket_id], (err, ticketResults) => {
     if (err) return res.status(500).json({ error: err.message });
-    res.status(201).json({ id: result.insertId });
-  });
-});
+    if (ticketResults.length === 0) return res.status(404).json({ message: 'Ticket no encontrado.' });
 
-// --- API ROUTES: EQUIPOS ---
-app.get('/api/equipos', (req, res) => {
-  res.json(equiposPorCampana);
-});
+    const ticket = ticketResults[0];
+    if (ticket.estatus !== 'Cerrado') {
+      return res.status(400).json({ message: 'Solo se pueden responder encuestas de tickets cerrados.' });
+    }
 
-// --- API ROUTES: USUARIOS ---
-app.get('/api/usuarios', (req, res) => {
-  db.query('SELECT * FROM usuarios ORDER BY id DESC', (err, results) => {
-    res.json(results.map(u => ({ ...u, gruposAsignados: u.gruposAsignados ? JSON.parse(u.gruposAsignados) : [] })));
-  });
-});
-app.post('/api/usuarios', (req, res) => {
-  const u = req.body;
-  db.query(`INSERT INTO usuarios (nombre, paterno, materno, campana, username, password, nivel, estatus, gruposAsignados) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`, [u.nombre, u.paterno, u.materno, u.campana, u.username, u.password, u.nivel, u.estatus, JSON.stringify(u.gruposAsignados || [])], (err, result) => {
-    if (err) return res.status(500).json({ error: err.message });
-    res.status(201).json({ id: result.insertId });
-  });
-});
-app.put('/api/usuarios/:id', (req, res) => {
-  const u = req.body;
-  db.query(`UPDATE usuarios SET nombre = ?, paterno = ?, materno = ?, campana = ?, username = ?, password = ?, nivel = ?, estatus = ?, gruposAsignados = ? WHERE id = ?`, [u.nombre, u.paterno, u.materno, u.campana, u.username, u.password, u.nivel, u.estatus, JSON.stringify(u.gruposAsignados || []), req.params.id], (err) => {
-    res.json({ message: 'Actualizado' });
-  });
-});
-app.delete('/api/usuarios/:id', (req, res) => {
-  db.query('DELETE FROM usuarios WHERE id = ?', [req.params.id], (err) => res.json({ message: 'Eliminado' }));
-});
+    db.query(`SELECT id FROM encuestas WHERE ticket_id = ?`, [ticket_id], (err, encuestaExistente) => {
+      if (err) return res.status(500).json({ error: err.message });
+      if (encuestaExistente.length > 0) {
+        return res.status(400).json({ message: 'Esta solicitud ya cuenta con una encuesta registrada.' });
+      }
 
-// --- API ROUTES: GRUPOS ---
-app.get('/api/grupos', (req, res) => {
-  db.query('SELECT nombre FROM grupos ORDER BY id ASC', (err, results) => res.json(results.map(g => g.nombre)));
-});
-app.post('/api/grupos', (req, res) => {
-  db.query('INSERT IGNORE INTO grupos (nombre) VALUES (?)', [req.body.nombre], (err) => res.json({ message: 'Guardado' }));
-});
-app.delete('/api/grupos/:nombre', (req, res) => {
-  db.query('DELETE FROM grupos WHERE nombre = ?', [req.params.nombre], (err) => res.json({ message: 'Eliminado' }));
-});
-
-// --- API ROUTES: CAMPAÑAS ---
-app.get('/api/campanas', (req, res) => {
-  db.query('SELECT nombre FROM campanas ORDER BY id ASC', (err, results) => res.json(results.map(c => c.nombre)));
-});
-app.post('/api/campanas', (req, res) => {
-  db.query('INSERT IGNORE INTO campanas (nombre) VALUES (?)', [req.body.nombre], (err) => res.json({ message: 'Guardado' }));
-});
-app.delete('/api/campanas/:nombre', (req, res) => {
-  db.query('DELETE FROM campanas WHERE nombre = ?', [req.params.nombre], (err) => res.json({ message: 'Eliminado' }));
-});
-
-// --- API ROUTES: CATEGORÍAS (ÁRBOL COMPLETO) ---
-app.get('/api/categorias', (req, res) => {
-  db.query('SELECT data FROM categorias_tree ORDER BY id ASC', (err, results) => {
-    if (err) return res.status(500).json({ error: err.message });
-    res.json(results.map(r => typeof r.data === 'string' ? JSON.parse(r.data) : r.data));
-  });
-});
-app.post('/api/categorias/sincronizar', (req, res) => {
-  const categoriasArray = req.body;
-  db.query('DELETE FROM categorias_tree', (err) => {
-    if (err) return res.status(500).json({ error: err.message });
-    if (!categoriasArray || categoriasArray.length === 0) return res.json({ message: 'Sincronizado' });
-
-    let count = 0;
-    categoriasArray.forEach(cat => {
-      db.query('INSERT INTO categorias_tree (id, data) VALUES (?, ?)', [cat.id, JSON.stringify(cat)], (err) => {
-        count++;
-        if (count === categoriasArray.length) {
-          res.json({ message: 'Árbol sincronizado' });
+      db.query(`SELECT DATEDIFF(NOW(), ?) <= 7 as dentro_de_tiempo`, [ticket.fecha_cierre || new Date()], (err, timeCheck) => {
+        if (!err && timeCheck && timeCheck[0] && timeCheck[0].dentro_de_tiempo === 0) {
+          return res.status(400).json({ message: 'El plazo de 7 días para responder esta encuesta ha expirado.' });
         }
+
+        db.query(
+          `INSERT INTO encuestas (ticket_id, cliente_username, calificacion, comentarios) VALUES (?, ?, ?, ?)`,
+          [ticket_id, cliente_username, calificacion, comentarios || ''],
+          (err, result) => {
+            if (err) return res.status(500).json({ error: err.message });
+            
+            db.query(`UPDATE tickets SET encuesta_respondida = 1 WHERE id = ?`, [ticket_id]);
+
+            res.status(201).json({ message: 'Encuesta guardada exitosamente', id: result.insertId });
+          }
+        );
       });
     });
   });
 });
 
-// --- CONFIGURACIÓN DE PRODUCCIÓN (REACT) ---
-app.use(express.static(path.join(__dirname, 'dist')));
-app.get(/(.*)/, (req, res) => {
-  res.sendFile(path.join(__dirname, 'dist', 'index.html'));
+// 2. Historial de encuestas e indicadores generales (Para Admin y Técnico Supervisor)
+app.get('/api/encuestas/reporte', (req, res) => {
+  const query = `
+    SELECT e.*, t.folio, t.asunto, t.categoria, t.tecnico, t.creador 
+    FROM encuestas e
+    JOIN tickets t ON e.ticket_id = t.id
+    ORDER BY e.id DESC
+  `;
+  db.query(query, (err, results) => {
+    if (err) return res.status(500).json({ error: err.message });
+    
+    db.query(`SELECT AVG(calificacion) as promedio, COUNT(*) as total FROM encuestas`, (err, stats) => {
+      res.json({
+        estadisticas: stats[0] || { promedio: 0, total: 0 },
+        historial: results
+      });
+    });
+  });
 });
 
-const PORT = process.env.PORT || 3000;
+// 3. KPIs de Tiempos de Resolución y SLAs (Para Admin y Técnico Supervisor)
+app.get('/api/kpis/tiempos', (req, res) => {
+  const query = `
+    SELECT t.id, t.folio, t.categoria, t.tecnico, t.fecha_asignacion, t.fecha_cierre,
+    TIMESTAMPDIFF(MINUTE, t.fecha_asignacion, t.fecha_cierre) as minutos_resolucion
+    FROM tickets t
+    WHERE t.estatus = 'Cerrado' AND t.fecha_asignacion IS NOT NULL AND t.fecha_cierre IS NOT NULL
+  `;
+  db.query(query, (err, results) => {
+    if (err) return res.status(500).json({ error: err.message });
+    res.json(results);
+  });
+});
+
+const PORT = process.env.PORT || 80;
 app.listen(PORT, () => {
   console.log(`Servidor corriendo en el puerto ${PORT}`);
 });
