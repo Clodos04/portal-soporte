@@ -24,7 +24,7 @@ db.connect((err) => {
   console.log('Conectado exitosamente a la base de datos MySQL.');
 });
 
-// --- ENDPOINT DE LOGIN ---
+// --- ENDPOINT DE LOGIN CORREGIDO ---
 app.post('/api/login', (req, res) => {
   const { username, password } = req.body;
 
@@ -41,7 +41,7 @@ app.post('/api/login', (req, res) => {
 
     const usuario = results[0];
     
-    // Se devuelven los campos de nombre y apellido separados y juntos para evitar 'undefined' en la UI
+    // Se envían todas las variantes posibles para que el frontend no muestre 'undefined'
     res.json({
       success: true,
       user: {
@@ -49,6 +49,8 @@ app.post('/api/login', (req, res) => {
         nombre: usuario.nombre,
         paterno: usuario.paterno,
         materno: usuario.materno,
+        nombres: usuario.nombre,
+        apellidos: usuario.paterno,
         username: usuario.username,
         role: usuario.nivel === 'ADMINISTRADOR' ? 'admin' : 'client',
         nivel: usuario.nivel,
