@@ -54,6 +54,9 @@ function inicializarBaseDeDatos() {
     `CREATE TABLE IF NOT EXISTS categorias (
       id INT AUTO_INCREMENT PRIMARY KEY,
       nombre VARCHAR(100) UNIQUE,
+      estatus VARCHAR(50) DEFAULT 'ACTIVO',
+      fec_alta DATETIME DEFAULT CURRENT_TIMESTAMP,
+      usuario VARCHAR(150) DEFAULT 'ADMINISTRADOR',
       sla INT DEFAULT 24
     )`,
     `CREATE TABLE IF NOT EXISTS categorias_tree (
@@ -141,7 +144,7 @@ function inicializarBaseDeDatos() {
     });
   }, 1200);
 
-  // Insertar campañas iniciales por defecto si la tabla está vacía
+  // Insertar campañas iniciales si la tabla está vacía
   setTimeout(() => {
     db.query(`SELECT COUNT(*) as count FROM campanas`, (err, results) => {
       if (!err && results[0].count === 0) {
@@ -153,6 +156,28 @@ function inicializarBaseDeDatos() {
       }
     });
   }, 1400);
+
+  // Insertar categorías iniciales si la tabla está vacía
+  setTimeout(() => {
+    db.query(`SELECT COUNT(*) as count FROM categorias`, (err, results) => {
+      if (!err && results[0].count === 0) {
+        const categoriasIniciales = [
+          'HARDWARE',
+          'SOFTWARE',
+          'REDES',
+          'ACCESOS Y CUENTAS',
+          'TELEFONÍA'
+        ];
+        categoriasIniciales.forEach(cat => {
+          db.query(
+            `INSERT IGNORE INTO categorias (nombre, estatus, fec_alta, usuario, sla) VALUES (?, 'ACTIVO', NOW(), 'ADMINISTRADOR', 24)`,
+            [cat]
+          );
+        });
+        console.log('Categorías iniciales cargadas.');
+      }
+    });
+  }, 1600);
 }
 
 // --- ENDPOINTS DE AUTENTICACIÓN ---
@@ -281,8 +306,15 @@ app.post('/api/categorias/sincronizar', (req, res) => {
       return res.json({ message: 'Categorías sincronizadas correctamente' });
     }
 
-    const values = nuevasCategorias.map(c => [c.nombre || c, c.sla || 24]);
-    db.query(`INSERT INTO categorias (nombre, sla) VALUES ?`, [values], (insertErr) => {
+    const values = nuevasCategorias.map(c => [
+      c.nombre || c, 
+      c.estatus || 'ACTIVO', 
+      c.fec_alta || new Date(), 
+      c.usuario || 'ADMINISTRADOR', 
+      c.sla || 24
+    ]);
+    
+    db.query(`INSERT INTO categorias (nombre, estatus, fec_alta, usuario, sla) VALUES ?`, [values], (insertErr) => {
       if (insertErr) return res.status(500).json({ error: insertErr.message });
       res.json({ message: 'Categorías sincronizadas correctamente' });
     });
