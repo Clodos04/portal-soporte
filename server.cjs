@@ -45,7 +45,7 @@ function inicializarBaseDeDatos() {
     )`,
     `CREATE TABLE IF NOT EXISTS campanas (
       id INT AUTO_INCREMENT PRIMARY KEY,
-      nombre VARCHAR(100)
+      nombre VARCHAR(100) UNIQUE
     )`,
     `CREATE TABLE IF NOT EXISTS grupos (
       id INT AUTO_INCREMENT PRIMARY KEY,
@@ -53,7 +53,7 @@ function inicializarBaseDeDatos() {
     )`,
     `CREATE TABLE IF NOT EXISTS categorias (
       id INT AUTO_INCREMENT PRIMARY KEY,
-      nombre VARCHAR(100),
+      nombre VARCHAR(100) UNIQUE,
       sla INT DEFAULT 24
     )`,
     `CREATE TABLE IF NOT EXISTS categorias_tree (
@@ -140,6 +140,19 @@ function inicializarBaseDeDatos() {
       }
     });
   }, 1200);
+
+  // Insertar campañas iniciales por defecto si la tabla está vacía
+  setTimeout(() => {
+    db.query(`SELECT COUNT(*) as count FROM campanas`, (err, results) => {
+      if (!err && results[0].count === 0) {
+        const campanasIniciales = ['TI', 'OPERACIONES', 'VENTAS', 'ADMINISTRACION', '*111'];
+        campanasIniciales.forEach(camp => {
+          db.query(`INSERT IGNORE INTO campanas (nombre) VALUES (?)`, [camp]);
+        });
+        console.log('Campañas iniciales cargadas.');
+      }
+    });
+  }, 1400);
 }
 
 // --- ENDPOINTS DE AUTENTICACIÓN ---
@@ -217,6 +230,62 @@ app.delete('/api/grupos/:nombre', (req, res) => {
   db.query(`DELETE FROM grupos WHERE nombre = ?`, [nombre], (err, result) => {
     if (err) return res.status(500).json({ error: err.message });
     res.json({ message: 'Grupo eliminado correctamente' });
+  });
+});
+
+// --- ENDPOINTS DE CAMPAÑAS ---
+app.get('/api/campanas', (req, res) => {
+  db.query(`SELECT nombre FROM campanas`, (err, results) => {
+    if (err) return res.status(500).json({ error: err.message });
+    const nombres = results.map(c => c.nombre);
+    res.json(nombres);
+  });
+});
+
+app.post('/api/campanas', (req, res) => {
+  const { nombre } = req.body;
+  if (!nombre) return res.status(400).json({ message: 'El nombre de la campaña es obligatorio.' });
+
+  db.query(`INSERT INTO campanas (nombre) VALUES (?)`, [nombre.toUpperCase().trim()], (err, result) => {
+    if (err) return res.status(500).json({ error: err.message });
+    res.status(201).json({ message: 'Campaña creada con éxito', id: result.insertId });
+  });
+});
+
+app.delete('/api/campanas/:nombre', (req, res) => {
+  const { nombre } = req.params;
+  db.query(`DELETE FROM campanas WHERE nombre = ?`, [nombre], (err, result) => {
+    if (err) return res.status(500).json({ error: err.message });
+    res.json({ message: 'Campaña eliminada correctamente' });
+  });
+});
+
+// --- ENDPOINTS DE CATEGORÍAS ---
+app.get('/api/categorias', (req, res) => {
+  db.query(`SELECT * FROM categorias`, (err, results) => {
+    if (err) return res.status(500).json({ error: err.message });
+    res.json(results);
+  });
+});
+
+app.post('/api/categorias/sincronizar', (req, res) => {
+  const nuevasCategorias = req.body;
+  if (!Array.isArray(nuevasCategorias)) {
+    return res.status(400).json({ message: 'Se requiere un arreglo de categorías.' });
+  }
+
+  db.query(`DELETE FROM categorias`, (err) => {
+    if (err) return res.status(500).json({ error: err.message });
+
+    if (nuevasCategorias.length === 0) {
+      return res.json({ message: 'Categorías sincronizadas correctamente' });
+    }
+
+    const values = nuevasCategorias.map(c => [c.nombre || c, c.sla || 24]);
+    db.query(`INSERT INTO categorias (nombre, sla) VALUES ?`, [values], (insertErr) => {
+      if (insertErr) return res.status(500).json({ error: insertErr.message });
+      res.json({ message: 'Categorías sincronizadas correctamente' });
+    });
   });
 });
 
