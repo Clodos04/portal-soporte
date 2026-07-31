@@ -1,134 +1,387 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
+import { listaCampanas } from '../data/campanasData';
+import { equiposPorCampana } from '../data/equiposData';
+import AsistenteTipificacionView from './AsistenteTipificacionView';
 
-const listaCampanas = [
-  "TI",
-  "OPERACIONES",
-  "VENTAS",
-  "ADMINISTRACION"
-];
+function NuevaSolicitudView({ user, usuarios = [], grupos = [], campanas = [], usuariosPorGrupo = {}, categorias = [], onVolver, onGuardar }) {
+  const [estado, setEstado] = useState('ABIERTO');
+  const [grupo, setGrupo] = useState('');
+  const [usuarioAsignado, setUsuarioAsignado] = useState('Sin Asignar');
+  
+  const categoriasActivas = categorias.filter(c => c.estatus === 'ACTIVO');
+  const [categoria, setCategoria] = useState('');
+  
+  const categoriaObj = categoriasActivas.find(c => c.nombre === categoria);
+  const subcategoriasDisponibles = categoriaObj ? (categoriaObj?.subcategorias || []).filter(s => s.estatus === 'ACTIVO') : [];
+  const [subCategoria, setSubCategoria] = useState('');
 
-function NuevaSolicitudView({ usuarioLogueado, onTicketCreado }) {
+  const subcategoriaObj = subcategoriasDisponibles.find(s => s.nombre === subCategoria);
+  const elementosDisponibles = subcategoriaObj ? (subcategoriaObj?.elementos || []) : [];
+  const [elemento, setElemento] = useState('');
+
+  // Estado para controlar la apertura del modal del Asistente Guiado
+  const [isAsistenteOpen, setIsAsistenteOpen] = useState(false);
+
+  const campanasDisponibles = campanas.length > 0 ? campanas : listaCampanas;
+  
+  const [areaCliente, setAreaCliente] = useState('');
+  const [campana, setCampana] = useState('');
+
+  const clientesDisponibles = usuarios.filter(u => u.campana === campana && u.estatus === 'ACTIVO');
+  
+  const [nombreCliente, setNombreCliente] = useState('');
+  
   const [asunto, setAsunto] = useState('');
   const [descripcion, setDescripcion] = useState('');
-  const [categoria, setCategoria] = useState('');
-  const [subcategoria, setSubcategoria] = useState('');
-  const [elemento, setElemento] = useState('');
-  const [campana, setCampana] = useState(usuarioLogueado?.campana || listaCampanas[0]);
-  const [grupo, setGrupo] = useState('');
-  const [prioridad, setPrioridad] = useState('Media');
-  const [gruposDisponibles, setGruposDisponibles] = useState([]);
 
-  useEffect(() => {
-    fetch('/api/grupos')
-      .then(res => res.json())
-      .then(data => {
-        if (Array.isArray(data) && data.length > 0) {
-          setGruposDisponibles(data);
-          setGrupo(data[0]);
-        }
-      })
-      .catch(err => console.error('Error al cargar grupos:', err));
-  }, []);
+  const listaEquiposActuales = equiposPorCampana[campana] || [];
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    const folio = 'TICK-' + Math.floor(100000 + Math.random() * 900000);
+  const [equiposSeleccionados, setEquiposSeleccionados] = useState([]);
+  const [nivel, setNivel] = useState('Seleccione Una Opcion...');
+  const [modo, setModo] = useState('Seleccione Una Opcion...');
+  const [archivo, setArchivo] = useState(null);
+
+  const tecnicosDisponibles = usuariosPorGrupo[grupo] || [];
+
+  const handleCambioCampana = (e) => {
+    const nuevaCampana = e.target.value;
+    setCampana(nuevaCampana);
+    setAreaCliente(nuevaCampana);
     
-    const nuevoTicket = {
-      folio,
-      asunto,
-      descripcion,
-      categoria: categoria || 'General',
-      subcategoria: subcategoria || 'General',
-      elemento: elemento || 'General',
-      campana,
-      grupo: grupo || (gruposDisponibles[0] || 'SOPORTE TECNICO'),
-      creador: usuarioLogueado?.username || 'cliente',
-      prioridad
-    };
+    setEquiposSeleccionados([]);
 
-    try {
-      const res = await fetch('/api/tickets', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(nuevoTicket)
-      });
-      if (res.ok) {
-        alert('¡Ticket creado con éxito!');
-        setAsunto('');
-        setDescripcion('');
-        setCategoria('');
-        setSubcategoria('');
-        setElemento('');
-        if (onTicketCreado) onTicketCreado();
-      } else {
-        alert('Error al crear el ticket.');
-      }
-    } catch (error) {
-      console.error('Error:', error);
+    const filtrados = usuarios.filter(u => u.campana === nuevaCampana && u.estatus === 'ACTIVO');
+    if (filtrados.length > 0) {
+      setNombreCliente(`${filtrados[0].nombre} ${filtrados[0].paterno}`);
+    } else {
+      setNombreCliente('');
     }
   };
 
+  const handleCambioCategoria = (e) => {
+    const nuevaCat = e.target.value;
+    setCategoria(nuevaCat);
+    setSubCategoria('');
+    setElemento('');
+  };
+
+  const handleCambioSubcategoria = (e) => {
+    const nuevaSub = e.target.value;
+    setSubCategoria(nuevaSub);
+    setElemento('');
+  };
+
+  // Función que recibe la selección del asistente y autocompleta los selectores
+  const handleSeleccionarTipificacionDelAsistente = (resultado) => {
+    if (resultado.categoria) {
+      setCategoria(resultado.categoria.nombre);
+    }
+    if (resultado.subcategoria) {
+      setSubCategoria(resultado.subcategoria.nombre);
+    }
+    if (resultado.elemento) {
+      setElemento(resultado.elemento.nombre);
+    }
+    setIsAsistenteOpen(false); // Cierra el asistente
+  };
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    const nuevoFolio = Math.floor(10000 + Math.random() * 90000).toString();
+    const fechaHoy = new Date().toISOString().split('T')[0];
+
+    let colorEstatus = 'bg-green-500';
+    if (estado === 'EN PROCESO') colorEstatus = 'bg-orange-500';
+    if (estado === 'CERRADO') colorEstatus = 'bg-red-500';
+
+    const ticketNuevo = {
+      folio: nuevoFolio,
+      notas: [],
+      estatus: estado === 'ABIERTO' ? 'Abierto' : (estado === 'EN PROCESO' ? 'En Proceso' : 'Cerrado'),
+      colorEstatus: colorEstatus,
+      tecnico: usuarioAsignado,
+      creador: nombreCliente || user?.name || 'SIN ASIGNAR',
+      asunto: asunto,
+      descripcion: descripcion,
+      campana: campana,
+      equipo: equiposSeleccionados.length > 0 ? equiposSeleccionados.join(', ') : 'Ninguno',
+      nivel: nivel,
+      modo: modo,
+      fecha: fechaHoy,
+      grupo: grupo || 'Soporte Técnico',
+      categoria: categoria || 'GENERAL',
+      subcategoria: subCategoria,
+      elemento: elemento,
+      resolucion: '',
+      archivoNombre: archivo ? archivo.name : null,
+      archivoUrl: archivo ? URL.createObjectURL(archivo) : null
+    };
+
+    onGuardar(ticketNuevo);
+  };
+
   return (
-    <div className="max-w-3xl mx-auto bg-slate-800 rounded-xl shadow-2xl border border-slate-700 text-slate-200 overflow-hidden p-8 animate-fade-in">
-      <h2 className="text-2xl font-bold text-white uppercase mb-6 border-b border-slate-700 pb-4">Crear Nueva Solicitud</h2>
+    <div className="animate-fade-in max-w-7xl mx-auto space-y-6 text-slate-200">
       
-      <form onSubmit={handleSubmit} className="space-y-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-xs font-bold text-slate-300 mb-1 uppercase">Campaña:</label>
-            <select value={campana} onChange={(e) => setCampana(e.target.value)} className="w-full px-3 py-2 rounded bg-slate-900 border border-slate-700 text-white text-sm outline-none">
-              {listaCampanas.map((c, idx) => (
-                <option key={idx} value={c}>{c}</option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className="block text-xs font-bold text-slate-300 mb-1 uppercase">Grupo de Soporte Asignado:</label>
-            <select value={grupo} onChange={(e) => setGrupo(e.target.value)} className="w-full px-3 py-2 rounded bg-slate-900 border border-slate-700 text-white text-sm outline-none">
-              {gruposDisponibles.map((g, idx) => (
-                <option key={idx} value={g}>{g}</option>
-              ))}
-            </select>
-          </div>
-        </div>
-
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-slate-800 p-6 rounded-xl border border-slate-700 shadow-lg">
         <div>
-          <label className="block text-xs font-bold text-slate-300 mb-1 uppercase">Asunto:</label>
-          <input type="text" required value={asunto} onChange={(e) => setAsunto(e.target.value)} placeholder="Breve descripción del problema..." className="w-full px-3 py-2 rounded bg-slate-900 border border-slate-700 text-white text-sm outline-none" />
+          <h1 className="text-3xl font-light text-white tracking-wide uppercase">Solicitud Nueva</h1>
+          <p className="text-slate-400 text-sm mt-1">Creación y registro de un nuevo ticket de soporte</p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div>
-            <label className="block text-xs font-bold text-slate-300 mb-1 uppercase">Categoría:</label>
-            <input type="text" value={categoria} onChange={(e) => setCategoria(e.target.value)} placeholder="Ej. Hardware" className="w-full px-3 py-2 rounded bg-slate-900 border border-slate-700 text-white text-sm outline-none" />
-          </div>
-          <div>
-            <label className="block text-xs font-bold text-slate-300 mb-1 uppercase">Subcategoría:</label>
-            <input type="text" value={subcategoria} onChange={(e) => setSubcategoria(e.target.value)} placeholder="Ej. Falla de energía" className="w-full px-3 py-2 rounded bg-slate-900 border border-slate-700 text-white text-sm outline-none" />
-          </div>
-          <div>
-            <label className="block text-xs font-bold text-slate-300 uppercase mb-1">Prioridad:</label>
-            <select value={prioridad} onChange={(e) => setPrioridad(e.target.value)} className="w-full px-3 py-2 rounded bg-slate-900 border border-slate-700 text-white text-sm outline-none">
-              <option value="Baja">Baja</option>
-              <option value="Media">Media</option>
-              <option value="Alta">Alta</option>
-              <option value="Urgente">Urgente</option>
-            </select>
-          </div>
-        </div>
+        <button 
+          type="button" 
+          onClick={onVolver} 
+          className="bg-slate-700 hover:bg-slate-600 text-slate-200 px-4 py-2 rounded-lg font-bold text-sm shadow transition-colors border border-slate-600"
+        >
+          Regresar
+        </button>
+      </div>
 
-        <div>
-          <label className="block text-xs font-bold text-slate-300 mb-1 uppercase">Descripción Detallada:</label>
-          <textarea required rows="4" value={descripcion} onChange={(e) => setDescripcion(e.target.value)} placeholder="Explique detalladamente su solicitud..." className="w-full px-3 py-2 rounded bg-slate-900 border border-slate-700 text-white text-sm outline-none"></textarea>
-        </div>
+      <div className="bg-slate-800 rounded-xl shadow-lg border border-slate-700 p-6">
+        <form onSubmit={handleSubmit} className="space-y-6">
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-slate-900/60 p-6 rounded-xl border border-slate-700">
+            <div className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-300 uppercase mb-1.5">Estado:</label>
+                <select value={estado} onChange={(e) => setEstado(e.target.value)} className="w-full px-3 py-2.5 rounded-lg bg-slate-900 border border-slate-700 text-white text-sm outline-none focus:border-green-500 transition-colors">
+                  <option value="ABIERTO">ABIERTO</option>
+                  <option value="EN PROCESO">EN PROCESO</option>
+                  <option value="CERRADO">CERRADO</option>
+                </select>
+              </div>
 
-        <div className="flex justify-end pt-4 border-t border-slate-700">
-          <button type="submit" className="bg-blue-600 hover:bg-blue-500 text-white px-8 py-2.5 rounded-lg font-bold shadow-lg transition-colors text-sm">
-            Enviar Solicitud
-          </button>
-        </div>
-      </form>
+              <div>
+                <label className="block text-xs font-bold text-slate-300 uppercase mb-1.5">Grupo Asignado:</label>
+                <select value={grupo} onChange={(e) => { setGrupo(e.target.value); setUsuarioAsignado('Sin Asignar'); }} className="w-full px-3 py-2.5 rounded-lg bg-slate-900 border border-slate-700 text-white text-sm outline-none focus:border-green-500 transition-colors">
+                  <option value="">Seleccione Grupo</option>
+                  {grupos.map((g, idx) => (
+                    <option key={idx} value={g}>{g}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-300 uppercase mb-1.5">Técnico / Usuario asignado:</label>
+                <select value={usuarioAsignado} onChange={(e) => setUsuarioAsignado(e.target.value)} className="w-full px-3 py-2.5 rounded-lg bg-slate-900 border border-slate-700 text-white text-sm outline-none focus:border-green-500 transition-colors">
+                  <option value="Sin Asignar">Sin Asignar</option>
+                  {tecnicosDisponibles.map((tec, idx) => (
+                    <option key={idx} value={tec}>{tec}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              
+              {/* Botón de Ayuda: Asistente Guiado de Tipificación */}
+              <div className="flex justify-between items-center mb-1">
+                <label className="block text-xs font-bold text-slate-300 uppercase">Categorización del Ticket:</label>
+                <button
+                  type="button"
+                  onClick={() => setIsAsistenteOpen(true)}
+                  className="bg-blue-600/20 hover:bg-blue-600 text-blue-400 hover:text-white px-2.5 py-1 rounded-md text-xs font-bold transition-all border border-blue-500/30 flex items-center gap-1.5 shadow"
+                >
+                  🤖 ¿No sabes cómo tipificar?
+                </button>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Categoría:</label>
+                <select value={categoria} onChange={handleCambioCategoria} className="w-full px-3 py-2.5 rounded-lg bg-slate-900 border border-slate-700 text-white text-sm outline-none focus:border-green-500 transition-colors">
+                  <option value="">Seleccione Categoría</option>
+                  {categoriasActivas.map((cat, idx) => (
+                    <option key={idx} value={cat.nombre}>{cat.nombre}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Sub-Categoría:</label>
+                <select value={subCategoria} onChange={handleCambioSubcategoria} className="w-full px-3 py-2.5 rounded-lg bg-slate-900 border border-slate-700 text-white text-sm outline-none focus:border-green-500 transition-colors">
+                  <option value="">Seleccione Sub-Categoría</option>
+                  {subcategoriasDisponibles.map((sub, idx) => (
+                    <option key={idx} value={sub.nombre}>{sub.nombre}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Elemento:</label>
+                <select value={elemento} onChange={(e) => setElemento(e.target.value)} className="w-full px-3 py-2.5 rounded-lg bg-slate-900 border border-slate-700 text-white text-sm outline-none focus:border-green-500 transition-colors">
+                  <option value="">Seleccione Elemento</option>
+                  {elementosDisponibles.map((elem, idx) => (
+                    <option key={idx} value={elem.nombre}>{elem.nombre}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          </div>
+
+          {/* Modal del Asistente Guiado */}
+          {isAsistenteOpen && (
+            <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm flex justify-center items-center z-50 p-4">
+              <div className="max-w-3xl w-full">
+                <AsistenteTipificacionView
+                  categorias={categoriasActivas}
+                  onSeleccionarTipificacion={handleSeleccionarTipificacionDelAsistente}
+                  onCancelar={() => setIsAsistenteOpen(false)}
+                />
+              </div>
+            </div>
+          )}
+
+          <div className="space-y-4 pt-2">
+            <h2 className="text-lg font-bold text-indigo-300 border-b border-slate-700 pb-2">Información del Cliente</h2>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <label className="block text-xs font-bold text-slate-300 uppercase mb-1.5">Área:</label>
+                <select value={areaCliente} onChange={(e) => { setAreaCliente(e.target.value); handleCambioCampana(e); }} className="w-full px-3 py-2.5 rounded-lg bg-slate-900 border border-slate-700 text-white text-sm outline-none focus:border-green-500 transition-colors">
+                  <option value="">Seleccione Área</option>
+                  {campanasDisponibles.map((camp, idx) => (
+                    <option key={idx} value={camp}>{camp}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-300 uppercase mb-1.5">Nombre:</label>
+                <select value={nombreCliente} onChange={(e) => setNombreCliente(e.target.value)} className="w-full px-3 py-2.5 rounded-lg bg-slate-900 border border-slate-700 text-white text-sm outline-none focus:border-green-500 transition-colors">
+                  <option value="">Seleccione Nombre</option>
+                  {clientesDisponibles.map((cli, idx) => {
+                    const nombreCompleto = `${cli.nombre} ${cli.paterno}`;
+                    return (
+                      <option key={idx} value={nombreCompleto}>{nombreCompleto}</option>
+                    );
+                  })}
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <div className="space-y-4 pt-2">
+            <div>
+              <label className="block text-xs font-bold text-slate-300 uppercase mb-1.5">Asunto:</label>
+              <input 
+                type="text" 
+                required
+                value={asunto}
+                onChange={(e) => setAsunto(e.target.value)}
+                className="w-full px-3 py-2.5 rounded-lg bg-slate-900 border border-slate-700 text-white text-sm outline-none focus:border-green-500 transition-colors"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-slate-300 uppercase mb-1.5">Descripción:</label>
+              <textarea 
+                rows="3" 
+                required
+                value={descripcion}
+                onChange={(e) => setDescripcion(e.target.value)}
+                className="w-full px-3 py-2.5 rounded-lg bg-slate-900 border border-slate-700 text-white text-sm outline-none focus:border-green-500 resize-none transition-colors"
+              ></textarea>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
+            
+            <div>
+              <label className="block text-xs font-bold text-slate-300 uppercase mb-1.5">Equipo (Seleccione uno o más):</label>
+              <div className="w-full h-36 overflow-y-auto px-3 py-2 rounded-lg bg-slate-900 border border-slate-700 text-white text-sm space-y-1.5">
+                {listaEquiposActuales.length === 0 ? (
+                  <span className="text-slate-500 italic text-xs">Seleccione una campaña para ver los equipos disponibles</span>
+                ) : (
+                  listaEquiposActuales.map((eq, idx) => {
+                    const isSelected = equiposSeleccionados.includes(eq);
+                    return (
+                      <label key={idx} className="flex items-center gap-2 cursor-pointer hover:bg-slate-800/80 p-1.5 rounded transition-colors">
+                        <input 
+                          type="checkbox"
+                          checked={isSelected}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setEquiposSeleccionados([...equiposSeleccionados, eq]);
+                            } else {
+                              setEquiposSeleccionados(equiposSeleccionados.filter(item => item !== eq));
+                            }
+                          }}
+                          className="rounded bg-slate-900 border-slate-700 text-green-600 focus:ring-0 cursor-pointer w-4 h-4"
+                        />
+                        <span className="text-xs text-slate-200 font-mono">{eq}</span>
+                      </label>
+                    );
+                  })
+                )}
+              </div>
+              <p className="text-[11px] text-green-400 mt-1 font-medium">
+                Seleccionados: {equiposSeleccionados.length > 0 ? equiposSeleccionados.join(', ') : 'Ninguno'}
+              </p>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-300 uppercase mb-1.5">Nivel:</label>
+                <select value={nivel} onChange={(e) => setNivel(e.target.value)} className="w-full px-3 py-2.5 rounded-lg bg-slate-900 border border-slate-700 text-white text-sm outline-none focus:border-green-500 transition-colors">
+                  <option value="Seleccione Una Opcion...">Seleccione Una Opcion...</option>
+                  <option value="Bajo">Bajo</option>
+                  <option value="Medio">Medio</option>
+                  <option value="Experto">Experto</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-300 uppercase mb-1.5">Campaña:</label>
+                <select value={campana} onChange={handleCambioCampana} className="w-full px-3 py-2.5 rounded-lg bg-slate-900 border border-slate-700 text-white text-sm outline-none focus:border-green-500 transition-colors">
+                  <option value="">Seleccione Campaña</option>
+                  {campanasDisponibles.map((camp, idx) => (
+                    <option key={idx} value={camp}>{camp}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-300 uppercase mb-1.5">Modo:</label>
+                <select value={modo} onChange={(e) => setModo(e.target.value)} className="w-full px-3 py-2.5 rounded-lg bg-slate-900 border border-slate-700 text-white text-sm outline-none focus:border-green-500 transition-colors">
+                  <option value="Seleccione Una Opcion...">Seleccione Una Opcion...</option>
+                  <option value="CORREO">CORREO</option>
+                  <option value="TELEFONO">TELEFONO</option>
+                  <option value="VERBAL">VERBAL</option>
+                  <option value="WEB">WEB</option>
+                </select>
+              </div>
+            </div>
+
+          </div>
+
+          <div className="pt-2">
+            <label className="block text-xs font-bold text-slate-300 uppercase mb-1.5">Adjuntar Archivo:</label>
+            <input 
+              type="file" 
+              onChange={(e) => setArchivo(e.target.files[0])}
+              className="text-xs text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-bold file:bg-slate-700 file:text-slate-200 hover:file:bg-slate-600 cursor-pointer bg-slate-900/60 p-2 rounded-lg border border-slate-700 w-full" 
+            />
+          </div>
+
+          <div className="flex justify-end gap-3 pt-6 border-t border-slate-700">
+            <button 
+              type="button" 
+              onClick={onVolver} 
+              className="bg-slate-700 hover:bg-slate-600 text-slate-200 px-5 py-2.5 rounded-lg font-bold text-sm transition-colors"
+            >
+              Cancelar
+            </button>
+            <button 
+              type="submit" 
+              className="bg-green-600 hover:bg-green-500 text-white px-6 py-2.5 rounded-lg font-bold text-sm shadow-lg shadow-green-600/30 transition-colors"
+            >
+              Guardar Solicitud
+            </button>
+          </div>
+
+        </form>
+      </div>
     </div>
   );
 }
