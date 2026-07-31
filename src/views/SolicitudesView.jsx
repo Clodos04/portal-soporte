@@ -9,12 +9,12 @@ function SolicitudesView({
   onOpenNotes, 
   onNuevaSolicitud, 
   onEditarTicket,
-  onIrAEncuestaSpecific 
+  onIrAEncuestaSpecific,
+  estadisticasEncuestas = [] 
 }) {
   const [busqueda, setBusqueda] = useState('');
-  const [filtroEstatus, setFiltroEstatus] = useState('activos'); // 'activos' o 'cerrados'
+  const [filtroEstatus, setFiltroEstatus] = useState('activos');
 
-  // Filtrar tickets por estatus y búsqueda
   const ticketsFiltrados = tickets.filter(t => {
     const estatusLower = t.estatus ? t.estatus.toLowerCase() : '';
     
@@ -33,8 +33,6 @@ function SolicitudesView({
 
   return (
     <div className="animate-fade-in max-w-7xl mx-auto space-y-6 text-slate-200">
-      
-      {/* Cabecera */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-slate-800 p-6 rounded-xl border border-slate-700 shadow-lg">
         <div>
           <h1 className="text-3xl font-light text-white tracking-wide uppercase">Listado de Solicitudes</h1>
@@ -58,10 +56,7 @@ function SolicitudesView({
         </div>
       </div>
 
-      {/* Contenedor de la tabla */}
       <div className="bg-slate-800 rounded-xl shadow-lg border border-slate-700 p-6 space-y-4">
-        
-        {/* Pestañas de Estatus y Buscador */}
         <div className="flex flex-col md:flex-row justify-between items-center gap-4 border-b border-slate-700 pb-4">
           <div className="flex items-center gap-2 w-full md:w-auto">
             <button 
@@ -115,65 +110,72 @@ function SolicitudesView({
                   </td>
                 </tr>
               ) : (
-                ticketsFiltrados.map((ticket) => (
-                  <tr key={ticket.folio} className="hover:bg-slate-700/50 transition-colors">
-                    
-                    <td className="px-4 py-3 font-bold text-white">#{ticket.folio}</td>
+                ticketsFiltrados.map((ticket) => {
+                  const yaEncuestado = estadisticasEncuestas.some(e => e.folio === ticket.folio || e.ticket_id === ticket.id);
 
-                    <td className="px-4 py-3 text-center">
-                      <button 
-                        onClick={() => onOpenNotes(ticket.folio)}
-                        className="relative p-2 bg-slate-900/60 hover:bg-slate-700 rounded-lg text-slate-300 hover:text-white transition-colors border border-slate-700 inline-flex items-center justify-center"
-                        title="Ver Notas"
-                      >
-                        📄
-                        {ticket.notas && ticket.notas.length > 0 && (
-                          <span className="absolute -top-1.5 -right-1.5 bg-green-600 text-white text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center shadow">
-                            {ticket.notas.length}
-                          </span>
-                        )}
-                      </button>
-                    </td>
+                  return (
+                    <tr key={ticket.folio} className="hover:bg-slate-700/50 transition-colors">
+                      <td className="px-4 py-3 font-bold text-white">#{ticket.folio}</td>
 
-                    <td className="px-4 py-3 whitespace-nowrap">
-                      <span className={`px-3 py-1 rounded-full text-xs font-bold inline-block text-white shadow-sm ${ticket.colorEstatus || 'bg-green-600'}`}>
-                        {ticket.estatus}
-                      </span>
-                    </td>
-
-                    {activeColumns.map(colKey => (
-                      <td key={colKey} className="px-4 py-3 text-slate-300 max-w-xs truncate">
-                        {ticket[colKey] || '—'}
-                      </td>
-                    ))}
-
-                    <td className="px-4 py-3 text-center">
-                      <div className="flex justify-center items-center gap-2">
+                      <td className="px-4 py-3 text-center">
                         <button 
-                          onClick={() => onEditarTicket(ticket)}
-                          className="px-3 py-1.5 bg-indigo-600/20 text-indigo-400 hover:bg-indigo-600 hover:text-white rounded-lg font-semibold text-xs transition-colors border border-indigo-500/30"
+                          onClick={() => onOpenNotes(ticket.folio)}
+                          className="relative p-2 bg-slate-900/60 hover:bg-slate-700 rounded-lg text-slate-300 hover:text-white transition-colors border border-slate-700 inline-flex items-center justify-center"
+                          title="Ver Notas"
                         >
-                          Gestionar
+                          📄
+                          {ticket.notas && ticket.notas.length > 0 && (
+                            <span className="absolute -top-1.5 -right-1.5 bg-green-600 text-white text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center shadow">
+                              {ticket.notas.length}
+                            </span>
+                          )}
                         </button>
+                      </td>
 
-                        {(ticket.estatus === 'Cerrado' || ticket.estatus === 'CERRADO') && user?.role === 'client' && (
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        <span className={`px-3 py-1 rounded-full text-xs font-bold inline-block text-white shadow-sm ${ticket.colorEstatus || 'bg-green-600'}`}>
+                          {ticket.estatus}
+                        </span>
+                      </td>
+
+                      {activeColumns.map(colKey => (
+                        <td key={colKey} className="px-4 py-3 text-slate-300 max-w-xs truncate">
+                          {ticket[colKey] || '—'}
+                        </td>
+                      ))}
+
+                      <td className="px-4 py-3 text-center">
+                        <div className="flex justify-center items-center gap-2">
                           <button 
-                            onClick={() => onIrAEncuestaSpecific(ticket)}
-                            className="px-3 py-1.5 bg-green-600/20 text-green-400 hover:bg-green-600 hover:text-white rounded-lg font-semibold text-xs transition-colors border border-green-500/30"
+                            onClick={() => onEditarTicket(ticket)}
+                            className="px-3 py-1.5 bg-indigo-600/20 text-indigo-400 hover:bg-indigo-600 hover:text-white rounded-lg font-semibold text-xs transition-colors border border-indigo-500/30"
                           >
-                            Encuesta
+                            Gestionar
                           </button>
-                        )}
-                      </div>
-                    </td>
 
-                  </tr>
-                ))
+                          {(ticket.estatus === 'Cerrado' || ticket.estatus === 'CERRADO') && user?.role === 'client' && (
+                            yaEncuestado ? (
+                              <span className="px-3 py-1.5 bg-slate-700 text-slate-400 rounded-lg font-semibold text-xs border border-slate-600">
+                                Calificado ⭐
+                              </span>
+                            ) : (
+                              <button 
+                                onClick={() => onIrAEncuestaSpecific(ticket)}
+                                className="px-3 py-1.5 bg-green-600/20 text-green-400 hover:bg-green-600 hover:text-white rounded-lg font-semibold text-xs transition-colors border border-green-500/30"
+                              >
+                                Encuesta
+                              </button>
+                            )
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
               )}
             </tbody>
           </table>
         </div>
-
       </div>
     </div>
   );
