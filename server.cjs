@@ -44,32 +44,42 @@ app.post('/api/tickets', (req, res) => {
   });
 });
 
-// Endpoint para actualizar un ticket existente (Incluyendo todos los campos avanzados)
-app.put('/api/tickets/:folio', (req, res) => {
+// Endpoint para actualizar un ticket existente con todos los campos de la tabla
+app.put('/api/tickets/:folio', express.json(), (req, res) => {
   const { folio } = req.params;
   const {
     estatus,
+    colorEstatus,
     tecnico,
+    creador,
+    asunto,
+    descripcion,
+    campana,
+    equipo,
+    nivel,
+    modo,
     grupo,
     categoria,
     subcategoria,
     elemento,
-    equipo,
-    nivel,
-    modo,
     resolucion,
-    campana
+    archivoNombre,
+    archivoUrl
   } = req.body;
 
   const query = `
     UPDATE tickets 
-    SET estatus = ?, tecnico = ?, grupo = ?, categoria = ?, subcategoria = ?, elemento = ?, equipo = ?, nivel = ?, modo = ?, resolucion = ?, campana = ?
+    SET estatus = ?, colorEstatus = ?, tecnico = ?, creador = ?, asunto = ?, descripcion = ?, campana = ?, equipo = ?, nivel = ?, modo = ?, grupo = ?, categoria = ?, subcategoria = ?, elemento = ?, resolucion = ?, archivoNombre = ?, archivoUrl = ?
     WHERE folio = ?
   `;
 
   db.query(
     query,
-    [estatus, tecnico, grupo, categoria, subcategoria, elemento, equipo, nivel, modo, resolucion, campana, folio],
+    [
+      estatus, colorEstatus, tecnico, creador, asunto, descripcion, 
+      campana, equipo, nivel, modo, grupo, categoria, subcategoria, 
+      elemento, resolucion, archivoNombre, archivoUrl, folio
+    ],
     (err, result) => {
       if (err) {
         console.error('Error detallado al actualizar el ticket en la BD:', err);
@@ -85,7 +95,7 @@ app.put('/api/tickets/:folio', (req, res) => {
   );
 });
 
-// Otras rutas necesarias (usuarios, grupos, campanas, categorías, login, etc.)
+// Rutas adicionales de la aplicación
 app.get('/api/usuarios', (req, res) => {
   db.query('SELECT * FROM usuarios', (err, results) => {
     if (err) return res.status(500).json({ error: err.message });
