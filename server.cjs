@@ -1,12 +1,13 @@
 const express = require('express');
 const mysql = require('mysql2');
 const cors = require('cors');
+const path = require('path');
 
 const app = express();
 app.use(express.json());
 app.use(cors());
 
-// Configuración de la conexión a la Base de Datos MySQL (usando variables de entorno de Easypanel)
+// Configuración de la conexión a la Base de Datos MySQL
 const db = mysql.createConnection({
   host: process.env.DB_HOST || 'localhost',
   user: process.env.DB_USER || 'root',
@@ -44,7 +45,7 @@ app.post('/api/tickets', (req, res) => {
   });
 });
 
-// Endpoint para actualizar un ticket existente (con todos los campos de tu tabla)
+// Endpoint para actualizar un ticket existente (con todos los campos de la tabla)
 app.put('/api/tickets/:folio', express.json(), (req, res) => {
   const { folio } = req.params;
   const {
@@ -110,8 +111,17 @@ app.get('/api/grupos', (req, res) => {
   });
 });
 
-// Easypanel inyecta el puerto automáticamente mediante process.env.PORT
+// --- CONFIGURACIÓN PARA SERVIR EL FRONTEND Y EL LOGIN ---
+// Servir los archivos compilados de React desde la carpeta dist
+app.use(express.static(path.join(__dirname, 'dist')));
+
+// Redirigir cualquier otra petición web al index.html para que el Login/Router de React cargue bien
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, 'dist', 'index.html'));
+});
+
+// Puerto asignado por el entorno o por defecto
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-  console.log(`Servidor de API corriendo en el puerto ${PORT}`);
+  console.log(`Servidor corriendo en el puerto ${PORT}`);
 });
