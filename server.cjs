@@ -7,7 +7,7 @@ const app = express();
 app.use(express.json());
 app.use(cors());
 
-// Configuración de la conexión a la Base de Datos MySQL (Easypanel)
+// Conexión a la Base de Datos
 const db = mysql.createConnection({
   host: process.env.DB_HOST || 'sav_db-soporte',
   user: process.env.DB_USER || 'mysql',
@@ -24,11 +24,11 @@ db.connect((err) => {
   console.log('Conectado exitosamente a la base de datos MySQL.');
 });
 
-// ==========================================
-// 1. ENDPOINTS DE LA API (PRIMERO)
-// ==========================================
+// =========================================================================
+// 1. ENDPOINTS DE LA API (DEBEN IR ANTES DE SERVIR EL HTML)
+// =========================================================================
 
-// Endpoint de Login
+// Login
 app.post('/api/login', (req, res) => {
   const { username, password } = req.body;
 
@@ -45,6 +45,7 @@ app.post('/api/login', (req, res) => {
 
     const usuario = results[0];
     
+    // Enviamos el objeto con las propiedades correctas que tu tabla tiene (nombre, paterno, etc.)
     res.json({
       success: true,
       user: {
@@ -54,7 +55,6 @@ app.post('/api/login', (req, res) => {
         materno: usuario.materno || '',
         nombres: usuario.nombre || '',
         apellidos: usuario.paterno || '',
-        nombreCompleto: `${usuario.nombre || ''} ${usuario.paterno || ''}`.trim(),
         username: usuario.username,
         role: usuario.nivel === 'ADMINISTRADOR' ? 'admin' : 'client',
         nivel: usuario.nivel,
@@ -64,7 +64,7 @@ app.post('/api/login', (req, res) => {
   });
 });
 
-// Obtener todos los tickets
+// Tickets (Obtener y Crear)
 app.get('/api/tickets', (req, res) => {
   db.query('SELECT * FROM tickets', (err, results) => {
     if (err) return res.status(500).json({ error: err.message });
@@ -72,40 +72,27 @@ app.get('/api/tickets', (req, res) => {
   });
 });
 
-// Crear un ticket
 app.post('/api/tickets', (req, res) => {
   const nuevoTicket = req.body;
-  const query = 'INSERT INTO tickets SET ?';
-  db.query(query, nuevoTicket, (err, result) => {
-    if (err) {
-      console.error('Error al crear ticket:', err);
-      return res.status(500).json({ error: err.message });
-    }
+  db.query('INSERT INTO tickets SET ?', nuevoTicket, (err, result) => {
+    if (err) return res.status(500).json({ error: err.message });
     res.json({ message: 'Ticket creado exitosamente', id: result.insertId });
   });
 });
 
-// Actualizar un ticket (Mismo formato directo y limpio)
+// Actualizar Ticket
 app.put('/api/tickets/:folio', (req, res) => {
   const { folio } = req.params;
   const datosActualizados = req.body;
 
-  const query = 'UPDATE tickets SET ? WHERE folio = ?';
-  db.query(query, [datosActualizados, folio], (err, result) => {
-    if (err) {
-      console.error('Error al actualizar el ticket:', err);
-      return res.status(500).json({ error: err.message });
-    }
-
-    if (result.affectedRows === 0) {
-      return res.status(404).json({ error: 'No se encontró el ticket con ese folio.' });
-    }
-
+  db.query('UPDATE tickets SET ? WHERE folio = ?', [datosActualizados, folio], (err, result) => {
+    if (err) return res.status(500).json({ error: err.message });
+    if (result.affectedRows === 0) return res.status(404).json({ error: 'No se encontró el ticket.' });
     res.json({ message: 'Ticket actualizado correctamente' });
   });
 });
 
-// Obtener usuarios
+// Usuarios y Grupos
 app.get('/api/usuarios', (req, res) => {
   db.query('SELECT * FROM usuarios', (err, results) => {
     if (err) return res.status(500).json({ error: err.message });
@@ -113,7 +100,6 @@ app.get('/api/usuarios', (req, res) => {
   });
 });
 
-// Obtener grupos
 app.get('/api/grupos', (req, res) => {
   db.query('SELECT nombre FROM grupos', (err, results) => {
     if (err) return res.status(500).json({ error: err.message });
@@ -121,17 +107,17 @@ app.get('/api/grupos', (req, res) => {
   });
 });
 
-// ==========================================
-// 2. CONFIGURACIÓN DEL FRONTEND (AL FINAL)
-// ==========================================
+// =========================================================================
+// 2. CONFIGURACIÓN DEL FRONTEND (AL FINAL, PARA NO BLOQUEAR LA API)
+// =========================================================================
 app.use(express.static(path.join(__dirname, 'dist')));
 
 app.get(/(.*)/, (req, res) => {
   res.sendFile(path.join(__dirname, 'dist', 'index.html'));
 });
 
-// Puerto del servidor
-const PORT = process.env.PORT || 3000;
+// Puerto
+const PORT = process.env.PORT || 80;
 app.listen(PORT, () => {
   console.log(`Servidor corriendo en el puerto ${PORT}`);
 });
