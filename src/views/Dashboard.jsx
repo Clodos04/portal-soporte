@@ -4,17 +4,18 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 function Dashboard({ user, tickets = [], onIrANuevaSolicitud, onIrAEncuesta, estadisticasEncuestas = [] }) {
   const safeTickets = tickets || [];
 
-  // Verificamos el rol de manera flexible (soporta 'client', 'CLIENTE', etc.)
   const rolUsuario = (user?.role || user?.nivel || '').toLowerCase();
   const esCliente = rolUsuario === 'client' || rolUsuario === 'cliente';
 
-  // VISTA DE INICIO PARA EL CLIENTE
   if (esCliente) {
     const misTicketsAbiertos = safeTickets.filter(t => t.estatus !== 'Cerrado');
     const ultimoTicket = safeTickets.length > 0 ? safeTickets[safeTickets.length - 1] : null;
     const ultimaNota = ultimoTicket && ultimoTicket.notas && ultimoTicket.notas.length > 0  
       ? ultimoTicket.notas[ultimoTicket.notas.length - 1]  
       : null;
+
+    // Verificamos si el último ticket ya tiene encuesta registrada
+    const yaEncuestado = ultimoTicket ? estadisticasEncuestas.some(e => e.folio === ultimoTicket.folio || e.ticket_id === ultimoTicket.id) : false;
 
     return (
       <div className="animate-fade-in space-y-6">
@@ -75,15 +76,17 @@ function Dashboard({ user, tickets = [], onIrANuevaSolicitud, onIrAEncuesta, est
           </div>
         </div>
 
-        <div className="bg-gradient-to-r from-indigo-900/60 to-slate-800 rounded-xl shadow-lg p-6 border border-indigo-500/30 flex justify-between items-center">
-          <div>
-            <h2 className="text-lg font-bold text-white">¿Tienes un momento?</h2>
-            <p className="text-xs text-slate-300 mt-1">Comparte tu opinión sobre la atención recibida por parte del área de soporte técnico.</p>
+        {ultimoTicket && (ultimoTicket.estatus === 'Cerrado' || ultimoTicket.estatus === 'CERRADO') && !yaEncuestado && (
+          <div className="bg-gradient-to-r from-indigo-900/60 to-slate-800 rounded-xl shadow-lg p-6 border border-indigo-500/30 flex justify-between items-center">
+            <div>
+              <h2 className="text-lg font-bold text-white">¿Tienes un momento?</h2>
+              <p className="text-xs text-slate-300 mt-1">Comparte tu opinión sobre la atención recibida por parte del área de soporte técnico.</p>
+            </div>
+            <button onClick={onIrAEncuesta} className="bg-indigo-600 hover:bg-indigo-500 text-white font-bold px-6 py-3 rounded-lg shadow-lg transition-colors text-sm">
+              📋 Contestar Encuesta TI
+            </button>
           </div>
-          <button onClick={onIrAEncuesta} className="bg-indigo-600 hover:bg-indigo-500 text-white font-bold px-6 py-3 rounded-lg shadow-lg transition-colors text-sm">
-            📋 Contestar Encuesta TI
-          </button>
-        </div>
+        )}
       </div>
     );
   }
