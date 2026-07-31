@@ -15,6 +15,7 @@ import Informes from './views/Informes';
 import EncuestaView from './views/EncuestaView';
 import GuiaTicketsView from './views/GuiaTicketsView';
 import AdminReportesView from './views/AdminReportesView';
+import SupervisorPanel from './views/SupervisorPanel'; // <--- IMPORTADO AQUÍ
 
 import AdminGruposView from './views/AdminGruposView';
 import AdminUsuariosView from './views/AdminUsuariosView';
@@ -155,7 +156,6 @@ function App() {
 
       const usuarioEncontrado = await response.json();
       
-      // Permitimos que Técnico, Técnico Supervisor y Administrador tengan acceso a soporte
       const nivel = (usuarioEncontrado.nivel || '').toUpperCase();
       const esSoporte = nivel === 'ADMINISTRADOR' || nivel === 'TECNICO SUPERVISOR' || nivel === 'TECNICO';
       const role = esSoporte ? 'support' : 'client';
@@ -316,6 +316,11 @@ function App() {
 
         {currentView === 'admin-reportes' && (
           <AdminReportesView tickets={tickets} campanas={campanas} />
+        )}
+
+        {/* VISTA DEL PANEL DE SUPERVISOR */}
+        {currentView === 'admin-supervisor-panel' && (
+          <SupervisorPanel user={user} />
         )}
 
         {currentView === 'tareas' && <Tareas />}
