@@ -8,14 +8,12 @@ function Dashboard({ user, tickets = [], onIrANuevaSolicitud, onIrAEncuesta, est
   const esCliente = rolUsuario === 'client' || rolUsuario === 'cliente';
 
   if (esCliente) {
-    // Filtramos los tickets que pertenecen al cliente actual
     const misTickets = safeTickets.filter(t => 
       t.creador && user?.name && t.creador.toLowerCase() === user.name.toLowerCase()
     );
 
     const misTicketsAbiertos = misTickets.filter(t => t.estatus !== 'Cerrado' && t.estatus !== 'CERRADO');
     
-    // Buscamos el último ticket cerrado que pertenezca al cliente y que AÚN NO tenga encuesta
     const ticketsCerradosCliente = misTickets.filter(t => t.estatus === 'Cerrado' || t.estatus === 'CERRADO');
     
     const ultimoTicketCerradoPendiente = ticketsCerradosCliente.reverse().find(t => {
@@ -90,7 +88,6 @@ function Dashboard({ user, tickets = [], onIrANuevaSolicitud, onIrAEncuesta, est
           </div>
         </div>
 
-        {/* Banner para contestar encuesta del último ticket cerrado pendiente */}
         {ultimoTicketCerradoPendiente && (
           <div className="bg-gradient-to-r from-indigo-900/60 to-slate-800 rounded-xl shadow-lg p-6 border border-indigo-500/30 flex justify-between items-center">
             <div>
@@ -127,20 +124,28 @@ function Dashboard({ user, tickets = [], onIrANuevaSolicitud, onIrAEncuesta, est
     ? Math.round((ticketsAtendidosSla / safeTickets.length) * 100)  
     : 98;
 
+  // Cálculo blindado para promedios por técnico (evita NaN)
   const encuestasPorTecnico = (estadisticasEncuestas || []).reduce((acc, curr) => {
+    if (!curr.tecnico) return acc;
     if (!acc[curr.tecnico]) {
       acc[curr.tecnico] = { suma: 0, cantidad: 0 };
     }
-    acc[curr.tecnico].suma += curr.promedio;
+    // Si viene promedio lo usamos, si no, intentamos sacar la calificación
+    const val = Number(curr.promedio) || Number(curr.calificacion) || 5;
+    acc[curr.tecnico].suma += val;
     acc[curr.tecnico].cantidad += 1;
     return acc;
   }, {});
 
-  const listaTecnicosRendimiento = Object.keys(encuestasPorTecnico).map(tec => ({
-    nombre: tec,
-    promedio: (encuestasPorTecnico[tec].suma / encuestasPorTecnico[tec].cantidad).toFixed(1),
-    evaluaciones: encuestasPorTecnico[tec].cantidad
-  }));
+  const listaTecnicosRendimiento = Object.keys(encuestasPorTecnico).map(tec => {
+    const datos = encuestasPorTecnico[tec];
+    const prom = datos.cantidad > 0 ? (datos.suma / datos.cantidad).toFixed(1) : '5.0';
+    return {
+      nombre: tec,
+      promedio: isNaN(prom) ? '5.0' : prom,
+      evaluaciones: datos.cantidad
+    };
+  });
 
   return (
     <div className="animate-fade-in">
