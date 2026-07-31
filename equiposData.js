@@ -1,4 +1,4 @@
-export const equiposPorCampana = {
+const equiposPorCampana = {
   '*111': [
     "B-01-123", "B-01-124", "B-01-122", "B-01-129", "B-01-125", "B-01-120", 
     "B-01-126", "B-01-119", "B-01-121", "B-01-118", "B-01-117", "B-01-128", 
@@ -16,3 +16,5 @@ export const equiposPorCampana = {
     "B-02-192", "B-02-191"
   ]
 };
+
+module.exports = { equiposPorCampana };
