@@ -7,11 +7,11 @@ const app = express();
 app.use(express.json());
 app.use(cors());
 
-// Configuración de la conexión a la Base de Datos MySQL
+// Configuración de la conexión a la Base de Datos MySQL (usando las credenciales de Easypanel)
 const db = mysql.createConnection({
-  host: process.env.DB_HOST || 'localhost',
-  user: process.env.DB_USER || 'root',
-  password: process.env.DB_PASSWORD || '',
+  host: process.env.DB_HOST || 'sav_db-soporte',
+  user: process.env.DB_USER || 'mysql',
+  password: process.env.DB_PASSWORD || 'db6f98fa1380ced73c0d',
   database: process.env.DB_NAME || 'sav',
   port: process.env.DB_PORT || 3306
 });
@@ -22,6 +22,39 @@ db.connect((err) => {
     return;
   }
   console.log('Conectado exitosamente a la base de datos MySQL.');
+});
+
+// --- ENDPOINT DE LOGIN ---
+app.post('/api/login', (req, res) => {
+  const { username, password } = req.body;
+
+  const query = 'SELECT * FROM usuarios WHERE username = ? AND password = ? AND estatus = "ACTIVO"';
+  db.query(query, [username, password], (err, results) => {
+    if (err) {
+      console.error('Error en el login:', err);
+      return res.status(500).json({ error: 'Error en el servidor' });
+    }
+
+    if (results.length === 0) {
+      return res.status(401).json({ error: 'Usuario o contraseña incorrectos, o usuario inactivo.' });
+    }
+
+    const usuario = results.get ? results.get(0) : results[0];
+    
+    // Mapeamos el nivel a la estructura que espera tu frontend (role / nivel)
+    res.json({
+      success: true,
+      user: {
+        id: usuario.id,
+        nombre: usuario.nombre,
+        paterno: usuario.paterno,
+        username: usuario.username,
+        role: usuario.nivel === 'ADMINISTRADOR' ? 'admin' : 'client',
+        nivel: usuario.nivel,
+        gruposAsignados: usuario.gruposAsignados
+      }
+    });
+  });
 });
 
 // Endpoint para obtener todos los tickets
@@ -114,13 +147,12 @@ app.get('/api/grupos', (req, res) => {
 // --- CONFIGURACIÓN PARA SERVIR EL FRONTEND Y EL LOGIN ---
 app.use(express.static(path.join(__dirname, 'dist')));
 
-// Corregido usando expresión regular compatible con Express moderno
 app.get(/(.*)/, (req, res) => {
   res.sendFile(path.join(__dirname, 'dist', 'index.html'));
 });
 
 // Puerto asignado por el entorno o por defecto
-const PORT = process.env.PORT || 80;
+const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`Servidor corriendo en el puerto ${PORT}`);
 });
