@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 
-function EncuestaView({ tickets, user, onRegresar, onGuardarEncuesta }) {
+function EncuestaView({ tickets, user, ticketEspecifico, onRegresar, onGuardarEncuesta }) {
   const [p1, setP1] = useState('');
   const [p2, setP2] = useState('');
   const [p3, setP3] = useState('');
@@ -9,29 +9,34 @@ function EncuestaView({ tickets, user, onRegresar, onGuardarEncuesta }) {
   const [comentarios, setComentarios] = useState('');
   const [enviado, setEnviado] = useState(false);
 
+  // Si nos pasan un ticket específico desde la tabla, lo usamos. Si no, tomamos el último del cliente.
   const ticketsCliente = user?.role === 'client' 
-    ? tickets.filter(t => t.creador.toLowerCase() === user.name.toLowerCase()) 
+    ? tickets.filter(t => t.creador && user.name && t.creador.toLowerCase() === user.name.toLowerCase()) 
     : tickets;
 
-  const ultimoTicket = ticketsCliente.length > 0 
+  const ticketActivo = ticketEspecifico || (ticketsCliente.length > 0 
     ? ticketsCliente[ticketsCliente.length - 1] 
-    : (tickets.length > 0 ? tickets[tickets.length - 1] : null);
+    : (tickets.length > 0 ? tickets[tickets.length - 1] : null));
 
-  const tecnicoNombre = ultimoTicket && ultimoTicket.tecnico && ultimoTicket.tecnico !== 'Sin Asignar' 
-    ? ultimoTicket.tecnico.toUpperCase() 
+  const tecnicoNombre = ticketActivo && ticketActivo.tecnico && ticketActivo.tecnico !== 'Sin Asignar' 
+    ? ticketActivo.tecnico.toUpperCase() 
     : 'SOPORTE GENERAL';
 
   const handleGuardar = (e) => {
     e.preventDefault();
     const suma = Number(p1 || 5) + Number(p2 || 5) + Number(p3 || 5) + Number(p4 || 5);
-    const promedioVal = suma / 4;
+    const promedioVal = Number((suma / 4).toFixed(1));
 
-    // Guardamos la encuesta vinculada específicamente al técnico
+    // ¡NUEVO! Mandamos todos los datos requeridos incluyendo el ticket_id y folio
     onGuardarEncuesta({
+      ticket_id: ticketActivo ? ticketActivo.id : null,
+      folio: ticketActivo ? ticketActivo.folio : 'S/F',
+      cliente_username: user?.username || 'cliente',
       tecnico: tecnicoNombre,
+      categoria: ticketActivo ? ticketActivo.categoria : 'General',
+      calificacion: Number(p1 || 5), // Calificación principal basada en la pregunta 1
       promedio: promedioVal,
-      respuestas: { p1, p2, p3, p4, p5, comentarios },
-      fecha: new Date().toLocaleDateString()
+      respuestas: { p1, p2, p3, p4, p5, comentarios }
     });
 
     setEnviado(true);
@@ -42,7 +47,8 @@ function EncuestaView({ tickets, user, onRegresar, onGuardarEncuesta }) {
       <div className="text-center mb-8 border-b border-slate-700 pb-6">
         <h1 className="text-3xl font-light text-white uppercase tracking-wider">Encuesta TI</h1>
         <p className="text-sm text-slate-400 mt-2 max-w-2xl mx-auto">
-          Evalúa la atención brindada por <span className="text-indigo-300 font-bold">{tecnicoNombre}</span>.
+          Evalúa la atención brindada por <span className="text-indigo-300 font-bold">{tecnicoNombre}</span> 
+          {ticketActivo && <span className="text-slate-500 block text-xs mt-1">Ticket Folio: {ticketActivo.folio}</span>}
         </p>
       </div>
 
