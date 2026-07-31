@@ -154,11 +154,16 @@ function App() {
       }
 
       const usuarioEncontrado = await response.json();
-      const role = usuarioEncontrado.nivel === 'ADMINISTRADOR' ? 'support' : 'client';
+      
+      // Permitimos que Técnico, Técnico Supervisor y Administrador tengan acceso a soporte
+      const nivel = (usuarioEncontrado.nivel || '').toUpperCase();
+      const esSoporte = nivel === 'ADMINISTRADOR' || nivel === 'TECNICO SUPERVISOR' || nivel === 'TECNICO';
+      const role = esSoporte ? 'support' : 'client';
       
       setUser({
         name: `${usuarioEncontrado.nombre} ${usuarioEncontrado.paterno}`,
         role: role,
+        nivel: usuarioEncontrado.nivel,
         username: usuarioEncontrado.username
       });
       setIsLoggedIn(true);
