@@ -59,19 +59,35 @@ app.post('/api/login', handleLogin);
 app.post('/login', handleLogin);
 
 // =========================================================================
-// TICKETS (Actualizados para prevenir el Error 500)
+// TICKETS (Ahora guardan notas de forma permanente)
 // =========================================================================
 app.get(['/api/tickets', '/tickets'], (req, res) => {
   db.query('SELECT * FROM tickets', (err, results) => {
     if (err) return res.status(500).json({ error: err.message });
-    res.json(results);
+    
+    // Desempaquetamos las notas para que React no falle al intentar leerlas
+    const ticketsFormateados = results.map(t => {
+      let notas = t.notas;
+      if (typeof notas === 'string') {
+        try { notas = JSON.parse(notas); } catch (e) { notas = []; }
+      }
+      return {
+        ...t,
+        notas: notas || []
+      };
+    });
+    
+    res.json(ticketsFormateados);
   });
 });
 
 app.post(['/api/tickets', '/tickets'], (req, res) => {
   const ticketData = { ...req.body };
   
-  // Convertimos cualquier arreglo/objeto a texto JSON para MySQL
+  // Aún eliminamos "archivos" a menos que también le crees una columna en MySQL
+  delete ticketData.archivos;
+  
+  // Convertimos arreglos (como las notas) a texto JSON para poder guardarlo en MySQL
   for (let key in ticketData) {
     if (typeof ticketData[key] === 'object' && ticketData[key] !== null) {
       ticketData[key] = JSON.stringify(ticketData[key]);
@@ -87,10 +103,10 @@ app.post(['/api/tickets', '/tickets'], (req, res) => {
 app.put(['/api/tickets/:folio', '/tickets/:folio'], (req, res) => {
   const ticketData = { ...req.body };
   
-  // Eliminamos el folio del cuerpo para no reescribir la Llave Primaria
   delete ticketData.folio;
+  delete ticketData.archivos; // Aún ignoramos archivos para evitar Error 500
 
-  // Convertimos cualquier arreglo/objeto a texto JSON para MySQL
+  // Empaquetamos notas y otros arreglos
   for (let key in ticketData) {
     if (typeof ticketData[key] === 'object' && ticketData[key] !== null) {
       ticketData[key] = JSON.stringify(ticketData[key]);
@@ -109,7 +125,6 @@ app.get(['/api/usuarios', '/usuarios'], (req, res) => {
   db.query('SELECT * FROM usuarios', (err, results) => {
     if (err) return res.status(500).json({ error: err.message });
     
-    // Blindamos gruposAsignados para que siempre sea un arreglo y no rompa la app
     const usuariosFormateados = results.map(u => {
       let grupos = u.gruposAsignados;
       if (typeof grupos === 'string') {
@@ -122,7 +137,7 @@ app.get(['/api/usuarios', '/usuarios'], (req, res) => {
   });
 });
 
-// Grupos (Corrección para pantalla blanca: devuelve SOLO textos)
+// Grupos
 app.get(['/api/grupos', '/grupos'], (req, res) => {
   db.query('SELECT nombre FROM grupos', (err, results) => {
     if (err) return res.status(500).json({ error: err.message });
@@ -146,7 +161,7 @@ app.delete(['/api/grupos/:nombre', '/grupos/:nombre'], (req, res) => {
   });
 });
 
-// Campañas (Corrección para pantalla blanca: devuelve textos)
+// Campañas
 app.get(['/api/campanas', '/campanas'], (req, res) => {
   db.query('SELECT * FROM campanas', (err, results) => {
     if (err) return res.status(500).json({ error: err.message });
@@ -154,7 +169,7 @@ app.get(['/api/campanas', '/campanas'], (req, res) => {
   });
 });
 
-// Categorías (Corrección para evitar cierre al entrar a una categoría)
+// Categorías
 app.get(['/api/categorias', '/categorias'], (req, res) => {
   db.query('SELECT * FROM categorias', (err, results) => {
     if (err) return res.status(500).json({ error: err.message });
@@ -174,7 +189,6 @@ app.get(['/api/categorias', '/categorias'], (req, res) => {
   });
 });
 
-// Sincronizar Categorías (Evita el error en consola cuando React intenta guardar)
 app.post(['/api/categorias/sincronizar', '/categorias/sincronizar'], (req, res) => {
   res.json({ success: true, message: 'Sincronizado' });
 });
