@@ -54,23 +54,11 @@ function inicializarBaseDeDatos() {
     )`,
     `CREATE TABLE IF NOT EXISTS categorias (
       id INT AUTO_INCREMENT PRIMARY KEY,
-      nombre VARCHAR(100) UNIQUE,
+      nombre VARCHAR(150) UNIQUE,
       estatus VARCHAR(50) DEFAULT 'ACTIVO',
-      fec_alta DATETIME DEFAULT CURRENT_TIMESTAMP,
+      fec_alta VARCHAR(100),
       usuario VARCHAR(150) DEFAULT 'ADMINISTRADOR',
-      sla INT DEFAULT 24
-    )`,
-    `CREATE TABLE IF NOT EXISTS categorias_tree (
-      id INT AUTO_INCREMENT PRIMARY KEY,
-      nombre VARCHAR(100)
-    )`,
-    `CREATE TABLE IF NOT EXISTS subcategorias (
-      id INT AUTO_INCREMENT PRIMARY KEY,
-      nombre VARCHAR(100)
-    )`,
-    `CREATE TABLE IF NOT EXISTS elementos (
-      id INT AUTO_INCREMENT PRIMARY KEY,
-      nombre VARCHAR(100)
+      subcategorias LONGTEXT
     )`,
     `CREATE TABLE IF NOT EXISTS tickets (
       id INT AUTO_INCREMENT PRIMARY KEY,
@@ -107,23 +95,6 @@ function inicializarBaseDeDatos() {
       if (err) console.error('Error creando tabla:', err);
     });
   });
-
-  // Asegurar columnas en la tabla categorias de forma segura
-  setTimeout(() => {
-    const alters = [
-      `ALTER TABLE categorias ADD COLUMN estatus VARCHAR(50) DEFAULT 'ACTIVO'`,
-      `ALTER TABLE categorias ADD COLUMN fec_alta DATETIME DEFAULT CURRENT_TIMESTAMP`,
-      `ALTER TABLE categorias ADD COLUMN usuario VARCHAR(150) DEFAULT 'ADMINISTRADOR'`,
-      `ALTER TABLE categorias ADD COLUMN sla INT DEFAULT 24`
-    ];
-    alters.forEach(query => {
-      db.query(query, (err) => {
-        if (err && err.errno !== 1060) {
-          console.error('Nota en actualización de tabla:', err.message);
-        }
-      });
-    });
-  }, 500);
 
   // Insertar usuarios iniciales si la tabla está vacía
   setTimeout(() => {
@@ -175,17 +146,21 @@ function inicializarBaseDeDatos() {
     });
   }, 1400);
 
-  // Insertar categorías iniciales usando categoriasData.cjs si la tabla está vacía
+  // Insertar categorías jerárquicas iniciales desde categoriasData.cjs si la tabla está vacía
   setTimeout(() => {
     db.query(`SELECT COUNT(*) as count FROM categorias`, (err, results) => {
       if (!err && results[0].count === 0 && categoriasIniciales) {
         categoriasIniciales.forEach(cat => {
+          const subsStr = JSON.stringify(cat.subcategorias || []);
           db.query(
-            `INSERT IGNORE INTO categorias (nombre, estatus, fec_alta, usuario, sla) VALUES (?, 'ACTIVO', NOW(), 'ADMINISTRADOR', 24)`,
-            [cat]
+            `INSERT INTO categorias (nombre, estatus, fec_alta, usuario, subcategorias) VALUES (?, ?, ?, ?, ?)`,
+            [cat.nombre, cat.estatus || 'ACTIVO', cat.fecAlta || 'N/D', cat.usuario || 'ADMINISTRADOR', subsStr],
+            (insertErr) => {
+              if (insertErr) console.error('Error insertando categoría inicial:', insertErr);
+            }
           );
         });
-        console.log('Categorías iniciales cargadas desde categoriasData.cjs.');
+        console.log('Categorías jerárquicas iniciales cargadas desde categoriasData.cjs.');
       }
     });
   }, 1600);
@@ -296,11 +271,15 @@ app.delete('/api/campanas/:nombre', (req, res) => {
   });
 });
 
-// --- ENDPOINTS DE CATEGORÍAS ---
+// --- ENDPOINTS DE CATEGORÍAS (ÁRBOL COMPLETO) ---
 app.get('/api/categorias', (req, res) => {
   db.query(`SELECT * FROM categorias`, (err, results) => {
     if (err) return res.status(500).json({ error: err.message });
-    res.json(results);
+    const categoriasParseadas = results.map(cat => ({
+      ...cat,
+      subcategorias: JSON.parse(cat.subcategorias || '[]')
+    }));
+    res.json(categoriasParseadas);
   });
 });
 
@@ -317,17 +296,20 @@ app.post('/api/categorias/sincronizar', (req, res) => {
       return res.json({ message: 'Categorías sincronizadas correctamente' });
     }
 
-    const values = nuevasCategorias.map(c => [
-      c.nombre || c, 
-      c.estatus || 'ACTIVO', 
-      c.fec_alta || new Date(), 
-      c.usuario || 'ADMINISTRADOR', 
-      c.sla || 24
-    ]);
-    
-    db.query(`INSERT INTO categorias (nombre, estatus, fec_alta, usuario, sla) VALUES ?`, [values], (insertErr) => {
-      if (insertErr) return res.status(500).json({ error: insertErr.message });
-      res.json({ message: 'Categorías sincronizadas correctamente' });
+    let count = 0;
+    nuevasCategorias.forEach(cat => {
+      const subsStr = JSON.stringify(cat.subcategorias || []);
+      db.query(
+        `INSERT INTO categorias (nombre, estatus, fec_alta, usuario, subcategorias) VALUES (?, ?, ?, ?, ?)`,
+        [cat.nombre, cat.estatus || 'ACTIVO', cat.fecAlta || 'N/D', cat.usuario || 'ADMINISTRADOR', subsStr],
+        (insertErr) => {
+          if (insertErr) console.error('Error sincronizando categoría:', insertErr);
+          count++;
+          if (count === nuevasCategorias.length) {
+            res.json({ message: 'Categorías sincronizadas correctamente' });
+          }
+        }
+      );
     });
   });
 });
