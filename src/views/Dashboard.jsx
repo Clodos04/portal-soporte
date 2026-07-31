@@ -8,14 +8,28 @@ function Dashboard({ user, tickets = [], onIrANuevaSolicitud, onIrAEncuesta, est
   const esCliente = rolUsuario === 'client' || rolUsuario === 'cliente';
 
   if (esCliente) {
-    const misTicketsAbiertos = safeTickets.filter(t => t.estatus !== 'Cerrado');
-    const ultimoTicket = safeTickets.length > 0 ? safeTickets[safeTickets.length - 1] : null;
-    const ultimaNota = ultimoTicket && ultimoTicket.notas && ultimoTicket.notas.length > 0  
-      ? ultimoTicket.notas[ultimoTicket.notas.length - 1]  
-      : null;
+    // Filtramos los tickets que pertenecen al cliente actual
+    const misTickets = safeTickets.filter(t => 
+      t.creador && user?.name && t.creador.toLowerCase() === user.name.toLowerCase()
+    );
 
-    // Verificamos si el último ticket ya tiene encuesta registrada
-    const yaEncuestado = ultimoTicket ? estadisticasEncuestas.some(e => e.folio === ultimoTicket.folio || e.ticket_id === ultimoTicket.id) : false;
+    const misTicketsAbiertos = misTickets.filter(t => t.estatus !== 'Cerrado' && t.estatus !== 'CERRADO');
+    
+    // Buscamos el último ticket cerrado que pertenezca al cliente y que AÚN NO tenga encuesta
+    const ticketsCerradosCliente = misTickets.filter(t => t.estatus === 'Cerrado' || t.estatus === 'CERRADO');
+    
+    const ultimoTicketCerradoPendiente = ticketsCerradosCliente.reverse().find(t => {
+      return !estadisticasEncuestas.some(e => 
+        (t.folio && e.folio && String(e.folio).trim() === String(t.folio).trim()) || 
+        (t.id && e.ticket_id && Number(e.ticket_id) === Number(t.id))
+      );
+    });
+
+    const ultimoTicketGeneral = misTickets.length > 0 ? misTickets[misTickets.length - 1] : (safeTickets.length > 0 ? safeTickets[safeTickets.length - 1] : null);
+    
+    const ultimaNota = ultimoTicketGeneral && ultimoTicketGeneral.notas && ultimoTicketGeneral.notas.length > 0  
+      ? ultimoTicketGeneral.notas[ultimoTicketGeneral.notas.length - 1]  
+      : null;
 
     return (
       <div className="animate-fade-in space-y-6">
@@ -50,23 +64,23 @@ function Dashboard({ user, tickets = [], onIrANuevaSolicitud, onIrAEncuesta, est
 
           <div className="bg-slate-800 rounded-xl shadow-lg p-6 border border-slate-700">
             <h2 className="text-lg font-bold text-indigo-300 mb-4">Última Actualización / Respuesta</h2>
-            {!ultimoTicket ? (
+            {!ultimoTicketGeneral ? (
               <p className="text-slate-400 italic">Aún no has registrado ningún ticket.</p>
             ) : (
               <div className="bg-slate-700/50 p-4 rounded-lg border border-slate-600 space-y-2">
                 <div className="flex justify-between text-xs text-slate-400 border-b border-slate-600 pb-2">
-                  <span className="font-bold text-white">Folio #{ultimoTicket.folio}: {ultimoTicket.asunto}</span>
-                  <span>{ultimoTicket.fecha}</span>
+                  <span className="font-bold text-white">Folio #{ultimoTicketGeneral.folio}: {ultimoTicketGeneral.asunto}</span>
+                  <span>{ultimoTicketGeneral.fecha}</span>
                 </div>
                 {ultimaNota ? (
                   <div>
                     <p className="text-xs text-indigo-300 font-semibold mb-1">Nota de {ultimaNota.autor} ({ultimaNota.fecha}):</p>
                     <p className="text-sm text-slate-200">{ultimaNota.texto}</p>
                   </div>
-                ) : ultimoTicket.resolucion ? (
+                ) : ultimoTicketGeneral.resolucion ? (
                   <div>
                     <p className="text-xs text-green-300 font-semibold mb-1">Resolución:</p>
-                    <p className="text-sm text-slate-200">{ultimoTicket.resolucion}</p>
+                    <p className="text-sm text-slate-200">{ultimoTicketGeneral.resolucion}</p>
                   </div>
                 ) : (
                   <p className="text-sm text-slate-400 italic">Tu ticket ha sido creado y está en espera de revisión por el equipo técnico.</p>
@@ -76,11 +90,12 @@ function Dashboard({ user, tickets = [], onIrANuevaSolicitud, onIrAEncuesta, est
           </div>
         </div>
 
-        {ultimoTicket && (ultimoTicket.estatus === 'Cerrado' || ultimoTicket.estatus === 'CERRADO') && !yaEncuestado && (
+        {/* Banner para contestar encuesta del último ticket cerrado pendiente */}
+        {ultimoTicketCerradoPendiente && (
           <div className="bg-gradient-to-r from-indigo-900/60 to-slate-800 rounded-xl shadow-lg p-6 border border-indigo-500/30 flex justify-between items-center">
             <div>
               <h2 className="text-lg font-bold text-white">¿Tienes un momento?</h2>
-              <p className="text-xs text-slate-300 mt-1">Comparte tu opinión sobre la atención recibida por parte del área de soporte técnico.</p>
+              <p className="text-xs text-slate-300 mt-1">Comparte tu opinión sobre la atención recibida en tu ticket cerrado <strong className="text-white">#{ultimoTicketCerradoPendiente.folio}</strong>.</p>
             </div>
             <button onClick={onIrAEncuesta} className="bg-indigo-600 hover:bg-indigo-500 text-white font-bold px-6 py-3 rounded-lg shadow-lg transition-colors text-sm">
               📋 Contestar Encuesta TI
@@ -91,7 +106,7 @@ function Dashboard({ user, tickets = [], onIrANuevaSolicitud, onIrAEncuesta, est
     );
   }
 
-  // --- VISTA DE INICIO PARA SOPORTE TI / TECNICOS / ADMINISTRADORES ---
+  // --- VISTA DE SOPORTE / ADMINISTRADORES ---
   const totalAbiertas = safeTickets.filter(t => t.estatus === 'Abierto').length;
   const totalEnProceso = safeTickets.filter(t => t.estatus === 'En Proceso').length;
 
