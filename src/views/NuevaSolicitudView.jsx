@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { equiposPorCampana } from '../data/equiposData.cjs';
-import { listaCampanas } from '../data/campanasData.cjs'; // Asegúrate de ajustar la ruta si es necesario
+import { equiposPorCampana } from '../../equiposData.cjs';
+import { listaCampanas } from '../../campanasData.cjs';
 import AsistenteTipificacionView from './AsistenteTipificacionView';
 
 function NuevaSolicitudView({ user, usuarios = [], grupos = [], campanas = [], usuariosPorGrupo = {}, categorias = [], onVolver, onGuardar }) {
@@ -32,7 +32,6 @@ function NuevaSolicitudView({ user, usuarios = [], grupos = [], campanas = [], u
   const [asunto, setAsunto] = useState('');
   const [descripcion, setDescripcion] = useState('');
 
-  // Se consumen directamente desde equiposData.cjs
   const listaEquiposActuales = equiposPorCampana[campana] || [];
 
   const [equiposSeleccionados, setEquiposSeleccionados] = useState([]);
