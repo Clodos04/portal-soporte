@@ -1,7 +1,21 @@
 import React, { useState } from 'react';
-import { listaCampanas } from '../data/campanasData';
-import { equiposPorCampana } from '../data/equiposData';
 import AsistenteTipificacionView from './AsistenteTipificacionView';
+
+const listaCampanas = [
+  "TI",
+  "OPERACIONES",
+  "VENTAS",
+  "ADMINISTRACION",
+  "*111"
+];
+
+const equiposPorCampana = {
+  "TI": ["CPU", "DIADEMA", "IMPRESORA", "MONITOR", "MOUSE", "TECLADO", "TELEFONO", "DISCO DURO"],
+  "OPERACIONES": ["DIADEMA", "TELEFONO", "CPU", "MONITOR"],
+  "VENTAS": ["TELEFONO", "LAPTOP", "DIADEMA"],
+  "ADMINISTRACION": ["CPU", "MONITOR", "IMPRESORA", "TECLADO"],
+  "*111": ["TELEFONO", "DIADEMA"]
+};
 
 function NuevaSolicitudView({ user, usuarios = [], grupos = [], campanas = [], usuariosPorGrupo = {}, categorias = [], onVolver, onGuardar }) {
   const [estado, setEstado] = useState('ABIERTO');
@@ -19,7 +33,6 @@ function NuevaSolicitudView({ user, usuarios = [], grupos = [], campanas = [], u
   const elementosDisponibles = subcategoriaObj ? (subcategoriaObj?.elementos || []) : [];
   const [elemento, setElemento] = useState('');
 
-  // Estado para controlar la apertura del modal del Asistente Guiado
   const [isAsistenteOpen, setIsAsistenteOpen] = useState(false);
 
   const campanasDisponibles = campanas.length > 0 ? campanas : listaCampanas;
@@ -30,7 +43,6 @@ function NuevaSolicitudView({ user, usuarios = [], grupos = [], campanas = [], u
   const clientesDisponibles = usuarios.filter(u => u.campana === campana && u.estatus === 'ACTIVO');
   
   const [nombreCliente, setNombreCliente] = useState('');
-  
   const [asunto, setAsunto] = useState('');
   const [descripcion, setDescripcion] = useState('');
 
@@ -47,7 +59,6 @@ function NuevaSolicitudView({ user, usuarios = [], grupos = [], campanas = [], u
     const nuevaCampana = e.target.value;
     setCampana(nuevaCampana);
     setAreaCliente(nuevaCampana);
-    
     setEquiposSeleccionados([]);
 
     const filtrados = usuarios.filter(u => u.campana === nuevaCampana && u.estatus === 'ACTIVO');
@@ -71,18 +82,11 @@ function NuevaSolicitudView({ user, usuarios = [], grupos = [], campanas = [], u
     setElemento('');
   };
 
-  // Función que recibe la selección del asistente y autocompleta los selectores
   const handleSeleccionarTipificacionDelAsistente = (resultado) => {
-    if (resultado.categoria) {
-      setCategoria(resultado.categoria.nombre);
-    }
-    if (resultado.subcategoria) {
-      setSubCategoria(resultado.subcategoria.nombre);
-    }
-    if (resultado.elemento) {
-      setElemento(resultado.elemento.nombre);
-    }
-    setIsAsistenteOpen(false); // Cierra el asistente
+    if (resultado.categoria) setCategoria(resultado.categoria.nombre);
+    if (resultado.subcategoria) setSubCategoria(resultado.subcategoria.nombre);
+    if (resultado.elemento) setElemento(resultado.elemento.nombre);
+    setIsAsistenteOpen(false);
   };
 
   const handleSubmit = (e) => {
@@ -174,8 +178,6 @@ function NuevaSolicitudView({ user, usuarios = [], grupos = [], campanas = [], u
             </div>
 
             <div className="space-y-4">
-              
-              {/* Botón de Ayuda: Asistente Guiado de Tipificación */}
               <div className="flex justify-between items-center mb-1">
                 <label className="block text-xs font-bold text-slate-300 uppercase">Categorización del Ticket:</label>
                 <button
@@ -219,7 +221,6 @@ function NuevaSolicitudView({ user, usuarios = [], grupos = [], campanas = [], u
             </div>
           </div>
 
-          {/* Modal del Asistente Guiado */}
           {isAsistenteOpen && (
             <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm flex justify-center items-center z-50 p-4">
               <div className="max-w-3xl w-full">
@@ -286,7 +287,6 @@ function NuevaSolicitudView({ user, usuarios = [], grupos = [], campanas = [], u
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
-            
             <div>
               <label className="block text-xs font-bold text-slate-300 uppercase mb-1.5">Equipo (Seleccione uno o más):</label>
               <div className="w-full h-36 overflow-y-auto px-3 py-2 rounded-lg bg-slate-900 border border-slate-700 text-white text-sm space-y-1.5">
@@ -352,7 +352,6 @@ function NuevaSolicitudView({ user, usuarios = [], grupos = [], campanas = [], u
                 </select>
               </div>
             </div>
-
           </div>
 
           <div className="pt-2">
