@@ -111,7 +111,6 @@ function SolicitudesView({
                 </tr>
               ) : (
                 ticketsFiltrados.map((ticket) => {
-                  // Validación estricta para evitar falsos positivos
                   const yaEncuestado = estadisticasEncuestas.some(e => 
                     (ticket.folio && e.folio && String(e.folio).trim() === String(ticket.folio).trim()) || 
                     (ticket.id && e.ticket_id && Number(e.ticket_id) === Number(ticket.id))
@@ -185,4 +184,4 @@ function SolicitudesView({
   );
 }
 
-exports default SolicitudesView; // o export default SolicitudesView según tu archivo
+export default SolicitudesView;
