@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { listaCampanas } from '../data/campanasData';
 
-function AdminUsuariosView({ grupos = [], usuarios = [], setUsuarios }) {
+function AdminUsuariosView({ grupos: gruposProp = [], usuarios = [], setUsuarios }) {
   const [modo, setModo] = useState('lista');
   const [usuarioActual, setUsuarioActual] = useState(null);
+  const [gruposDisponibles, setGruposDisponibles] = useState(gruposProp);
 
   const [formNombre, setFormNombre] = useState('');
   const [formPaterno, setFormPaterno] = useState('');
@@ -14,6 +15,16 @@ function AdminUsuariosView({ grupos = [], usuarios = [], setUsuarios }) {
   const [formCampana, setFormCampana] = useState(listaCampanas[0]);
   const [formEstatus, setFormEstatus] = useState('ACTIVO');
   const [formGrupos, setFormGrupos] = useState([]);
+
+  // Cargar grupos desde la API si no vienen como props
+  useEffect(() => {
+    fetch('/api/grupos')
+      .then(res => res.json())
+      .then(data => {
+        if (Array.isArray(data)) setGruposDisponibles(data);
+      })
+      .catch(err => console.error('Error al cargar grupos:', err));
+  }, []);
 
   const abrirNuevo = () => {
     setFormNombre('');
@@ -237,7 +248,7 @@ function AdminUsuariosView({ grupos = [], usuarios = [], setUsuarios }) {
         <div className="space-y-2 bg-slate-900/50 p-4 rounded-lg border border-slate-700">
           <label className="block text-xs font-bold text-slate-300 uppercase">Grupos de Soporte Asignados:</label>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-2 max-h-40 overflow-y-auto pr-2">
-            {grupos.map((g, idx) => (
+            {gruposDisponibles.map((g, idx) => (
               <label key={idx} className="flex items-center gap-2 cursor-pointer text-sm text-slate-300 hover:text-white">
                 <input type="checkbox" checked={formGrupos.includes(g)} onChange={() => toggleGrupoAsignado(g)} className="accent-blue-500 w-4 h-4 rounded" />
                 <span className="truncate">{g}</span>
