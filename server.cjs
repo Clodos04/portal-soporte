@@ -110,6 +110,7 @@ app.get('/api/grupos', (req, res) => {
   });
 });
 
+// Configurado de vuelta en el puerto 80 tal como lo tenías originalmente
 const PORT = process.env.PORT || 80;
 app.listen(PORT, () => {
   console.log(`Servidor corriendo en el puerto ${PORT}`);
