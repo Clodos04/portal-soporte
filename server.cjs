@@ -3,11 +3,11 @@ const mysql = require('mysql2');
 const cors = require('cors');
 const path = require('path');
 
-// Importamos los datos directamente desde la raíz del proyecto
-const { categoriasIniciales } = require('./categoriasData.js');
-const { listaCampanas } = require('./campanasData.js');
-const { usuariosIniciales } = require('./usuariosData.js');
-const { equiposPorCampana } = require('./equiposData.js');
+// Importamos usando la extensión .cjs para evitar conflictos con ES Modules
+const { categoriasIniciales } = require('./categoriasData.cjs');
+const { listaCampanas } = require('./campanasData.cjs');
+const { usuariosIniciales } = require('./usuariosData.cjs');
+const { equiposPorCampana } = require('./equiposData.cjs');
 
 const app = express();
 app.use(express.json());
@@ -56,7 +56,7 @@ db.connect((err) => {
     );
   `, (err) => { if (err) console.error('Error tabla tickets:', err); });
 
-  // 2. Tabla de Usuarios (Cargados desde usuariosData.js si está vacía)
+  // 2. Tabla de Usuarios (Cargados desde usuariosData.cjs si está vacía)
   db.query(`
     CREATE TABLE IF NOT EXISTS usuarios (
       id INT AUTO_INCREMENT PRIMARY KEY,
@@ -106,7 +106,7 @@ db.connect((err) => {
     }
   });
 
-  // 4. Tabla de Campañas (Cargadas desde campanasData.js)
+  // 4. Tabla de Campañas (Cargadas desde campanasData.cjs)
   db.query(`
     CREATE TABLE IF NOT EXISTS campanas (
       id INT AUTO_INCREMENT PRIMARY KEY,
@@ -125,7 +125,7 @@ db.connect((err) => {
     }
   });
 
-  // 5. Tabla de Categorías (Cargadas desde categoriasData.js)
+  // 5. Tabla de Categorías (Cargadas desde categoriasData.cjs)
   db.query(`
     CREATE TABLE IF NOT EXISTS categorias_tree (
       id INT PRIMARY KEY,
