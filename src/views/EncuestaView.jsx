@@ -27,16 +27,16 @@ function EncuestaView({ tickets, user, ticketEspecifico, onRegresar, onGuardarEn
     const suma = Number(p1 || 5) + Number(p2 || 5) + Number(p3 || 5) + Number(p4 || 5);
     const promedioVal = Number((suma / 4).toFixed(1));
 
-    // ¡NUEVO! Mandamos todos los datos requeridos incluyendo el ticket_id y folio
     onGuardarEncuesta({
       ticket_id: ticketActivo ? ticketActivo.id : null,
       folio: ticketActivo ? ticketActivo.folio : 'S/F',
       cliente_username: user?.username || 'cliente',
       tecnico: tecnicoNombre,
       categoria: ticketActivo ? ticketActivo.categoria : 'General',
-      calificacion: Number(p1 || 5), // Calificación principal basada en la pregunta 1
+      calificacion: Number(p1 || 5), 
       promedio: promedioVal,
-      respuestas: { p1, p2, p3, p4, p5, comentarios }
+      comentarios: comentarios, // <--- Enviado independiente para la columna MySQL
+      respuestas: { p1, p2, p3, p4, p5 }
     });
 
     setEnviado(true);
