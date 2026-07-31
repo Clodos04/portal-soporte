@@ -25,7 +25,7 @@ db.connect((err) => {
 });
 
 // Importar usuarios iniciales
-const { usuariosIniciales } = require('./usuariosIniciales.cjs');
+const { usuariosIniciales } = require('./usuariosData.cjs');
 
 function inicializarBaseDeDatos() {
   const createTablesQueries = [
