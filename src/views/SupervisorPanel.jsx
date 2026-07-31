@@ -26,7 +26,6 @@ function SupervisorPanel({ user }) {
           fetch('/api/usuarios').then(res => res.json())
         ]);
 
-        // Formatear notas de los tickets de forma segura
         const ticketsFormateados = (resTickets || []).map(t => {
           let notas = t.notas;
           if (typeof notas === 'string') {
@@ -67,17 +66,23 @@ function SupervisorPanel({ user }) {
   const idsFiltrados = new Set(ticketsFiltrados.map(t => t.id));
   const tiemposFiltrados = kpiTiempos.filter(k => idsFiltrados.has(k.id));
   
+  // Cálculo exacto de tiempo promedio en minutos basado en el servidor
   let tiempoPromedioMinutos = 0;
   if (tiemposFiltrados.length > 0) {
-    const sumaMinutos = tiemposFiltrados.reduce((acc, curr) => acc + (curr.minutos_resolucion || 0), 0);
+    const sumaMinutos = tiemposFiltrados.reduce((acc, curr) => acc + (Number(curr.minutos_resolucion) || 0), 0);
     tiempoPromedioMinutos = Math.round(sumaMinutos / tiemposFiltrados.length);
   }
 
-  const historialEncuestasFiltrado = encuestasData.historial.filter(e => idsFiltrados.has(e.ticket_id));
+  // Filtrar encuestas según los tickets filtrados
+  const historialEncuestasFiltrado = encuestasData.historial.filter(e => idsFiltrados.has(e.ticket_id) || idsFiltrados.has(e.folio));
+  
+  // Promedio CSAT global idéntico al que calcula el servidor/dashboard
   let promedioCSAT = 0;
   if (historialEncuestasFiltrado.length > 0) {
-    const sumaCalif = historialEncuestasFiltrado.reduce((acc, curr) => acc + (curr.calificacion || 0), 0);
+    const sumaCalif = historialEncuestasFiltrado.reduce((acc, curr) => acc + (Number(curr.promedio) || Number(curr.calificacion) || 0), 0);
     promedioCSAT = (sumaCalif / historialEncuestasFiltrado.length).toFixed(1);
+  } else if (encuestasData.estadisticas?.promedio) {
+    promedioCSAT = encuestasData.estadisticas.promedio;
   }
 
   if (loading) {
@@ -161,7 +166,7 @@ function SupervisorPanel({ user }) {
             <span className="text-3xl font-extrabold text-green-400 font-mono">
               {tiempoPromedioMinutos} <span className="text-sm font-normal text-slate-400">min</span>
             </span>
-            <span className="text-xs text-slate-400">({Math.round(tiempoPromedioMinutos / 60)} hrs aprox)</span>
+            <span className="text-xs text-slate-400">({(tiempoPromedioMinutos / 60).toFixed(1)} hrs aprox)</span>
           </div>
         </div>
 
@@ -235,7 +240,7 @@ function SupervisorPanel({ user }) {
                       <td className="px-4 py-3 text-center">
                         {encuestaAsociada ? (
                           <span className="font-extrabold text-yellow-400 bg-yellow-400/10 px-2.5 py-1 rounded-full border border-yellow-400/30">
-                            ★ {encuestaAsociada.calificacion} / 5
+                            ★ {encuestaAsociada.calificacion || encuestaAsociada.promedio} / 5
                           </span>
                         ) : (
                           <span className="text-slate-500 text-xs italic">Pendiente / Sin responder</span>
@@ -262,7 +267,6 @@ function SupervisorPanel({ user }) {
         </div>
       </div>
 
-      {/* Modal para ver detalles y comentarios sincronizados */}
       {encuestaModal && (
         <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm flex justify-center items-center z-50 p-4">
           <div className="bg-slate-800 border border-slate-700 rounded-2xl shadow-2xl max-w-lg w-full overflow-hidden text-slate-200 p-6 space-y-4 animate-fade-in">
@@ -278,7 +282,7 @@ function SupervisorPanel({ user }) {
                 <p><strong className="text-slate-400">Cliente:</strong> {encuestaModal.cliente_username}</p>
                 <p><strong className="text-slate-400">Técnico Atendió:</strong> {encuestaModal.tecnico || 'N/D'}</p>
                 <p><strong className="text-slate-400">Categoría:</strong> {encuestaModal.categoria || 'N/D'}</p>
-                <p><strong className="text-slate-400">Calificación Asignada:</strong> <span className="text-yellow-400 font-bold text-base">★ {encuestaModal.calificacion} de 5</span></p>
+                <p><strong className="text-slate-400">Calificación Asignada:</strong> <span className="text-yellow-400 font-bold text-base">★ {encuestaModal.calificacion || encuestaModal.promedio} de 5</span></p>
                 <p><strong className="text-slate-400">Fecha de Respuesta:</strong> {new Date(encuestaModal.fecha_respuesta).toLocaleString()}</p>
               </div>
 
