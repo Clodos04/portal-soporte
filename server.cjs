@@ -211,9 +211,11 @@ app.get(['/api/elementos', '/elementos'], (req, res) => {
 
 // 1. Guardar nueva encuesta en la base de datos
 app.post(['/api/encuestas', '/encuestas'], (req, res) => {
-  // Aseguramos que la fecha no cause conflicto, MySQL la pone en automático
   const data = { ...req.body };
+  
+  // ELIMINAMOS los datos que manda React pero que NO van en la tabla MySQL
   if (data.fecha_respuesta) delete data.fecha_respuesta;
+  if (data.promedio) delete data.promedio;
 
   db.query('INSERT INTO encuestas SET ?', data, (err, result) => {
     if (err) return res.status(500).json({ error: err.message });
