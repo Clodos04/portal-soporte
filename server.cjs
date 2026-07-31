@@ -107,12 +107,22 @@ function inicializarBaseDeDatos() {
     });
   });
 
-  // Asegurar columnas en la tabla categorias si ya existía de antes
+  // Asegurar columnas en la tabla categorias de forma segura (ignorando si ya existen)
   setTimeout(() => {
-    db.query(`ALTER TABLE categorias ADD COLUMN IF NOT EXISTS estatus VARCHAR(50) DEFAULT 'ACTIVO'`);
-    db.query(`ALTER TABLE categorias ADD COLUMN IF NOT EXISTS fec_alta DATETIME DEFAULT CURRENT_TIMESTAMP`);
-    db.query(`ALTER TABLE categorias ADD COLUMN IF NOT EXISTS usuario VARCHAR(150) DEFAULT 'ADMINISTRADOR'`);
-    db.query(`ALTER TABLE categorias ADD COLUMN IF NOT EXISTS sla INT DEFAULT 24`);
+    const alters = [
+      `ALTER TABLE categorias ADD COLUMN estatus VARCHAR(50) DEFAULT 'ACTIVO'`,
+      `ALTER TABLE categorias ADD COLUMN fec_alta DATETIME DEFAULT CURRENT_TIMESTAMP`,
+      `ALTER TABLE categorias ADD COLUMN usuario VARCHAR(150) DEFAULT 'ADMINISTRADOR'`,
+      `ALTER TABLE categorias ADD COLUMN sla INT DEFAULT 24`
+    ];
+    alters.forEach(query => {
+      db.query(query, (err) => {
+        // El código 1060 significa "Duplicate column name", lo cual es normal si ya existían
+        if (err && err.errno !== 1060) {
+          console.error('Nota en actualización de tabla:', err.message);
+        }
+      });
+    });
   }, 500);
 
   // Insertar usuarios iniciales si la tabla está vacía
