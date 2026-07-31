@@ -38,19 +38,22 @@ const handleLogin = (req, res) => {
     if (results.length === 0) return res.status(401).json({ error: 'Credenciales incorrectas o usuario inactivo.' });
 
     const usuario = results[0];
+    
     res.json({
       success: true,
       user: {
         id: usuario.id,
+        // Estas dos propiedades coinciden EXACTAMENTE con tu Header.jsx
+        name: `${usuario.nombre || ''} ${usuario.paterno || ''}`.trim(),
+        role: usuario.nivel === 'ADMINISTRADOR' ? 'support' : 'client',
+        
+        // Mantenemos el resto por si otras vistas lo llegan a ocupar
+        username: usuario.username,
+        nivel: usuario.nivel,
+        gruposAsignados: usuario.gruposAsignados,
         nombre: usuario.nombre || '',
         paterno: usuario.paterno || '',
-        materno: usuario.materno || '',
-        nombres: usuario.nombre || '',
-        apellidos: usuario.paterno || '',
-        username: usuario.username,
-        role: usuario.nivel === 'ADMINISTRADOR' ? 'admin' : 'client',
-        nivel: usuario.nivel,
-        gruposAsignados: usuario.gruposAsignados
+        materno: usuario.materno || ''
       }
     });
   });
@@ -73,6 +76,7 @@ app.post(['/api/tickets', '/tickets'], (req, res) => {
   });
 });
 
+// Endpoint para actualizar tickets dinámicamente
 app.put(['/api/tickets/:folio', '/tickets/:folio'], (req, res) => {
   db.query('UPDATE tickets SET ? WHERE folio = ?', [req.body, req.params.folio], (err, result) => {
     if (err) return res.status(500).json({ error: err.message });
@@ -97,7 +101,7 @@ app.get(['/api/grupos', '/grupos'], (req, res) => {
   });
 });
 
-// Campañas (Consulta directa a la tabla real)
+// Campañas
 app.get(['/api/campanas', '/campanas'], (req, res) => {
   db.query('SELECT * FROM campanas', (err, results) => {
     if (err) return res.status(500).json({ error: err.message });
@@ -105,7 +109,7 @@ app.get(['/api/campanas', '/campanas'], (req, res) => {
   });
 });
 
-// Categorías (Consulta directa a la tabla real)
+// Categorías
 app.get(['/api/categorias', '/categorias'], (req, res) => {
   db.query('SELECT * FROM categorias', (err, results) => {
     if (err) return res.status(500).json({ error: err.message });
