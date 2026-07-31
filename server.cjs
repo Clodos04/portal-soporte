@@ -221,6 +221,28 @@ app.post('/api/usuarios', (req, res) => {
   );
 });
 
+app.put('/api/usuarios/:id', (req, res) => {
+  const { id } = req.params;
+  const { nombre, paterno, materno, username, password, nivel, campana, estatus, gruposAsignados } = req.body;
+  const gruposStr = JSON.stringify(gruposAsignados || []);
+
+  let query = `UPDATE usuarios SET nombre = ?, paterno = ?, materno = ?, username = ?, nivel = ?, campana = ?, estatus = ?, gruposAsignados = ?`;
+  let params = [nombre, paterno, materno, username, nivel, campana, estatus, gruposStr];
+
+  if (password) {
+    query += `, password = ?`;
+    params.push(password);
+  }
+
+  query += ` WHERE id = ?`;
+  params.push(id);
+
+  db.query(query, params, (err, result) => {
+    if (err) return res.status(500).json({ error: err.message });
+    res.json({ message: 'Usuario actualizado correctamente' });
+  });
+});
+
 app.delete('/api/usuarios/:id', (req, res) => {
   const { id } = req.params;
   db.query(`DELETE FROM usuarios WHERE id = ?`, [id], (err, result) => {
