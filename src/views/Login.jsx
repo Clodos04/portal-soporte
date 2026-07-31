@@ -55,14 +55,14 @@ function Login({ onLogin }) {
           <div className="flex justify-center gap-2">
             <button 
               type="button" 
-              onClick={() => llenarAccesoRapido('christopher', '1234')}
+              onClick={() => llenarAccesoRapido('christopher', '123')}
               className="px-3 py-1 bg-indigo-600/30 hover:bg-indigo-600 text-indigo-300 hover:text-white text-xs rounded border border-indigo-500/50 transition-colors"
             >
               👤 Christopher (Admin)
             </button>
             <button 
               type="button" 
-              onClick={() => llenarAccesoRapido('valeria', '1234')}
+              onClick={() => llenarAccesoRapido('valeria', '123')}
               className="px-3 py-1 bg-blue-600/30 hover:bg-blue-600 text-blue-300 hover:text-white text-xs rounded border border-blue-500/50 transition-colors"
             >
               👤 Valeria (Cliente)
