@@ -28,6 +28,7 @@ db.connect((err) => {
 // Importar datos iniciales
 const { usuariosIniciales } = require('./usuariosData.cjs');
 const { gruposIniciales } = require('./gruposData.cjs');
+const { categoriasIniciales } = require('./categoriasData.cjs');
 
 function inicializarBaseDeDatos() {
   const createTablesQueries = [
@@ -107,7 +108,7 @@ function inicializarBaseDeDatos() {
     });
   });
 
-  // Asegurar columnas en la tabla categorias de forma segura (ignorando si ya existen)
+  // Asegurar columnas en la tabla categorias de forma segura
   setTimeout(() => {
     const alters = [
       `ALTER TABLE categorias ADD COLUMN estatus VARCHAR(50) DEFAULT 'ACTIVO'`,
@@ -117,7 +118,6 @@ function inicializarBaseDeDatos() {
     ];
     alters.forEach(query => {
       db.query(query, (err) => {
-        // El código 1060 significa "Duplicate column name", lo cual es normal si ya existían
         if (err && err.errno !== 1060) {
           console.error('Nota en actualización de tabla:', err.message);
         }
@@ -175,24 +175,17 @@ function inicializarBaseDeDatos() {
     });
   }, 1400);
 
-  // Insertar categorías iniciales si la tabla está vacía
+  // Insertar categorías iniciales usando categoriasData.cjs si la tabla está vacía
   setTimeout(() => {
     db.query(`SELECT COUNT(*) as count FROM categorias`, (err, results) => {
-      if (!err && results[0].count === 0) {
-        const categoriasIniciales = [
-          'HARDWARE',
-          'SOFTWARE',
-          'REDES',
-          'ACCESOS Y CUENTAS',
-          'TELEFONÍA'
-        ];
+      if (!err && results[0].count === 0 && categoriasIniciales) {
         categoriasIniciales.forEach(cat => {
           db.query(
             `INSERT IGNORE INTO categorias (nombre, estatus, fec_alta, usuario, sla) VALUES (?, 'ACTIVO', NOW(), 'ADMINISTRADOR', 24)`,
             [cat]
           );
         });
-        console.log('Categorías iniciales cargadas.');
+        console.log('Categorías iniciales cargadas desde categoriasData.cjs.');
       }
     });
   }, 1600);
