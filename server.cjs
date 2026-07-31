@@ -3,11 +3,11 @@ const mysql = require('mysql2');
 const cors = require('cors');
 const path = require('path');
 
-// Importamos absolutamente todos los datos desde la carpeta data
-const { categoriasIniciales } = require('./data/categoriasData.js');
-const { listaCampanas } = require('./data/campanasData.js');
-const { usuariosIniciales } = require('./data/usuariosData.js');
-const { equiposPorCampana } = require('./data/equiposData.js');
+// Importamos los datos directamente desde la raíz del proyecto
+const { categoriasIniciales } = require('./categoriasData.js');
+const { listaCampanas } = require('./campanasData.js');
+const { usuariosIniciales } = require('./usuariosData.js');
+const { equiposPorCampana } = require('./equiposData.js');
 
 const app = express();
 app.use(express.json());
