@@ -24,10 +24,6 @@ db.connect((err) => {
   console.log('Conectado exitosamente a la base de datos MySQL.');
 });
 
-// =========================================================================
-// 1. ENDPOINTS DE LA API (Soportan con y sin /api/)
-// =========================================================================
-
 // Login
 const handleLogin = (req, res) => {
   const { username, password } = req.body;
@@ -58,9 +54,7 @@ const handleLogin = (req, res) => {
 app.post('/api/login', handleLogin);
 app.post('/login', handleLogin);
 
-// =========================================================================
-// TICKETS
-// =========================================================================
+// Tickets
 app.get(['/api/tickets', '/tickets'], (req, res) => {
   db.query('SELECT * FROM tickets', (err, results) => {
     if (err) return res.status(500).json({ error: err.message });
@@ -70,10 +64,7 @@ app.get(['/api/tickets', '/tickets'], (req, res) => {
       if (typeof notas === 'string') {
         try { notas = JSON.parse(notas); } catch (e) { notas = []; }
       }
-      return {
-        ...t,
-        notas: notas || []
-      };
+      return { ...t, notas: notas || [] };
     });
     
     res.json(ticketsFormateados);
@@ -82,7 +73,6 @@ app.get(['/api/tickets', '/tickets'], (req, res) => {
 
 app.post(['/api/tickets', '/tickets'], (req, res) => {
   const ticketData = { ...req.body };
-  
   delete ticketData.archivos;
   
   for (let key in ticketData) {
@@ -99,7 +89,6 @@ app.post(['/api/tickets', '/tickets'], (req, res) => {
 
 app.put(['/api/tickets/:folio', '/tickets/:folio'], (req, res) => {
   const ticketData = { ...req.body };
-  
   delete ticketData.folio;
   delete ticketData.archivos;
 
@@ -175,10 +164,7 @@ app.get(['/api/categorias', '/categorias'], (req, res) => {
       if (typeof subcats === 'string') {
         try { subcats = JSON.parse(subcats); } catch (e) { subcats = []; }
       }
-      return {
-        ...cat,
-        subcategorias: subcats || [] 
-      };
+      return { ...cat, subcategorias: subcats || [] };
     });
     
     res.json(categoriasFormateadas);
@@ -189,7 +175,6 @@ app.post(['/api/categorias/sincronizar', '/categorias/sincronizar'], (req, res) 
   res.json({ success: true, message: 'Sincronizado' });
 });
 
-// Subcategorías
 app.get(['/api/subcategorias', '/subcategorias'], (req, res) => {
   db.query('SELECT * FROM subcategorias', (err, results) => {
     if (err) return res.status(500).json({ error: err.message });
@@ -197,7 +182,6 @@ app.get(['/api/subcategorias', '/subcategorias'], (req, res) => {
   });
 });
 
-// Elementos
 app.get(['/api/elementos', '/elementos'], (req, res) => {
   db.query('SELECT * FROM elementos', (err, results) => {
     if (err) return res.status(500).json({ error: err.message });
@@ -205,33 +189,39 @@ app.get(['/api/elementos', '/elementos'], (req, res) => {
   });
 });
 
-// =========================================================================
-// RUTAS REALES PARA ENCUESTAS Y PANEL SUPERVISOR
-// =========================================================================
-
-// 1. Guardar nueva encuesta en la base de datos
+// Encuestas
 app.post(['/api/encuestas', '/encuestas'], (req, res) => {
   const data = { ...req.body };
   
-  // Limpiamos campos que no van directamente o que causan conflicto en MySQL
   if (data.fecha) delete data.fecha;
   if (data.fecha_respuesta) delete data.fecha_respuesta;
   if (data.promedio) delete data.promedio;
 
-  // Convertimos objetos/arreglos a texto JSON para MySQL
   for (let key in data) {
     if (typeof data[key] === 'object' && data[key] !== null) {
       data[key] = JSON.stringify(data[key]);
     }
   }
 
-  db.query('INSERT INTO encuestas SET ?', data, (err, result) => {
-    if (err) return res.status(500).json({ error: err.message });
-    res.json({ message: 'Encuesta guardada con éxito', id: result.insertId });
-  });
+  const guardarEnBD = (datosFinales) => {
+    db.query('INSERT INTO encuestas SET ?', datosFinales, (err, result) => {
+      if (err) return res.status(500).json({ error: err.message });
+      res.json({ message: 'Encuesta guardada con éxito', id: result.insertId });
+    });
+  };
+
+  if (!data.ticket_id && data.folio) {
+    db.query('SELECT id FROM tickets WHERE folio = ?', [data.folio], (err, results) => {
+      if (!err && results.length > 0) {
+        data.ticket_id = results[0].id;
+      }
+      guardarEnBD(data);
+    });
+  } else {
+    guardarEnBD(data);
+  }
 });
 
-// 2. Leer encuestas para el Panel y para bloquear el botón de volver a contestar
 app.get(['/api/encuestas/reporte', '/encuestas/reporte'], (req, res) => {
   db.query('SELECT * FROM encuestas', (err, results) => {
     if (err) return res.status(500).json({ error: err.message });
@@ -255,21 +245,16 @@ app.get(['/api/encuestas/reporte', '/encuestas/reporte'], (req, res) => {
   });
 });
 
-// Endpoint de KPIs de Tiempos
 app.get(['/api/kpis/tiempos', '/kpis/tiempos'], (req, res) => {
   res.json([]);
 });
 
-// =========================================================================
-// 2. CONFIGURACIÓN DEL FRONTEND
-// =========================================================================
 app.use(express.static(path.join(__dirname, 'dist')));
 
 app.get(/(.*)/, (req, res) => {
   res.sendFile(path.join(__dirname, 'dist', 'index.html'));
 });
 
-// Puerto
 const PORT = process.env.PORT || 80;
 app.listen(PORT, () => {
   console.log(`Servidor corriendo en el puerto ${PORT}`);
