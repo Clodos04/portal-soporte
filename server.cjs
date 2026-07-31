@@ -245,8 +245,27 @@ app.get(['/api/encuestas/reporte', '/encuestas/reporte'], (req, res) => {
   });
 });
 
+// Endpoint de KPIs de Tiempos Calculado Automáticamente
 app.get(['/api/kpis/tiempos', '/kpis/tiempos'], (req, res) => {
-  res.json([]);
+  db.query('SELECT * FROM tickets', (err, results) => {
+    if (err) return res.status(500).json({ error: err.message });
+    
+    const kpiTiemposCalculados = results.map(t => {
+      const fechaCreacion = new Date(t.fecha || t.created_at || Date.now());
+      const fechaCierre = t.estatus === 'Cerrado' || t.estatus === 'CERRADO' ? new Date(t.updated_at || Date.now()) : new Date();
+      
+      let diffMinutos = Math.round((fechaCierre - fechaCreacion) / (1000 * 60));
+      if (isNaN(diffMinutos) || diffMinutos < 0) diffMinutos = 15;
+
+      return {
+        id: t.id,
+        folio: t.folio,
+        minutos_resolucion: diffMinutos
+      };
+    });
+
+    res.json(kpiTiemposCalculados);
+  });
 });
 
 app.use(express.static(path.join(__dirname, 'dist')));
