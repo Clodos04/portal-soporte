@@ -212,7 +212,9 @@ function AdminUsuariosView({ grupos = [], usuarios = [], setUsuarios }) {
             <label className="block text-xs font-bold text-slate-300 mb-1 uppercase">Nivel:</label>
             <select value={formNivel} onChange={(e) => setFormNivel(e.target.value)} className="w-full px-3 py-2 rounded bg-slate-900 border border-slate-700 text-white text-sm outline-none">
               <option value="CLIENTE">CLIENTE</option>
+              <option value="TECNICO">TECNICO</option>
               <option value="ADMINISTRADOR">ADMINISTRADOR</option>
+              <option value="TECNICO SUPERVISOR">TECNICO SUPERVISOR</option>
             </select>
           </div>
           <div>
