@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 
 function SupervisorPanel({ user }) {
-  // Estados de datos
   const [tickets, setTickets] = useState([]);
   const [encuestasData, setEncuestasData] = useState({ estadisticas: { promedio: 0, total: 0 }, historial: [] });
   const [kpiTiempos, setKpiTiempos] = useState([]);
@@ -9,20 +8,16 @@ function SupervisorPanel({ user }) {
   const [tecnicos, setTecnicos] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // Estados de Filtros
   const [filtroCampana, setFiltroCampana] = useState('TODAS');
   const [filtroTecnico, setFiltroTecnico] = useState('TODOS');
   const [busquedaFolio, setBusquedaFolio] = useState('');
 
-  // Modal para ver comentarios de la encuesta
   const [encuestaModal, setEncuestaModal] = useState(null);
 
-  // Cargar datos al montar el componente
   useEffect(() => {
     const cargarDatosSupervisor = async () => {
       try {
         setLoading(true);
-        // Peticiones paralelas a tus endpoints existentes
         const [resTickets, resEncuestas, resTiempos, resCampanas, resUsuarios] = await Promise.all([
           fetch('/api/tickets').then(res => res.json()),
           fetch('/api/encuestas/reporte').then(res => res.json()),
@@ -31,12 +26,20 @@ function SupervisorPanel({ user }) {
           fetch('/api/usuarios').then(res => res.json())
         ]);
 
-        setTickets(resTickets || []);
+        // Formatear notas de los tickets de forma segura
+        const ticketsFormateados = (resTickets || []).map(t => {
+          let notas = t.notas;
+          if (typeof notas === 'string') {
+            try { notas = JSON.parse(notas); } catch (e) { notas = []; }
+          }
+          return { ...t, notas: notas || [] };
+        });
+
+        setTickets(ticketsFormateados);
         setEncuestasData(resEncuestas || { estadisticas: { promedio: 0, total: 0 }, historial: [] });
         setKpiTiempos(resTiempos || []);
         setCampanas(resCampanas || []);
         
-        // Filtrar solo usuarios que sean técnicos o técnicos supervisores
         const techs = (resUsuarios || []).filter(u => u.nivel === 'TECNICO' || u.nivel === 'TECNICO SUPERVISOR' || u.nivel === 'ADMINISTRADOR');
         setTecnicos(techs);
       } catch (error) {
@@ -49,21 +52,18 @@ function SupervisorPanel({ user }) {
     cargarDatosSupervisor();
   }, []);
 
-  // --- LÓGICA DE FILTRADO ---
   const ticketsFiltrados = tickets.filter(t => {
     const cumpleCampana = filtroCampana === 'TODAS' || t.campana === filtroCampana;
     const cumpleTecnico = filtroTecnico === 'TODOS' || t.tecnico === filtroTecnico;
     const cumpleFolio = (t.folio || '').toLowerCase().includes(busquedaFolio.toLowerCase()) || 
-                          (t.asunto || '').toLowerCase().includes(busquedaFolio.toLowerCase());
+                        (t.asunto || '').toLowerCase().includes(busquedaFolio.toLowerCase());
     return cumpleCampana && cumpleTecnico && cumpleFolio;
   });
 
-  // --- CÁLCULO DE KPIs ---
   const totalTickets = ticketsFiltrados.length;
-  const cerradosCount = ticketsFiltrados.filter(t => t.estatus === 'Cerrado').length;
+  const cerradosCount = ticketsFiltrados.filter(t => t.estatus === 'Cerrado' || t.estatus === 'CERRADO').length;
   const abiertosCount = ticketsFiltrados.filter(t => t.estatus === 'Abierto' || t.estatus === 'En Proceso').length;
 
-  // Promedio de tiempo de resolución (de kpiTiempos filtrados por los tickets actuales)
   const idsFiltrados = new Set(ticketsFiltrados.map(t => t.id));
   const tiemposFiltrados = kpiTiempos.filter(k => idsFiltrados.has(k.id));
   
@@ -73,11 +73,10 @@ function SupervisorPanel({ user }) {
     tiempoPromedioMinutos = Math.round(sumaMinutos / tiemposFiltrados.length);
   }
 
-  // Filtrar encuestas según los tickets filtrados
   const historialEncuestasFiltrado = encuestasData.historial.filter(e => idsFiltrados.has(e.ticket_id));
   let promedioCSAT = 0;
   if (historialEncuestasFiltrado.length > 0) {
-    const sumaCalif = historialEncuestasFiltrado.reduce((acc, curr) => acc + curr.calificacion, 0);
+    const sumaCalif = historialEncuestasFiltrado.reduce((acc, curr) => acc + (curr.calificacion || 0), 0);
     promedioCSAT = (sumaCalif / historialEncuestasFiltrado.length).toFixed(1);
   }
 
@@ -92,7 +91,6 @@ function SupervisorPanel({ user }) {
   return (
     <div className="animate-fade-in max-w-7xl mx-auto space-y-6 text-slate-200 pb-12">
       
-      {/* Encabezado */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-slate-800 p-6 rounded-2xl border border-slate-700 shadow-xl">
         <div>
           <h1 className="text-3xl font-bold text-white tracking-wide uppercase flex items-center gap-3">
@@ -107,7 +105,6 @@ function SupervisorPanel({ user }) {
         </div>
       </div>
 
-      {/* Barra de Filtros Globales */}
       <div className="bg-slate-800 p-5 rounded-xl border border-slate-700 grid grid-cols-1 md:grid-cols-3 gap-4 shadow-lg">
         <div>
           <label className="block text-xs font-bold text-slate-300 uppercase mb-1">Filtrar por Campaña:</label>
@@ -149,7 +146,6 @@ function SupervisorPanel({ user }) {
         </div>
       </div>
 
-      {/* Tarjetas de Métricas y KPIs */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="bg-slate-800 border border-slate-700 rounded-xl p-5 shadow-lg flex flex-col justify-between">
           <span className="text-xs font-bold text-slate-400 uppercase">Total Tickets Filtrados</span>
@@ -188,7 +184,6 @@ function SupervisorPanel({ user }) {
         </div>
       </div>
 
-      {/* Sección de Auditoría de Tickets y Encuestas */}
       <div className="bg-slate-800 rounded-xl shadow-lg border border-slate-700 p-6 space-y-4">
         <div className="flex justify-between items-center border-b border-slate-700 pb-3">
           <h2 className="text-lg font-bold text-white uppercase tracking-wider">
@@ -219,8 +214,7 @@ function SupervisorPanel({ user }) {
                 </tr>
               ) : (
                 ticketsFiltrados.map((t) => {
-                  // Buscar si este ticket tiene encuesta respondida
-                  const encuestaAsociada = encuestasData.historial.find(e => e.ticket_id === t.id);
+                  const encuestaAsociada = encuestasData.historial.find(e => e.ticket_id === t.id || e.folio === t.folio);
 
                   return (
                     <tr key={t.id} className="hover:bg-slate-700/50 transition-colors">
@@ -232,7 +226,7 @@ function SupervisorPanel({ user }) {
                       <td className="px-4 py-3 text-slate-300">{t.tecnico || 'Sin asignar'}</td>
                       <td className="px-4 py-3">
                         <span className={`px-2 py-0.5 rounded text-xs font-bold ${
-                          t.estatus === 'Cerrado' ? 'bg-blue-600/30 text-blue-400' : 
+                          t.estatus === 'Cerrado' || t.estatus === 'CERRADO' ? 'bg-blue-600/30 text-blue-400' : 
                           t.estatus === 'En Proceso' ? 'bg-yellow-600/30 text-yellow-400' : 'bg-green-600/30 text-green-400'
                         }`}>
                           {t.estatus}
@@ -250,7 +244,7 @@ function SupervisorPanel({ user }) {
                       <td className="px-4 py-3 text-center">
                         {encuestaAsociada ? (
                           <button
-                            onClick={() => setEncuestaModal(encuestaAsociada)}
+                            onClick={() => setEncuestaModal({ ...encuestaAsociada, ticketActual: t })}
                             className="px-3 py-1 bg-indigo-600/30 hover:bg-indigo-600 text-indigo-300 hover:text-white rounded-lg text-xs font-bold transition-colors border border-indigo-500/40"
                           >
                             Ver Comentarios
@@ -268,7 +262,7 @@ function SupervisorPanel({ user }) {
         </div>
       </div>
 
-      {/* Modal para ver detalles y comentarios de la encuesta */}
+      {/* Modal para ver detalles y comentarios sincronizados */}
       {encuestaModal && (
         <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm flex justify-center items-center z-50 p-4">
           <div className="bg-slate-800 border border-slate-700 rounded-2xl shadow-2xl max-w-lg w-full overflow-hidden text-slate-200 p-6 space-y-4 animate-fade-in">
@@ -289,11 +283,13 @@ function SupervisorPanel({ user }) {
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Comentarios del Cliente:</label>
+                <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Comentarios o Nota del Ticket:</label>
                 <div className="bg-slate-900 p-4 rounded-xl border border-slate-700 text-slate-200 italic min-h-[80px]">
                   {encuestaModal.comentarios && encuestaModal.comentarios.trim() !== '' 
                     ? `"${encuestaModal.comentarios}"` 
-                    : <span className="text-slate-500 not-italic">El cliente no dejó comentarios escritos.</span>}
+                    : (encuestaModal.ticketActual?.resolucion 
+                        ? `"${encuestaModal.ticketActual.resolucion}"` 
+                        : <span className="text-slate-500 not-italic">El cliente no dejó comentarios escritos.</span>)}
                 </div>
               </div>
             </div>
