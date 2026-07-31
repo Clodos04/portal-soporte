@@ -1,38 +1,7 @@
 import React, { useState } from 'react';
+import { equiposPorCampana } from '../data/equiposData.cjs';
+import { listaCampanas } from '../data/campanasData.cjs'; // Asegúrate de ajustar la ruta si es necesario
 import AsistenteTipificacionView from './AsistenteTipificacionView';
-
-const listaCampanas = [
-  "TI",
-  "OPERACIONES",
-  "VENTAS",
-  "ADMINISTRACION",
-  "*111",
-  "*111R9"
-];
-
-// Lista completa de equipos por campaña / área
-const equiposPorCampana = {
-  "TI": ["CPU", "DIADEMA", "IMPRESORA", "MONITOR", "MOUSE", "TECLADO", "TELEFONO", "DISCO DURO"],
-  "OPERACIONES": ["DIADEMA", "TELEFONO", "CPU", "MONITOR"],
-  "VENTAS": ["TELEFONO", "LAPTOP", "DIADEMA"],
-  "ADMINISTRACION": ["CPU", "MONITOR", "IMPRESORA", "TECLADO"],
-  "*111": [
-    "B-01-123", "B-01-124", "B-01-122", "B-01-129", "B-01-125", "B-01-120",
-    "B-01-126", "B-01-119", "B-01-121", "B-01-118", "B-01-117", "B-01-128",
-    "B-01-116", "B-01-127", "B-01-115", "B-01-130", "B-01-114", "B-01-131",
-    "B-01-113", "B-01-132", "B-01-112", "B-01-101", "B-01-100", "B-01-102",
-    "B-01-099", "B-01-103", "B-01-098", "B-01-104", "B-01-097", "B-01-105",
-    "B-01-096", "B-01-106", "B-01-095", "B-01-107", "B-01-094", "B-01-108",
-    "B-01-093", "B-01-109", "B-01-092", "B-01-110", "B-01-091", "B-01-111", "B-01-090"
-  ],
-  "*111R9": [
-    "B-02-204", "B-02-205", "B-02-206", "B-02-207", "B-02-208", "B-02-209",
-    "B-02-210", "B-02-211", "B-02-213", "B-02-212", "B-02-214", "B-02-215",
-    "B-02-216", "B-02-203", "B-02-202", "B-02-201", "B-02-199", "B-02-200",
-    "B-02-197", "B-02-198", "B-02-196", "B-02-194", "B-02-195", "B-02-193",
-    "B-02-192", "B-02-191"
-  ]
-};
 
 function NuevaSolicitudView({ user, usuarios = [], grupos = [], campanas = [], usuariosPorGrupo = {}, categorias = [], onVolver, onGuardar }) {
   const [estado, setEstado] = useState('ABIERTO');
@@ -63,6 +32,7 @@ function NuevaSolicitudView({ user, usuarios = [], grupos = [], campanas = [], u
   const [asunto, setAsunto] = useState('');
   const [descripcion, setDescripcion] = useState('');
 
+  // Se consumen directamente desde equiposData.cjs
   const listaEquiposActuales = equiposPorCampana[campana] || [];
 
   const [equiposSeleccionados, setEquiposSeleccionados] = useState([]);
