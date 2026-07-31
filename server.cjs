@@ -7,7 +7,7 @@ const app = express();
 app.use(express.json());
 app.use(cors());
 
-// Conexión a la Base de Datos
+// Conexión a la Base de Datos (Easypanel)
 const db = mysql.createConnection({
   host: process.env.DB_HOST || 'sav_db-soporte',
   user: process.env.DB_USER || 'mysql',
@@ -25,27 +25,19 @@ db.connect((err) => {
 });
 
 // =========================================================================
-// 1. ENDPOINTS DE LA API (DEBEN IR ANTES DE SERVIR EL HTML)
+// 1. ENDPOINTS DE LA API (Soportan con y sin /api/)
 // =========================================================================
 
 // Login
-app.post('/api/login', (req, res) => {
+const handleLogin = (req, res) => {
   const { username, password } = req.body;
-
   const query = 'SELECT * FROM usuarios WHERE username = ? AND password = ? AND estatus = "ACTIVO"';
+  
   db.query(query, [username, password], (err, results) => {
-    if (err) {
-      console.error('Error en el login:', err);
-      return res.status(500).json({ error: 'Error en el servidor' });
-    }
-
-    if (results.length === 0) {
-      return res.status(401).json({ error: 'Usuario o contraseña incorrectos, o usuario inactivo.' });
-    }
+    if (err) return res.status(500).json({ error: 'Error en el servidor' });
+    if (results.length === 0) return res.status(401).json({ error: 'Credenciales incorrectas o usuario inactivo.' });
 
     const usuario = results[0];
-    
-    // Enviamos el objeto con las propiedades correctas que tu tabla tiene (nombre, paterno, etc.)
     res.json({
       success: true,
       user: {
@@ -62,53 +54,83 @@ app.post('/api/login', (req, res) => {
       }
     });
   });
-});
+};
+app.post('/api/login', handleLogin);
+app.post('/login', handleLogin);
 
-// Tickets (Obtener y Crear)
-app.get('/api/tickets', (req, res) => {
+// Tickets
+app.get(['/api/tickets', '/tickets'], (req, res) => {
   db.query('SELECT * FROM tickets', (err, results) => {
     if (err) return res.status(500).json({ error: err.message });
     res.json(results);
   });
 });
 
-app.post('/api/tickets', (req, res) => {
-  const nuevoTicket = req.body;
-  db.query('INSERT INTO tickets SET ?', nuevoTicket, (err, result) => {
+app.post(['/api/tickets', '/tickets'], (req, res) => {
+  db.query('INSERT INTO tickets SET ?', req.body, (err, result) => {
     if (err) return res.status(500).json({ error: err.message });
     res.json({ message: 'Ticket creado exitosamente', id: result.insertId });
   });
 });
 
-// Actualizar Ticket
-app.put('/api/tickets/:folio', (req, res) => {
-  const { folio } = req.params;
-  const datosActualizados = req.body;
-
-  db.query('UPDATE tickets SET ? WHERE folio = ?', [datosActualizados, folio], (err, result) => {
+app.put(['/api/tickets/:folio', '/tickets/:folio'], (req, res) => {
+  db.query('UPDATE tickets SET ? WHERE folio = ?', [req.body, req.params.folio], (err, result) => {
     if (err) return res.status(500).json({ error: err.message });
     if (result.affectedRows === 0) return res.status(404).json({ error: 'No se encontró el ticket.' });
     res.json({ message: 'Ticket actualizado correctamente' });
   });
 });
 
-// Usuarios y Grupos
-app.get('/api/usuarios', (req, res) => {
+// Usuarios
+app.get(['/api/usuarios', '/usuarios'], (req, res) => {
   db.query('SELECT * FROM usuarios', (err, results) => {
     if (err) return res.status(500).json({ error: err.message });
     res.json(results);
   });
 });
 
-app.get('/api/grupos', (req, res) => {
-  db.query('SELECT nombre FROM grupos', (err, results) => {
+// Grupos
+app.get(['/api/grupos', '/grupos'], (req, res) => {
+  db.query('SELECT * FROM grupos', (err, results) => {
     if (err) return res.status(500).json({ error: err.message });
-    res.json(results.map(g => g.nombre));
+    res.json(results);
+  });
+});
+
+// Campañas (Consulta directa a la tabla real)
+app.get(['/api/campanas', '/campanas'], (req, res) => {
+  db.query('SELECT * FROM campanas', (err, results) => {
+    if (err) return res.status(500).json({ error: err.message });
+    res.json(results);
+  });
+});
+
+// Categorías (Consulta directa a la tabla real)
+app.get(['/api/categorias', '/categorias'], (req, res) => {
+  db.query('SELECT * FROM categorias', (err, results) => {
+    if (err) return res.status(500).json({ error: err.message });
+    res.json(results);
+  });
+});
+
+// Subcategorías
+app.get(['/api/subcategorias', '/subcategorias'], (req, res) => {
+  db.query('SELECT * FROM subcategorias', (err, results) => {
+    if (err) return res.status(500).json({ error: err.message });
+    res.json(results);
+  });
+});
+
+// Elementos
+app.get(['/api/elementos', '/elementos'], (req, res) => {
+  db.query('SELECT * FROM elementos', (err, results) => {
+    if (err) return res.status(500).json({ error: err.message });
+    res.json(results);
   });
 });
 
 // =========================================================================
-// 2. CONFIGURACIÓN DEL FRONTEND (AL FINAL, PARA NO BLOQUEAR LA API)
+// 2. CONFIGURACIÓN DEL FRONTEND
 // =========================================================================
 app.use(express.static(path.join(__dirname, 'dist')));
 
@@ -117,7 +139,7 @@ app.get(/(.*)/, (req, res) => {
 });
 
 // Puerto
-const PORT = process.env.PORT || 80;
+const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`Servidor corriendo en el puerto ${PORT}`);
 });
