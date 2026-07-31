@@ -42,12 +42,20 @@ function EditarSolicitudModal({ ticket, user, usuarios = [], grupos = [], usuari
     if (estatus === 'En Proceso' || estatus === 'EN PROCESO') colorEstatus = 'bg-orange-500';
     if (estatus === 'Cerrado' || estatus === 'CERRADO') colorEstatus = 'bg-red-500';
 
+    // Se incluyen todos los campos originales del ticket para evitar vaciar columnas en MySQL
     const ticketActualizado = {
       ...ticket,
       estatus: estatus,
       colorEstatus: colorEstatus,
       grupo: grupo,
       tecnico: tecnico,
+      creador: ticket.creador,
+      asunto: ticket.asunto,
+      descripcion: ticket.descripcion,
+      campana: ticket.campana,
+      equipo: ticket.equipo,
+      nivel: ticket.nivel,
+      modo: ticket.modo,
       categoria: categoria,
       subcategoria: subcategoria,
       elemento: elemento,
