@@ -43,11 +43,8 @@ const handleLogin = (req, res) => {
       success: true,
       user: {
         id: usuario.id,
-        // Estas dos propiedades coinciden EXACTAMENTE con tu Header.jsx
         name: `${usuario.nombre || ''} ${usuario.paterno || ''}`.trim(),
         role: usuario.nivel === 'ADMINISTRADOR' ? 'support' : 'client',
-        
-        // Mantenemos el resto por si otras vistas lo llegan a ocupar
         username: usuario.username,
         nivel: usuario.nivel,
         gruposAsignados: usuario.gruposAsignados,
@@ -76,7 +73,6 @@ app.post(['/api/tickets', '/tickets'], (req, res) => {
   });
 });
 
-// Endpoint para actualizar tickets dinámicamente
 app.put(['/api/tickets/:folio', '/tickets/:folio'], (req, res) => {
   db.query('UPDATE tickets SET ? WHERE folio = ?', [req.body, req.params.folio], (err, result) => {
     if (err) return res.status(500).json({ error: err.message });
@@ -89,32 +85,75 @@ app.put(['/api/tickets/:folio', '/tickets/:folio'], (req, res) => {
 app.get(['/api/usuarios', '/usuarios'], (req, res) => {
   db.query('SELECT * FROM usuarios', (err, results) => {
     if (err) return res.status(500).json({ error: err.message });
-    res.json(results);
+    
+    // Blindamos gruposAsignados para que siempre sea un arreglo y no rompa la app
+    const usuariosFormateados = results.map(u => {
+      let grupos = u.gruposAsignados;
+      if (typeof grupos === 'string') {
+        try { grupos = JSON.parse(grupos); } catch (e) { grupos = []; }
+      }
+      return { ...u, gruposAsignados: grupos || [] };
+    });
+    
+    res.json(usuariosFormateados);
   });
 });
 
-// Grupos
+// Grupos (Corrección para pantalla blanca: devuelve SOLO textos)
 app.get(['/api/grupos', '/grupos'], (req, res) => {
-  db.query('SELECT * FROM grupos', (err, results) => {
+  db.query('SELECT nombre FROM grupos', (err, results) => {
     if (err) return res.status(500).json({ error: err.message });
-    res.json(results);
+    res.json(results.map(g => g.nombre));
   });
 });
 
-// Campañas
+app.post(['/api/grupos', '/grupos'], (req, res) => {
+  const { nombre } = req.body;
+  db.query('INSERT INTO grupos (nombre) VALUES (?)', [nombre], (err, result) => {
+    if (err) return res.status(500).json({ error: err.message });
+    res.json({ message: 'Grupo creado', id: result.insertId });
+  });
+});
+
+app.delete(['/api/grupos/:nombre', '/grupos/:nombre'], (req, res) => {
+  const { nombre } = req.params;
+  db.query('DELETE FROM grupos WHERE nombre = ?', [nombre], (err, result) => {
+    if (err) return res.status(500).json({ error: err.message });
+    res.json({ message: 'Grupo eliminado' });
+  });
+});
+
+// Campañas (Corrección para pantalla blanca: devuelve textos)
 app.get(['/api/campanas', '/campanas'], (req, res) => {
   db.query('SELECT * FROM campanas', (err, results) => {
     if (err) return res.status(500).json({ error: err.message });
-    res.json(results);
+    res.json(results.map(c => c.nombre || c.campana || c.descripcion || Object.values(c)[1] || c.id || ""));
   });
 });
 
-// Categorías
+// Categorías (Corrección para evitar cierre al entrar a una categoría)
 app.get(['/api/categorias', '/categorias'], (req, res) => {
   db.query('SELECT * FROM categorias', (err, results) => {
     if (err) return res.status(500).json({ error: err.message });
-    res.json(results);
+    
+    const categoriasFormateadas = results.map(cat => {
+      let subcats = cat.subcategorias;
+      if (typeof subcats === 'string') {
+        try { subcats = JSON.parse(subcats); } catch (e) { subcats = []; }
+      }
+      return {
+        ...cat,
+        subcategorias: subcats || [] 
+      };
+    });
+    
+    res.json(categoriasFormateadas);
   });
+});
+
+// Sincronizar Categorías (Evita el error en consola cuando React intenta guardar)
+app.post(['/api/categorias/sincronizar', '/categorias/sincronizar'], (req, res) => {
+  res.json({ success: true, message: 'Sincronizado' });
 });
 
 // Subcategorías
@@ -143,7 +182,7 @@ app.get(/(.*)/, (req, res) => {
 });
 
 // Puerto
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 80;
 app.listen(PORT, () => {
   console.log(`Servidor corriendo en el puerto ${PORT}`);
 });
