@@ -77,7 +77,7 @@ function App() {
       .then(res => res.json())
       .then(data => { if (Array.isArray(data)) setCategorias(data); });
 
-    // ¡NUEVO! Cargar encuestas reales para que React sepa cuáles ya se contestaron
+    // Cargar encuestas reales para bloquear botones y actualizar indicadores
     fetch('/api/encuestas/reporte')
       .then(res => res.json())
       .then(data => { 
@@ -86,7 +86,6 @@ function App() {
       .catch(err => console.error("Error al cargar encuestas:", err));
   }, []);
 
-  // Función sincronizada para categorías, subcategorías y elementos
   const handleSetCategorias = (nuevasCategorias) => {
     setCategorias(nuevasCategorias);
     fetch('/api/categorias/sincronizar', {
@@ -146,11 +145,7 @@ function App() {
     setTicketEnEdicion(null);
   };
 
-  // ==========================================
-  // FUNCIÓN PARA GUARDAR ENCUESTAS CORREGIDA
-  // ==========================================
   const handleGuardarEncuesta = (nuevaEncuesta) => {
-    // 1. Mandamos la encuesta a MySQL
     fetch('/api/encuestas', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -158,15 +153,11 @@ function App() {
     })
     .then(res => res.json())
     .then(() => {
-      // 2. Actualizamos la memoria de React para que el botón desaparezca al instante
       setEstadisticasEncuestas(prev => [...prev, nuevaEncuesta]);
     })
     .catch(err => console.error('Error al guardar encuesta:', err));
   };
 
-  // ==========================================
-  // FUNCIÓN DE LOGIN CORREGIDA
-  // ==========================================
   const handleLogin = async (username, password) => {
     try {
       const response = await fetch('/api/login', {
@@ -182,8 +173,6 @@ function App() {
       }
 
       const data = await response.json();
-      
-      // Aquí abrimos la cajita "user" que manda nuestro servidor Node
       const usuarioEncontrado = data.user ? data.user : data; 
 
       const nivel = (usuarioEncontrado.nivel || '').toUpperCase();
@@ -279,6 +268,7 @@ function App() {
             activeColumns={activeColumns}
             columnLabels={columnLabels}
             user={user}
+            estadisticasEncuestas={estadisticasEncuestas}
             onOpenCustomizer={() => setIsColumnCustomizerOpen(true)}
             onOpenNotes={(folio) => { setFolioActivo(folio); setIsNotesModalOpen(true); }}
             onNuevaSolicitud={() => setCurrentView('nueva-solicitud')}
@@ -349,7 +339,6 @@ function App() {
           <AdminReportesView tickets={tickets} campanas={campanas} />
         )}
 
-        {/* VISTA DEL PANEL DE SUPERVISOR */}
         {currentView === 'admin-supervisor-panel' && (
           <SupervisorPanel user={user} />
         )}
