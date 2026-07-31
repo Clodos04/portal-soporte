@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { equiposPorCampana } from '../data/equiposData';
 import AsistenteTipificacionView from './AsistenteTipificacionView';
 
 const listaCampanas = [
@@ -6,16 +7,9 @@ const listaCampanas = [
   "OPERACIONES",
   "VENTAS",
   "ADMINISTRACION",
-  "*111"
+  "*111",
+  "*111R9"
 ];
-
-const equiposPorCampana = {
-  "TI": ["CPU", "DIADEMA", "IMPRESORA", "MONITOR", "MOUSE", "TECLADO", "TELEFONO", "DISCO DURO"],
-  "OPERACIONES": ["DIADEMA", "TELEFONO", "CPU", "MONITOR"],
-  "VENTAS": ["TELEFONO", "LAPTOP", "DIADEMA"],
-  "ADMINISTRACION": ["CPU", "MONITOR", "IMPRESORA", "TECLADO"],
-  "*111": ["TELEFONO", "DIADEMA"]
-};
 
 function NuevaSolicitudView({ user, usuarios = [], grupos = [], campanas = [], usuariosPorGrupo = {}, categorias = [], onVolver, onGuardar }) {
   const [estado, setEstado] = useState('ABIERTO');
@@ -33,6 +27,7 @@ function NuevaSolicitudView({ user, usuarios = [], grupos = [], campanas = [], u
   const elementosDisponibles = subcategoriaObj ? (subcategoriaObj?.elementos || []) : [];
   const [elemento, setElemento] = useState('');
 
+  // Estado para controlar la apertura del modal del Asistente Guiado
   const [isAsistenteOpen, setIsAsistenteOpen] = useState(false);
 
   const campanasDisponibles = campanas.length > 0 ? campanas : listaCampanas;
@@ -59,6 +54,7 @@ function NuevaSolicitudView({ user, usuarios = [], grupos = [], campanas = [], u
     const nuevaCampana = e.target.value;
     setCampana(nuevaCampana);
     setAreaCliente(nuevaCampana);
+    
     setEquiposSeleccionados([]);
 
     const filtrados = usuarios.filter(u => u.campana === nuevaCampana && u.estatus === 'ACTIVO');
@@ -83,9 +79,15 @@ function NuevaSolicitudView({ user, usuarios = [], grupos = [], campanas = [], u
   };
 
   const handleSeleccionarTipificacionDelAsistente = (resultado) => {
-    if (resultado.categoria) setCategoria(resultado.categoria.nombre);
-    if (resultado.subcategoria) setSubCategoria(resultado.subcategoria.nombre);
-    if (resultado.elemento) setElemento(resultado.elemento.nombre);
+    if (resultado.categoria) {
+      setCategoria(resultado.categoria.nombre);
+    }
+    if (resultado.subcategoria) {
+      setSubCategoria(resultado.subcategoria.nombre);
+    }
+    if (resultado.elemento) {
+      setElemento(resultado.elemento.nombre);
+    }
     setIsAsistenteOpen(false);
   };
 
@@ -178,6 +180,7 @@ function NuevaSolicitudView({ user, usuarios = [], grupos = [], campanas = [], u
             </div>
 
             <div className="space-y-4">
+              
               <div className="flex justify-between items-center mb-1">
                 <label className="block text-xs font-bold text-slate-300 uppercase">Categorización del Ticket:</label>
                 <button
@@ -287,6 +290,7 @@ function NuevaSolicitudView({ user, usuarios = [], grupos = [], campanas = [], u
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
+            
             <div>
               <label className="block text-xs font-bold text-slate-300 uppercase mb-1.5">Equipo (Seleccione uno o más):</label>
               <div className="w-full h-36 overflow-y-auto px-3 py-2 rounded-lg bg-slate-900 border border-slate-700 text-white text-sm space-y-1.5">
@@ -352,6 +356,7 @@ function NuevaSolicitudView({ user, usuarios = [], grupos = [], campanas = [], u
                 </select>
               </div>
             </div>
+
           </div>
 
           <div className="pt-2">
