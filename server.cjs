@@ -96,6 +96,15 @@ function inicializarBaseDeDatos() {
     });
   });
 
+  // Asegurar que exista la columna subcategorias si la tabla ya fue creada previamente
+  setTimeout(() => {
+    db.query(`ALTER TABLE categorias ADD COLUMN subcategorias LONGTEXT`, (err) => {
+      if (err && err.errno !== 1060) {
+        console.error('Nota en alteración de tabla categorias:', err.message);
+      }
+    });
+  }, 500);
+
   // Insertar usuarios iniciales si la tabla está vacía
   setTimeout(() => {
     db.query(`SELECT COUNT(*) as count FROM usuarios`, (err, results) => {
