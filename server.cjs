@@ -209,17 +209,23 @@ app.get(['/api/elementos', '/elementos'], (req, res) => {
 // RUTAS REALES PARA ENCUESTAS Y PANEL SUPERVISOR
 // =========================================================================
 
-// 1. Guardar nueva encuesta en la base de datos
+// 1. Guardar nueva encuesta en la base de datos (con respuestas guardadas)
 app.post(['/api/encuestas', '/encuestas'], (req, res) => {
   const data = { ...req.body };
   
-  // ELIMINAMOS los datos que manda React pero que NO van en la tabla MySQL
   if (data.fecha_respuesta) delete data.fecha_respuesta;
   if (data.promedio) delete data.promedio;
 
+  // Convertimos objetos/arreglos (como 'respuestas') a texto JSON para MySQL
+  for (let key in data) {
+    if (typeof data[key] === 'object' && data[key] !== null) {
+      data[key] = JSON.stringify(data[key]);
+    }
+  }
+
   db.query('INSERT INTO encuestas SET ?', data, (err, result) => {
     if (err) return res.status(500).json({ error: err.message });
-    res.json({ message: 'Encuesta guardada', id: result.insertId });
+    res.json({ message: 'Encuesta guardada con éxito', id: result.insertId });
   });
 });
 
@@ -228,18 +234,26 @@ app.get(['/api/encuestas/reporte', '/encuestas/reporte'], (req, res) => {
   db.query('SELECT * FROM encuestas', (err, results) => {
     if (err) return res.status(500).json({ error: err.message });
     
+    const encuestasFormateadas = results.map(e => {
+      let resp = e.respuestas;
+      if (typeof resp === 'string') {
+        try { resp = JSON.parse(resp); } catch (err) { resp = []; }
+      }
+      return { ...e, respuestas: resp };
+    });
+
     let suma = 0;
-    results.forEach(r => suma += (r.calificacion || 0));
-    const promedio = results.length > 0 ? (suma / results.length).toFixed(1) : 0;
+    encuestasFormateadas.forEach(r => suma += (r.calificacion || 0));
+    const promedio = encuestasFormateadas.length > 0 ? (suma / encuestasFormateadas.length).toFixed(1) : 0;
 
     res.json({
-      estadisticas: { promedio, total: results.length },
-      historial: results
+      estadisticas: { promedio, total: encuestasFormateadas.length },
+      historial: encuestasFormateadas
     });
   });
 });
 
-// Endpoint de KPIs de Tiempos (sigue vacío hasta que lo programemos a futuro)
+// Endpoint de KPIs de Tiempos
 app.get(['/api/kpis/tiempos', '/kpis/tiempos'], (req, res) => {
   res.json([]);
 });
