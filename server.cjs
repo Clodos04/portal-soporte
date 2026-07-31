@@ -7,7 +7,7 @@ const app = express();
 app.use(express.json());
 app.use(cors());
 
-// Configuración de la conexión a la Base de Datos MySQL (usando las credenciales de Easypanel)
+// Configuración de la conexión a la Base de Datos MySQL (Easypanel)
 const db = mysql.createConnection({
   host: process.env.DB_HOST || 'sav_db-soporte',
   user: process.env.DB_USER || 'mysql',
@@ -24,7 +24,11 @@ db.connect((err) => {
   console.log('Conectado exitosamente a la base de datos MySQL.');
 });
 
-// --- ENDPOINT DE LOGIN CORREGIDO ---
+// ==========================================
+// 1. ENDPOINTS DE LA API (PRIMERO)
+// ==========================================
+
+// Endpoint de Login
 app.post('/api/login', (req, res) => {
   const { username, password } = req.body;
 
@@ -41,16 +45,16 @@ app.post('/api/login', (req, res) => {
 
     const usuario = results[0];
     
-    // Se envían todas las variantes posibles para que el frontend no muestre 'undefined'
     res.json({
       success: true,
       user: {
         id: usuario.id,
-        nombre: usuario.nombre,
-        paterno: usuario.paterno,
-        materno: usuario.materno,
-        nombres: usuario.nombre,
-        apellidos: usuario.paterno,
+        nombre: usuario.nombre || '',
+        paterno: usuario.paterno || '',
+        materno: usuario.materno || '',
+        nombres: usuario.nombre || '',
+        apellidos: usuario.paterno || '',
+        nombreCompleto: `${usuario.nombre || ''} ${usuario.paterno || ''}`.trim(),
         username: usuario.username,
         role: usuario.nivel === 'ADMINISTRADOR' ? 'admin' : 'client',
         nivel: usuario.nivel,
@@ -60,7 +64,7 @@ app.post('/api/login', (req, res) => {
   });
 });
 
-// Endpoint para obtener todos los tickets
+// Obtener todos los tickets
 app.get('/api/tickets', (req, res) => {
   db.query('SELECT * FROM tickets', (err, results) => {
     if (err) return res.status(500).json({ error: err.message });
@@ -68,7 +72,7 @@ app.get('/api/tickets', (req, res) => {
   });
 });
 
-// Endpoint para crear un ticket
+// Crear un ticket
 app.post('/api/tickets', (req, res) => {
   const nuevoTicket = req.body;
   const query = 'INSERT INTO tickets SET ?';
@@ -81,58 +85,27 @@ app.post('/api/tickets', (req, res) => {
   });
 });
 
-// Endpoint para actualizar un ticket existente (con todos los campos de la tabla)
-app.put('/api/tickets/:folio', express.json(), (req, res) => {
+// Actualizar un ticket (Mismo formato directo y limpio)
+app.put('/api/tickets/:folio', (req, res) => {
   const { folio } = req.params;
-  const {
-    estatus,
-    colorEstatus,
-    tecnico,
-    creador,
-    asunto,
-    descripcion,
-    campana,
-    equipo,
-    nivel,
-    modo,
-    grupo,
-    categoria,
-    subcategoria,
-    elemento,
-    resolucion,
-    archivoNombre,
-    archivoUrl
-  } = req.body;
+  const datosActualizados = req.body;
 
-  const query = `
-    UPDATE tickets 
-    SET estatus = ?, colorEstatus = ?, tecnico = ?, creador = ?, asunto = ?, descripcion = ?, campana = ?, equipo = ?, nivel = ?, modo = ?, grupo = ?, categoria = ?, subcategoria = ?, elemento = ?, resolucion = ?, archivoNombre = ?, archivoUrl = ?
-    WHERE folio = ?
-  `;
-
-  db.query(
-    query,
-    [
-      estatus, colorEstatus, tecnico, creador, asunto, descripcion, 
-      campana, equipo, nivel, modo, grupo, categoria, subcategoria, 
-      elemento, resolucion, archivoNombre, archivoUrl, folio
-    ],
-    (err, result) => {
-      if (err) {
-        console.error('Error detallado al actualizar el ticket en la BD:', err);
-        return res.status(500).json({ error: 'No se pudo guardar el cambio en la base de datos.', details: err.message });
-      }
-      
-      if (result.affectedRows === 0) {
-        return res.status(404).json({ error: 'No se encontró el ticket con ese folio.' });
-      }
-
-      res.json({ message: 'Ticket actualizado correctamente' });
+  const query = 'UPDATE tickets SET ? WHERE folio = ?';
+  db.query(query, [datosActualizados, folio], (err, result) => {
+    if (err) {
+      console.error('Error al actualizar el ticket:', err);
+      return res.status(500).json({ error: err.message });
     }
-  );
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ error: 'No se encontró el ticket con ese folio.' });
+    }
+
+    res.json({ message: 'Ticket actualizado correctamente' });
+  });
 });
 
-// Rutas adicionales de la aplicación
+// Obtener usuarios
 app.get('/api/usuarios', (req, res) => {
   db.query('SELECT * FROM usuarios', (err, results) => {
     if (err) return res.status(500).json({ error: err.message });
@@ -140,6 +113,7 @@ app.get('/api/usuarios', (req, res) => {
   });
 });
 
+// Obtener grupos
 app.get('/api/grupos', (req, res) => {
   db.query('SELECT nombre FROM grupos', (err, results) => {
     if (err) return res.status(500).json({ error: err.message });
@@ -147,15 +121,17 @@ app.get('/api/grupos', (req, res) => {
   });
 });
 
-// --- CONFIGURACIÓN PARA SERVIR EL FRONTEND Y EL LOGIN ---
+// ==========================================
+// 2. CONFIGURACIÓN DEL FRONTEND (AL FINAL)
+// ==========================================
 app.use(express.static(path.join(__dirname, 'dist')));
 
 app.get(/(.*)/, (req, res) => {
   res.sendFile(path.join(__dirname, 'dist', 'index.html'));
 });
 
-// Puerto asignado por el entorno o por defecto
-const PORT = process.env.PORT || 80;
+// Puerto del servidor
+const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`Servidor corriendo en el puerto ${PORT}`);
 });
