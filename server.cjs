@@ -1,6 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const mysql = require('mysql2');
+const path = require('path');
 
 const app = express();
 app.use(cors());
@@ -24,7 +25,7 @@ db.connect((err) => {
   inicializarBaseDeDatos();
 });
 
-// Importar usuarios iniciales
+// Importar usuarios iniciales desde el archivo correcto
 const { usuariosIniciales } = require('./usuariosData.cjs');
 
 function inicializarBaseDeDatos() {
@@ -237,7 +238,6 @@ app.put('/api/tickets/:id', (req, res) => {
 
 // --- MÓDULO DE ENCUESTAS Y KPS / SLA ---
 
-// 1. Registrar encuesta (Valida 1 sola vez por ticket y máximo 7 días desde el cierre)
 app.post('/api/encuestas', (req, res) => {
   const { ticket_id, cliente_username, calificacion, comentarios } = req.body;
 
@@ -277,7 +277,6 @@ app.post('/api/encuestas', (req, res) => {
   });
 });
 
-// 2. Historial de encuestas e indicadores generales (Para Admin y Técnico Supervisor)
 app.get('/api/encuestas/reporte', (req, res) => {
   const query = `
     SELECT e.*, t.folio, t.asunto, t.categoria, t.tecnico, t.creador 
@@ -297,7 +296,6 @@ app.get('/api/encuestas/reporte', (req, res) => {
   });
 });
 
-// 3. KPIs de Tiempos de Resolución y SLAs (Para Admin y Técnico Supervisor)
 app.get('/api/kpis/tiempos', (req, res) => {
   const query = `
     SELECT t.id, t.folio, t.categoria, t.tecnico, t.fecha_asignacion, t.fecha_cierre,
@@ -309,6 +307,13 @@ app.get('/api/kpis/tiempos', (req, res) => {
     if (err) return res.status(500).json({ error: err.message });
     res.json(results);
   });
+});
+
+// --- CONFIGURACIÓN DE ARCHIVOS ESTÁTICOS DEL FRONTEND (REACT) ---
+app.use(express.static(path.join(__dirname, 'dist')));
+
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, 'dist', 'index.html'));
 });
 
 const PORT = process.env.PORT || 80;
