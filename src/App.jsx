@@ -15,7 +15,7 @@ import Informes from './views/Informes';
 import EncuestaView from './views/EncuestaView';
 import GuiaTicketsView from './views/GuiaTicketsView';
 import AdminReportesView from './views/AdminReportesView';
-import SupervisorPanel from './views/SupervisorPanel'; // <--- IMPORTADO AQUÍ
+import SupervisorPanel from './views/SupervisorPanel';
 
 import AdminGruposView from './views/AdminGruposView';
 import AdminUsuariosView from './views/AdminUsuariosView';
@@ -53,7 +53,7 @@ function App() {
   const [categorias, setCategorias] = useState([]);
   const [estadisticasEncuestas, setEstadisticasEncuestas] = useState([]);
 
-  // Carga de todos los datos desde MySQL al iniciar o recargar (F5)
+  // Carga de todos los datos desde MySQL al iniciar o recargar
   useEffect(() => {
     fetch('/api/tickets')
       .then(res => res.json())
@@ -140,6 +140,9 @@ function App() {
     setEstadisticasEncuestas([...estadisticasEncuestas, nuevaEncuesta]);
   };
 
+  // ==========================================
+  // FUNCIÓN DE LOGIN CORREGIDA
+  // ==========================================
   const handleLogin = async (username, password) => {
     try {
       const response = await fetch('/api/login', {
@@ -154,18 +157,22 @@ function App() {
         return false;
       }
 
-      const usuarioEncontrado = await response.json();
+      const data = await response.json();
       
+      // Aquí abrimos la cajita "user" que manda nuestro servidor Node
+      const usuarioEncontrado = data.user ? data.user : data; 
+
       const nivel = (usuarioEncontrado.nivel || '').toUpperCase();
       const esSoporte = nivel === 'ADMINISTRADOR' || nivel === 'TECNICO SUPERVISOR' || nivel === 'TECNICO';
       const role = esSoporte ? 'support' : 'client';
       
       setUser({
-        name: `${usuarioEncontrado.nombre} ${usuarioEncontrado.paterno}`,
+        name: `${usuarioEncontrado.nombre || ''} ${usuarioEncontrado.paterno || ''}`.trim(),
         role: role,
         nivel: usuarioEncontrado.nivel,
         username: usuarioEncontrado.username
       });
+      
       setIsLoggedIn(true);
       setCurrentView('inicio');
       return true;
