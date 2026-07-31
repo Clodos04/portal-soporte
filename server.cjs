@@ -107,6 +107,14 @@ function inicializarBaseDeDatos() {
     });
   });
 
+  // Asegurar columnas en la tabla categorias si ya existía de antes
+  setTimeout(() => {
+    db.query(`ALTER TABLE categorias ADD COLUMN IF NOT EXISTS estatus VARCHAR(50) DEFAULT 'ACTIVO'`);
+    db.query(`ALTER TABLE categorias ADD COLUMN IF NOT EXISTS fec_alta DATETIME DEFAULT CURRENT_TIMESTAMP`);
+    db.query(`ALTER TABLE categorias ADD COLUMN IF NOT EXISTS usuario VARCHAR(150) DEFAULT 'ADMINISTRADOR'`);
+    db.query(`ALTER TABLE categorias ADD COLUMN IF NOT EXISTS sla INT DEFAULT 24`);
+  }, 500);
+
   // Insertar usuarios iniciales si la tabla está vacía
   setTimeout(() => {
     db.query(`SELECT COUNT(*) as count FROM usuarios`, (err, results) => {
