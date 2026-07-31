@@ -209,14 +209,16 @@ app.get(['/api/elementos', '/elementos'], (req, res) => {
 // RUTAS REALES PARA ENCUESTAS Y PANEL SUPERVISOR
 // =========================================================================
 
-// 1. Guardar nueva encuesta en la base de datos (con respuestas guardadas)
+// 1. Guardar nueva encuesta en la base de datos
 app.post(['/api/encuestas', '/encuestas'], (req, res) => {
   const data = { ...req.body };
   
+  // Limpiamos campos que no van directamente o que causan conflicto en MySQL
+  if (data.fecha) delete data.fecha;
   if (data.fecha_respuesta) delete data.fecha_respuesta;
   if (data.promedio) delete data.promedio;
 
-  // Convertimos objetos/arreglos (como 'respuestas') a texto JSON para MySQL
+  // Convertimos objetos/arreglos a texto JSON para MySQL
   for (let key in data) {
     if (typeof data[key] === 'object' && data[key] !== null) {
       data[key] = JSON.stringify(data[key]);
