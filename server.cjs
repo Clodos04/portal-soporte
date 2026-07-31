@@ -206,21 +206,39 @@ app.get(['/api/elementos', '/elementos'], (req, res) => {
 });
 
 // =========================================================================
-// RUTAS NUEVAS PARA EL PANEL DE SUPERVISOR (Evitan el SyntaxError JSON)
+// RUTAS REALES PARA ENCUESTAS Y PANEL SUPERVISOR
 // =========================================================================
 
-// Endpoint de Reporte de Encuestas
-app.get(['/api/encuestas/reporte', '/encuestas/reporte'], (req, res) => {
-  // Simulamos una estructura vacía para que React la lea correctamente
-  res.json({
-    estadisticas: { promedio: 0, total: 0 },
-    historial: []
+// 1. Guardar nueva encuesta en la base de datos
+app.post(['/api/encuestas', '/encuestas'], (req, res) => {
+  // Aseguramos que la fecha no cause conflicto, MySQL la pone en automático
+  const data = { ...req.body };
+  if (data.fecha_respuesta) delete data.fecha_respuesta;
+
+  db.query('INSERT INTO encuestas SET ?', data, (err, result) => {
+    if (err) return res.status(500).json({ error: err.message });
+    res.json({ message: 'Encuesta guardada', id: result.insertId });
   });
 });
 
-// Endpoint de KPIs de Tiempos
+// 2. Leer encuestas para el Panel y para bloquear el botón de volver a contestar
+app.get(['/api/encuestas/reporte', '/encuestas/reporte'], (req, res) => {
+  db.query('SELECT * FROM encuestas', (err, results) => {
+    if (err) return res.status(500).json({ error: err.message });
+    
+    let suma = 0;
+    results.forEach(r => suma += (r.calificacion || 0));
+    const promedio = results.length > 0 ? (suma / results.length).toFixed(1) : 0;
+
+    res.json({
+      estadisticas: { promedio, total: results.length },
+      historial: results
+    });
+  });
+});
+
+// Endpoint de KPIs de Tiempos (sigue vacío hasta que lo programemos a futuro)
 app.get(['/api/kpis/tiempos', '/kpis/tiempos'], (req, res) => {
-  // Simulamos un arreglo vacío de tiempos
   res.json([]);
 });
 
