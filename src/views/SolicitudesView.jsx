@@ -111,7 +111,11 @@ function SolicitudesView({
                 </tr>
               ) : (
                 ticketsFiltrados.map((ticket) => {
-                  const yaEncuestado = estadisticasEncuestas.some(e => e.folio === ticket.folio || e.ticket_id === ticket.id);
+                  // Validación estricta para evitar falsos positivos
+                  const yaEncuestado = estadisticasEncuestas.some(e => 
+                    (ticket.folio && e.folio && String(e.folio).trim() === String(ticket.folio).trim()) || 
+                    (ticket.id && e.ticket_id && Number(e.ticket_id) === Number(ticket.id))
+                  );
 
                   return (
                     <tr key={ticket.folio} className="hover:bg-slate-700/50 transition-colors">
@@ -181,4 +185,4 @@ function SolicitudesView({
   );
 }
 
-export default SolicitudesView;
+exports default SolicitudesView; // o export default SolicitudesView según tu archivo
