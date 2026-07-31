@@ -58,7 +58,9 @@ const handleLogin = (req, res) => {
 app.post('/api/login', handleLogin);
 app.post('/login', handleLogin);
 
-// Tickets
+// =========================================================================
+// TICKETS (Actualizados para prevenir el Error 500)
+// =========================================================================
 app.get(['/api/tickets', '/tickets'], (req, res) => {
   db.query('SELECT * FROM tickets', (err, results) => {
     if (err) return res.status(500).json({ error: err.message });
@@ -67,14 +69,35 @@ app.get(['/api/tickets', '/tickets'], (req, res) => {
 });
 
 app.post(['/api/tickets', '/tickets'], (req, res) => {
-  db.query('INSERT INTO tickets SET ?', req.body, (err, result) => {
+  const ticketData = { ...req.body };
+  
+  // Convertimos cualquier arreglo/objeto a texto JSON para MySQL
+  for (let key in ticketData) {
+    if (typeof ticketData[key] === 'object' && ticketData[key] !== null) {
+      ticketData[key] = JSON.stringify(ticketData[key]);
+    }
+  }
+
+  db.query('INSERT INTO tickets SET ?', ticketData, (err, result) => {
     if (err) return res.status(500).json({ error: err.message });
     res.json({ message: 'Ticket creado exitosamente', id: result.insertId });
   });
 });
 
 app.put(['/api/tickets/:folio', '/tickets/:folio'], (req, res) => {
-  db.query('UPDATE tickets SET ? WHERE folio = ?', [req.body, req.params.folio], (err, result) => {
+  const ticketData = { ...req.body };
+  
+  // Eliminamos el folio del cuerpo para no reescribir la Llave Primaria
+  delete ticketData.folio;
+
+  // Convertimos cualquier arreglo/objeto a texto JSON para MySQL
+  for (let key in ticketData) {
+    if (typeof ticketData[key] === 'object' && ticketData[key] !== null) {
+      ticketData[key] = JSON.stringify(ticketData[key]);
+    }
+  }
+
+  db.query('UPDATE tickets SET ? WHERE folio = ?', [ticketData, req.params.folio], (err, result) => {
     if (err) return res.status(500).json({ error: err.message });
     if (result.affectedRows === 0) return res.status(404).json({ error: 'No se encontró el ticket.' });
     res.json({ message: 'Ticket actualizado correctamente' });
