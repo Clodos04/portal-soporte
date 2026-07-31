@@ -59,13 +59,12 @@ app.post('/api/login', handleLogin);
 app.post('/login', handleLogin);
 
 // =========================================================================
-// TICKETS (Ahora guardan notas de forma permanente)
+// TICKETS
 // =========================================================================
 app.get(['/api/tickets', '/tickets'], (req, res) => {
   db.query('SELECT * FROM tickets', (err, results) => {
     if (err) return res.status(500).json({ error: err.message });
     
-    // Desempaquetamos las notas para que React no falle al intentar leerlas
     const ticketsFormateados = results.map(t => {
       let notas = t.notas;
       if (typeof notas === 'string') {
@@ -84,10 +83,8 @@ app.get(['/api/tickets', '/tickets'], (req, res) => {
 app.post(['/api/tickets', '/tickets'], (req, res) => {
   const ticketData = { ...req.body };
   
-  // Aún eliminamos "archivos" a menos que también le crees una columna en MySQL
   delete ticketData.archivos;
   
-  // Convertimos arreglos (como las notas) a texto JSON para poder guardarlo en MySQL
   for (let key in ticketData) {
     if (typeof ticketData[key] === 'object' && ticketData[key] !== null) {
       ticketData[key] = JSON.stringify(ticketData[key]);
@@ -104,9 +101,8 @@ app.put(['/api/tickets/:folio', '/tickets/:folio'], (req, res) => {
   const ticketData = { ...req.body };
   
   delete ticketData.folio;
-  delete ticketData.archivos; // Aún ignoramos archivos para evitar Error 500
+  delete ticketData.archivos;
 
-  // Empaquetamos notas y otros arreglos
   for (let key in ticketData) {
     if (typeof ticketData[key] === 'object' && ticketData[key] !== null) {
       ticketData[key] = JSON.stringify(ticketData[key]);
@@ -207,6 +203,25 @@ app.get(['/api/elementos', '/elementos'], (req, res) => {
     if (err) return res.status(500).json({ error: err.message });
     res.json(results);
   });
+});
+
+// =========================================================================
+// RUTAS NUEVAS PARA EL PANEL DE SUPERVISOR (Evitan el SyntaxError JSON)
+// =========================================================================
+
+// Endpoint de Reporte de Encuestas
+app.get(['/api/encuestas/reporte', '/encuestas/reporte'], (req, res) => {
+  // Simulamos una estructura vacía para que React la lea correctamente
+  res.json({
+    estadisticas: { promedio: 0, total: 0 },
+    historial: []
+  });
+});
+
+// Endpoint de KPIs de Tiempos
+app.get(['/api/kpis/tiempos', '/kpis/tiempos'], (req, res) => {
+  // Simulamos un arreglo vacío de tiempos
+  res.json([]);
 });
 
 // =========================================================================
