@@ -185,12 +185,38 @@ app.post('/api/usuarios', (req, res) => {
   );
 });
 
+app.delete('/api/usuarios/:id', (req, res) => {
+  const { id } = req.params;
+  db.query(`DELETE FROM usuarios WHERE id = ?`, [id], (err, result) => {
+    if (err) return res.status(500).json({ error: err.message });
+    res.json({ message: 'Usuario eliminado correctamente' });
+  });
+});
+
 // --- ENDPOINTS DE GRUPOS ---
 app.get('/api/grupos', (req, res) => {
   db.query(`SELECT nombre FROM grupos`, (err, results) => {
     if (err) return res.status(500).json({ error: err.message });
     const nombres = results.map(g => g.nombre);
     res.json(nombres);
+  });
+});
+
+app.post('/api/grupos', (req, res) => {
+  const { nombre } = req.body;
+  if (!nombre) return res.status(400).json({ message: 'El nombre del grupo es obligatorio.' });
+  
+  db.query(`INSERT INTO grupos (nombre) VALUES (?)`, [nombre.toUpperCase().trim()], (err, result) => {
+    if (err) return res.status(500).json({ error: err.message });
+    res.status(201).json({ message: 'Grupo creado con éxito', id: result.insertId });
+  });
+});
+
+app.delete('/api/grupos/:nombre', (req, res) => {
+  const { nombre } = req.params;
+  db.query(`DELETE FROM grupos WHERE nombre = ?`, [nombre], (err, result) => {
+    if (err) return res.status(500).json({ error: err.message });
+    res.json({ message: 'Grupo eliminado correctamente' });
   });
 });
 
@@ -262,7 +288,7 @@ app.put('/api/tickets/:id', (req, res) => {
   });
 });
 
-// --- MÓDULO DE ENCUESTAS Y KPS / SLA ---
+// --- MÓDULO DE ENCUESTAS Y KPIS / SLA ---
 
 app.post('/api/encuestas', (req, res) => {
   const { ticket_id, cliente_username, calificacion, comentarios } = req.body;
