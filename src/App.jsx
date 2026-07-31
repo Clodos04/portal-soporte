@@ -53,7 +53,9 @@ function App() {
   const [categorias, setCategorias] = useState([]);
   const [estadisticasEncuestas, setEstadisticasEncuestas] = useState([]);
 
-  // Carga de todos los datos desde MySQL al iniciar o recargar
+  // ==========================================
+  // CARGA DE DATOS (Actualizada con Encuestas)
+  // ==========================================
   useEffect(() => {
     fetch('/api/tickets')
       .then(res => res.json())
@@ -74,6 +76,14 @@ function App() {
     fetch('/api/categorias')
       .then(res => res.json())
       .then(data => { if (Array.isArray(data)) setCategorias(data); });
+
+    // ¡NUEVO! Cargar encuestas reales para que React sepa cuáles ya se contestaron
+    fetch('/api/encuestas/reporte')
+      .then(res => res.json())
+      .then(data => { 
+        if (data && data.historial) setEstadisticasEncuestas(data.historial); 
+      })
+      .catch(err => console.error("Error al cargar encuestas:", err));
   }, []);
 
   // Función sincronizada para categorías, subcategorías y elementos
@@ -136,8 +146,22 @@ function App() {
     setTicketEnEdicion(null);
   };
 
+  // ==========================================
+  // FUNCIÓN PARA GUARDAR ENCUESTAS CORREGIDA
+  // ==========================================
   const handleGuardarEncuesta = (nuevaEncuesta) => {
-    setEstadisticasEncuestas([...estadisticasEncuestas, nuevaEncuesta]);
+    // 1. Mandamos la encuesta a MySQL
+    fetch('/api/encuestas', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(nuevaEncuesta)
+    })
+    .then(res => res.json())
+    .then(() => {
+      // 2. Actualizamos la memoria de React para que el botón desaparezca al instante
+      setEstadisticasEncuestas(prev => [...prev, nuevaEncuesta]);
+    })
+    .catch(err => console.error('Error al guardar encuesta:', err));
   };
 
   // ==========================================
