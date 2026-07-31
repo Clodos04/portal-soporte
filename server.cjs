@@ -39,15 +39,16 @@ app.post('/api/login', (req, res) => {
       return res.status(401).json({ error: 'Usuario o contraseña incorrectos, o usuario inactivo.' });
     }
 
-    const usuario = results.get ? results.get(0) : results[0];
+    const usuario = results[0];
     
-    // Mapeamos el nivel a la estructura que espera tu frontend (role / nivel)
+    // Se devuelven los campos de nombre y apellido separados y juntos para evitar 'undefined' en la UI
     res.json({
       success: true,
       user: {
         id: usuario.id,
         nombre: usuario.nombre,
         paterno: usuario.paterno,
+        materno: usuario.materno,
         username: usuario.username,
         role: usuario.nivel === 'ADMINISTRADOR' ? 'admin' : 'client',
         nivel: usuario.nivel,
