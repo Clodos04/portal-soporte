@@ -66,17 +66,15 @@ function SupervisorPanel({ user }) {
   const idsFiltrados = new Set(ticketsFiltrados.map(t => t.id));
   const tiemposFiltrados = kpiTiempos.filter(k => idsFiltrados.has(k.id));
   
-  // Cálculo exacto de tiempo promedio en minutos basado en el servidor
   let tiempoPromedioMinutos = 0;
   if (tiemposFiltrados.length > 0) {
     const sumaMinutos = tiemposFiltrados.reduce((acc, curr) => acc + (Number(curr.minutos_resolucion) || 0), 0);
     tiempoPromedioMinutos = Math.round(sumaMinutos / tiemposFiltrados.length);
   }
 
-  // Filtrar encuestas según los tickets filtrados
   const historialEncuestasFiltrado = encuestasData.historial.filter(e => idsFiltrados.has(e.ticket_id) || idsFiltrados.has(e.folio));
   
-  // Promedio CSAT global idéntico al que calcula el servidor/dashboard
+  // Cálculo exacto del CSAT sincronizado con el promedio real de las encuestas
   let promedioCSAT = 0;
   if (historialEncuestasFiltrado.length > 0) {
     const sumaCalif = historialEncuestasFiltrado.reduce((acc, curr) => acc + (Number(curr.promedio) || Number(curr.calificacion) || 0), 0);
@@ -220,6 +218,7 @@ function SupervisorPanel({ user }) {
               ) : (
                 ticketsFiltrados.map((t) => {
                   const encuestaAsociada = encuestasData.historial.find(e => e.ticket_id === t.id || e.folio === t.folio);
+                  const califTicket = encuestaAsociada ? (Number(encuestaAsociada.promedio) || Number(encuestaAsociada.calificacion) || 0).toFixed(1) : null;
 
                   return (
                     <tr key={t.id} className="hover:bg-slate-700/50 transition-colors">
@@ -240,7 +239,7 @@ function SupervisorPanel({ user }) {
                       <td className="px-4 py-3 text-center">
                         {encuestaAsociada ? (
                           <span className="font-extrabold text-yellow-400 bg-yellow-400/10 px-2.5 py-1 rounded-full border border-yellow-400/30">
-                            ★ {encuestaAsociada.calificacion || encuestaAsociada.promedio} / 5
+                            ★ {califTicket} / 5
                           </span>
                         ) : (
                           <span className="text-slate-500 text-xs italic">Pendiente / Sin responder</span>
@@ -282,7 +281,7 @@ function SupervisorPanel({ user }) {
                 <p><strong className="text-slate-400">Cliente:</strong> {encuestaModal.cliente_username}</p>
                 <p><strong className="text-slate-400">Técnico Atendió:</strong> {encuestaModal.tecnico || 'N/D'}</p>
                 <p><strong className="text-slate-400">Categoría:</strong> {encuestaModal.categoria || 'N/D'}</p>
-                <p><strong className="text-slate-400">Calificación Asignada:</strong> <span className="text-yellow-400 font-bold text-base">★ {encuestaModal.calificacion || encuestaModal.promedio} de 5</span></p>
+                <p><strong className="text-slate-400">Calificación Asignada:</strong> <span className="text-yellow-400 font-bold text-base">★ {(Number(encuestaModal.promedio) || Number(encuestaModal.calificacion) || 0).toFixed(1)} de 5</span></p>
                 <p><strong className="text-slate-400">Fecha de Respuesta:</strong> {new Date(encuestaModal.fecha_respuesta).toLocaleString()}</p>
               </div>
 
