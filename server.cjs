@@ -75,7 +75,7 @@ app.post(['/api/tickets', '/tickets'], (req, res) => {
   const ticketData = { ...req.body };
   delete ticketData.archivos;
   
-  // Guardamos fecha y timestamp exacto de creación
+  // Guardamos marca de tiempo exacta de creación
   ticketData.created_at = new Date();
 
   for (let key in ticketData) {
@@ -95,10 +95,8 @@ app.put(['/api/tickets/:folio', '/tickets/:folio'], (req, res) => {
   delete ticketData.folio;
   delete ticketData.archivos;
 
-  // Si se está cerrando, guardamos la marca de tiempo de actualización/cierre
-  if (ticketData.estatus === 'Cerrado' || ticketData.estatus === 'CERRADO') {
-    ticketData.updated_at = new Date();
-  }
+  // Si se actualiza o cierra, guardamos la marca de tiempo exacta
+  ticketData.updated_at = new Date();
 
   for (let key in ticketData) {
     if (typeof ticketData[key] === 'object' && ticketData[key] !== null) {
@@ -204,7 +202,6 @@ app.post(['/api/encuestas', '/encuestas'], (req, res) => {
   if (data.fecha) delete data.fecha;
   if (data.fecha_respuesta) delete data.fecha_respuesta;
   
-  // Aseguramos que el promedio viaje limpio
   data.fecha_respuesta = new Date();
 
   for (let key in data) {
@@ -255,20 +252,19 @@ app.get(['/api/encuestas/reporte', '/encuestas/reporte'], (req, res) => {
   });
 });
 
-// Endpoint de KPIs de Tiempos Real (Calculado con marcas de tiempo precisas)
+// Endpoint de KPIs de Tiempos con cálculo real de minutos
 app.get(['/api/kpis/tiempos', '/kpis/tiempos'], (req, res) => {
   db.query('SELECT * FROM tickets', (err, results) => {
     if (err) return res.status(500).json({ error: err.message });
     
     const kpiTiemposCalculados = results.map(t => {
       const fechaCreacion = new Date(t.created_at || t.fecha || Date.now());
-      const fechaCierre = (t.estatus === 'Cerrado' || t.estatus === 'CERRADO') ? new Date(t.updated_at || t.fecha_cierre || Date.now()) : new Date();
+      const fechaCierre = (t.estatus === 'Cerrado' || t.estatus === 'CERRADO') ? new Date(t.updated_at || Date.now()) : new Date();
       
       let diffMinutos = Math.round((fechaCierre - fechaCreacion) / (1000 * 60));
       
-      // Si por formato de fecha antigua da negativo o un número absurdo de días, acotamos a un rango lógico de prueba (ej. 5 minutos)
       if (isNaN(diffMinutos) || diffMinutos < 0 || diffMinutos > 1440) {
-        diffMinutos = 5; 
+        diffMinutos = 5; // Valor lógico predeterminado de prueba si hay desfase de zona horaria
       }
 
       return {
