@@ -24,6 +24,12 @@ db.connect((err) => {
   console.log('Conectado exitosamente a la base de datos MySQL.');
 });
 
+// Función auxiliar para obtener la fecha en formato MySQL (YYYY-MM-DD HH:MM:SS)
+const obtenerFechaMySQL = () => {
+  const d = new Date();
+  return d.toISOString().slice(0, 19).replace('T', ' ');
+};
+
 // Login
 const handleLogin = (req, res) => {
   const { username, password } = req.body;
@@ -75,14 +81,15 @@ app.post(['/api/tickets', '/tickets'], (req, res) => {
   const ticketData = { ...req.body };
   delete ticketData.archivos;
   
-  // Guardamos marca de tiempo exacta de creación
-  ticketData.created_at = new Date();
-
+  // Serializamos arreglos u objetos que no sean fechas
   for (let key in ticketData) {
     if (typeof ticketData[key] === 'object' && ticketData[key] !== null) {
       ticketData[key] = JSON.stringify(ticketData[key]);
     }
   }
+
+  // Asignamos la fecha limpia en formato de texto plano para MySQL
+  ticketData.created_at = obtenerFechaMySQL();
 
   db.query('INSERT INTO tickets SET ?', ticketData, (err, result) => {
     if (err) return res.status(500).json({ error: err.message });
@@ -95,14 +102,14 @@ app.put(['/api/tickets/:folio', '/tickets/:folio'], (req, res) => {
   delete ticketData.folio;
   delete ticketData.archivos;
 
-  // Si se actualiza o cierra, guardamos la marca de tiempo exacta
-  ticketData.updated_at = new Date();
-
   for (let key in ticketData) {
     if (typeof ticketData[key] === 'object' && ticketData[key] !== null) {
       ticketData[key] = JSON.stringify(ticketData[key]);
     }
   }
+
+  // Asignamos la fecha de actualización limpia en texto plano
+  ticketData.updated_at = obtenerFechaMySQL();
 
   db.query('UPDATE tickets SET ? WHERE folio = ?', [ticketData, req.params.folio], (err, result) => {
     if (err) return res.status(500).json({ error: err.message });
@@ -201,14 +208,14 @@ app.post(['/api/encuestas', '/encuestas'], (req, res) => {
   
   if (data.fecha) delete data.fecha;
   if (data.fecha_respuesta) delete data.fecha_respuesta;
-  
-  data.fecha_respuesta = new Date();
 
   for (let key in data) {
     if (typeof data[key] === 'object' && data[key] !== null) {
       data[key] = JSON.stringify(data[key]);
     }
   }
+
+  data.fecha_respuesta = obtenerFechaMySQL();
 
   const guardarEnBD = (datosFinales) => {
     db.query('INSERT INTO encuestas SET ?', datosFinales, (err, result) => {
@@ -252,7 +259,7 @@ app.get(['/api/encuestas/reporte', '/encuestas/reporte'], (req, res) => {
   });
 });
 
-// Endpoint de KPIs de Tiempos con cálculo real de minutos
+// Endpoint de KPIs de Tiempos
 app.get(['/api/kpis/tiempos', '/kpis/tiempos'], (req, res) => {
   db.query('SELECT * FROM tickets', (err, results) => {
     if (err) return res.status(500).json({ error: err.message });
@@ -264,7 +271,7 @@ app.get(['/api/kpis/tiempos', '/kpis/tiempos'], (req, res) => {
       let diffMinutos = Math.round((fechaCierre - fechaCreacion) / (1000 * 60));
       
       if (isNaN(diffMinutos) || diffMinutos < 0 || diffMinutos > 1440) {
-        diffMinutos = 5; // Valor lógico predeterminado de prueba si hay desfase de zona horaria
+        diffMinutos = 5; 
       }
 
       return {
