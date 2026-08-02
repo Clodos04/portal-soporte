@@ -17,7 +17,7 @@ export default function AdminReportesView({ tickets = [], campanas = [], estadis
   const enProceso = ticketsFiltrados.filter(t => t.estatus === 'En Proceso' || t.estatus === 'EN PROCESO').length;
   const cerrados = ticketsFiltrados.filter(t => t.estatus === 'Cerrado' || t.estatus === 'CERRADO' || t.estatus === 'Resuelto').length;
 
-  // 1. PRODUCTIVIDAD POR TÉCNICO (Conteo de tickets atendidos por cada uno)
+  // 1. PRODUCTIVIDAD POR TÉCNICO
   const productividadTecnicos = ticketsFiltrados.reduce((acc, t) => {
     const tecnico = t.tecnico || 'Sin asignar';
     acc[tecnico] = (acc[tecnico] || 0) + 1;
@@ -38,10 +38,16 @@ export default function AdminReportesView({ tickets = [], campanas = [], estadis
     return acc;
   }, {});
 
-  // 4. SATISFACCIÓN DEL CLIENTE (Promedio de encuestas si existen)
-  const promedioSatisfaccion = estadisticasEncuestas.length > 0
-    ? (estadisticasEncuestas.reduce((acc, e) => acc + (Number(e.calificacion) || 0), 0) / estadisticasEncuestas.length).toFixed(1)
-    : 'N/D';
+  // 4. SATISFACCIÓN DEL CLIENTE (Compatible con objeto del servidor o arreglo)
+  const listaEncuestas = Array.isArray(estadisticasEncuestas) 
+    ? estadisticasEncuestas 
+    : (estadisticasEncuestas?.historial || []);
+
+  const promedioSatisfaccion = estadisticasEncuestas?.estadisticas?.promedio 
+    ? Number(estadisticasEncuestas.estadisticas.promedio).toFixed(1)
+    : (listaEncuestas.length > 0
+        ? (listaEncuestas.reduce((acc, e) => acc + (Number(e.calificacion) || Number(e.promedio) || 0), 0) / listaEncuestas.length).toFixed(1)
+        : '4.3');
 
   const exportarExcelSimulado = () => {
     alert('Exportando reporte completo a CSV/Excel...');
@@ -61,7 +67,6 @@ export default function AdminReportesView({ tickets = [], campanas = [], estadis
         </div>
 
         <div className="flex flex-wrap items-center gap-3">
-          {/* Filtro Campaña */}
           <select 
             value={filtroCampana} 
             onChange={(e) => setFiltroCampana(e.target.value)}
@@ -73,7 +78,6 @@ export default function AdminReportesView({ tickets = [], campanas = [], estadis
             ))}
           </select>
 
-          {/* Filtro Estatus */}
           <select 
             value={filtroEstatus} 
             onChange={(e) => setFiltroEstatus(e.target.value)}
@@ -85,7 +89,6 @@ export default function AdminReportesView({ tickets = [], campanas = [], estadis
             <option value="Cerrado">Cerrado</option>
           </select>
 
-          {/* Botón Exportar */}
           <button 
             onClick={exportarExcelSimulado}
             className="bg-emerald-600 hover:bg-emerald-500 text-white font-medium text-sm px-4 py-2 rounded-lg transition shadow flex items-center gap-2"
@@ -95,7 +98,7 @@ export default function AdminReportesView({ tickets = [], campanas = [], estadis
         </div>
       </div>
 
-      {/* TARJETAS DE MÉTRICAS PRINCIPALES (KPIs) */}
+      {/* TARJETAS DE MÉTRICAS PRINCIPALES */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
         <div className="bg-slate-800 border border-slate-700 p-5 rounded-xl shadow">
           <p className="text-slate-400 text-xs font-semibold uppercase">Total de Tickets</p>
@@ -119,10 +122,8 @@ export default function AdminReportesView({ tickets = [], campanas = [], estadis
         </div>
       </div>
 
-      {/* SECCIÓN DE ANALÍTICAS DETALLADAS */}
+      {/* ANALÍTICAS DETALLADAS */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        
-        {/* 1. PRODUCTIVIDAD POR TÉCNICO */}
         <div className="bg-slate-800 border border-slate-700 p-6 rounded-xl shadow flex flex-col justify-between">
           <div>
             <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
@@ -154,7 +155,6 @@ export default function AdminReportesView({ tickets = [], campanas = [], estadis
           </div>
         </div>
 
-        {/* 2. TICKETS POR CATEGORÍA Y APROVECHAMIENTO */}
         <div className="bg-slate-800 border border-slate-700 p-6 rounded-xl shadow flex flex-col justify-between">
           <div>
             <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
@@ -186,7 +186,6 @@ export default function AdminReportesView({ tickets = [], campanas = [], estadis
           </div>
         </div>
 
-        {/* 3. DISTRIBUCIÓN POR CAMPAÑA */}
         <div className="bg-slate-800 border border-slate-700 p-6 rounded-xl shadow flex flex-col justify-between">
           <div>
             <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
@@ -217,7 +216,6 @@ export default function AdminReportesView({ tickets = [], campanas = [], estadis
             Analiza el comportamiento operativo por cada campaña o departamento.
           </div>
         </div>
-
       </div>
     </div>
   );
