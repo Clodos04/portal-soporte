@@ -81,14 +81,12 @@ app.post(['/api/tickets', '/tickets'], (req, res) => {
   const ticketData = { ...req.body };
   delete ticketData.archivos;
   
-  // Serializamos arreglos u objetos que no sean fechas
   for (let key in ticketData) {
     if (typeof ticketData[key] === 'object' && ticketData[key] !== null) {
       ticketData[key] = JSON.stringify(ticketData[key]);
     }
   }
 
-  // Asignamos la fecha limpia en formato de texto plano para MySQL
   ticketData.created_at = obtenerFechaMySQL();
 
   db.query('INSERT INTO tickets SET ?', ticketData, (err, result) => {
@@ -108,7 +106,6 @@ app.put(['/api/tickets/:folio', '/tickets/:folio'], (req, res) => {
     }
   }
 
-  // Asignamos la fecha de actualización limpia en texto plano
   ticketData.updated_at = obtenerFechaMySQL();
 
   db.query('UPDATE tickets SET ? WHERE folio = ?', [ticketData, req.params.folio], (err, result) => {
@@ -208,6 +205,7 @@ app.post(['/api/encuestas', '/encuestas'], (req, res) => {
   
   if (data.fecha) delete data.fecha;
   if (data.fecha_respuesta) delete data.fecha_respuesta;
+  delete data.promedio; // Evita el error de columna desconocida en la BD
 
   for (let key in data) {
     if (typeof data[key] === 'object' && data[key] !== null) {
@@ -245,15 +243,16 @@ app.get(['/api/encuestas/reporte', '/encuestas/reporte'], (req, res) => {
       if (typeof resp === 'string') {
         try { resp = JSON.parse(resp); } catch (err) { resp = []; }
       }
-      return { ...e, respuestas: resp };
+      const promedio = e.calificacion || 5;
+      return { ...e, promedio, respuestas: resp };
     });
 
     let suma = 0;
     encuestasFormateadas.forEach(r => suma += (Number(r.promedio) || Number(r.calificacion) || 0));
-    const promedio = encuestasFormateadas.length > 0 ? (suma / encuestasFormateadas.length).toFixed(1) : 0;
+    const promedioGeneral = encuestasFormateadas.length > 0 ? (suma / encuestasFormateadas.length).toFixed(1) : 0;
 
     res.json({
-      estadisticas: { promedio, total: encuestasFormateadas.length },
+      estadisticas: { promedio: promedioGeneral, total: encuestasFormateadas.length },
       historial: encuestasFormateadas
     });
   });
