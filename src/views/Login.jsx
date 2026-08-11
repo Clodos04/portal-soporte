@@ -6,7 +6,7 @@ function Login({ onLogin }) {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const handleLogin = async (user, pass) => {
+  const ejecutarLogin = async (userToSend, passToSend) => {
     setError('');
     setLoading(true);
 
@@ -14,14 +14,16 @@ function Login({ onLogin }) {
       const response = await fetch('/api/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username: user, password: pass })
+        body: JSON.stringify({ username: userToSend, password: passToSend })
       });
+
       const data = await response.json();
 
-      if (response.ok && data.success) {
-        onLogin(data.user);
+      if (response.ok && (data.success || data.user)) {
+        const usuarioValido = data.user || data;
+        onLogin(usuarioValido.username, passToSend); // Pasamos al App.jsx
       } else {
-        setError(data.error || 'Credenciales incorrectas');
+        setError(data.error || 'Usuario o contraseña incorrectos.');
       }
     } catch (err) {
       setError('Error de conexión con el servidor');
@@ -32,18 +34,16 @@ function Login({ onLogin }) {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    handleLogin(username, password);
+    ejecutarLogin(username, password);
   };
 
   return (
     <div className="min-h-screen w-full flex items-center justify-center bg-slate-950 relative overflow-hidden">
-      {/* Efectos decorativos de fondo */}
       <div className="absolute -top-32 -left-32 w-96 h-96 bg-indigo-600/20 rounded-full blur-3xl pointer-events-none"></div>
       <div className="absolute -bottom-32 -right-32 w-96 h-96 bg-blue-600/20 rounded-full blur-3xl pointer-events-none"></div>
 
       <div className="relative z-10 w-full max-w-md p-8 mx-4 bg-slate-900/80 backdrop-blur-xl rounded-3xl border border-slate-800 shadow-2xl shadow-indigo-950/40">
         
-        {/* Encabezado */}
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-indigo-600/20 border border-indigo-500/30 text-indigo-400 text-2xl mb-4 shadow-inner">
             🎧
@@ -96,7 +96,7 @@ function Login({ onLogin }) {
           <button
             type="submit"
             disabled={loading}
-            className="w-full mt-2 py-3.5 px-4 bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-500 hover:to-blue-500 text-white font-bold text-sm uppercase tracking-wider rounded-xl shadow-lg shadow-indigo-600/30 transition-all transform active:scale-[0.98] disabled:opacity-50"
+            className="w-full mt-2 py-3.5 px-4 bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-500 hover:to-blue-500 text-white font-bold text-sm uppercase tracking-wider rounded-xl shadow-lg shadow-indigo-600/30 transition-all transform active:scale-[0.98] disabled:opacity-50 cursor-pointer"
           >
             {loading ? 'Accediendo...' : 'Entrar al Sistema'}
           </button>
@@ -109,14 +109,14 @@ function Login({ onLogin }) {
           <div className="flex justify-center gap-3">
             <button
               type="button"
-              onClick={() => handleLogin('christopher', '123')}
+              onClick={() => ejecutarLogin('christopher', '123')}
               className="px-3.5 py-2 bg-slate-800/80 hover:bg-indigo-600/20 text-slate-300 hover:text-indigo-300 rounded-xl text-xs font-medium border border-slate-700/60 hover:border-indigo-500/40 transition-all flex items-center gap-1.5 cursor-pointer"
             >
               <span>🛡️</span> Admin (Christopher)
             </button>
             <button
               type="button"
-              onClick={() => handleLogin('valeria', '123')}
+              onClick={() => ejecutarLogin('valeria', '123')}
               className="px-3.5 py-2 bg-slate-800/80 hover:bg-blue-600/20 text-slate-300 hover:text-blue-300 rounded-xl text-xs font-medium border border-slate-700/60 hover:border-blue-500/40 transition-all flex items-center gap-1.5 cursor-pointer"
             >
               <span>💬</span> Cliente (Valeria)
