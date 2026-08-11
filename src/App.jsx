@@ -54,7 +54,7 @@ function App() {
   const [estadisticasEncuestas, setEstadisticasEncuestas] = useState([]);
 
   // ==========================================
-  // CARGA DE DATOS (Actualizada con Encuestas)
+  // CARGA DE DATOS
   // ==========================================
   useEffect(() => {
     fetch('/api/tickets')
@@ -77,7 +77,6 @@ function App() {
       .then(res => res.json())
       .then(data => { if (Array.isArray(data)) setCategorias(data); });
 
-    // Cargar encuestas reales para bloquear botones y actualizar indicadores
     fetch('/api/encuestas/reporte')
       .then(res => res.json())
       .then(data => { 
@@ -158,6 +157,9 @@ function App() {
     .catch(err => console.error('Error al guardar encuesta:', err));
   };
 
+  // ==========================================
+  // FUNCIÓN DE LOGIN CORREGIDA (Sin alerts molestos)
+  // ==========================================
   const handleLogin = async (username, password) => {
     try {
       const response = await fetch('/api/login', {
@@ -166,15 +168,13 @@ function App() {
         body: JSON.stringify({ username, password })
       });
 
-      if (!response.ok) {
-        const data = await response.json();
-        alert(data.message || 'Usuario o contraseña incorrectos.');
+      const data = await response.json();
+
+      if (!response.ok || !data.success) {
         return false;
       }
 
-      const data = await response.json();
-      const usuarioEncontrado = data.user ? data.user : data; 
-
+      const usuarioEncontrado = data.user; 
       const nivel = (usuarioEncontrado.nivel || '').toUpperCase();
       const esSoporte = nivel === 'ADMINISTRADOR' || nivel === 'TECNICO SUPERVISOR' || nivel === 'TECNICO';
       const role = esSoporte ? 'support' : 'client';
@@ -191,7 +191,6 @@ function App() {
       return true;
     } catch (error) {
       console.error('Error al iniciar sesión:', error);
-      alert('Error de conexión con el servidor.');
       return false;
     }
   };
