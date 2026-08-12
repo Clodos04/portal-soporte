@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 
-function EditarSolicitudModal({ ticket, user, usuarios = [], grupos = [], usuariosPorGrupo = {}, categorias = [], onClose, onActualizar }) {
+function EditarSolicitudModal({ ticket, user, usuarios = [], grupos = [], usuariosPorGrupo = {}, categorias = [], onClose, onActualizar, onAbrirChat }) {
   const [estatus, setEstatus] = useState(ticket.estatus || 'Abierto');
   const [grupo, setGrupo] = useState(ticket.grupo || grupos[0] || '');
   const [tecnico, setTecnico] = useState(ticket.tecnico || 'Sin Asignar');
@@ -42,7 +42,6 @@ function EditarSolicitudModal({ ticket, user, usuarios = [], grupos = [], usuari
     if (estatus === 'En Proceso' || estatus === 'EN PROCESO') colorEstatus = 'bg-orange-500';
     if (estatus === 'Cerrado' || estatus === 'CERRADO') colorEstatus = 'bg-red-500';
 
-    // Se incluyen todos los campos originales del ticket para evitar vaciar columnas en MySQL
     const ticketActualizado = {
       ...ticket,
       estatus: estatus,
@@ -66,7 +65,6 @@ function EditarSolicitudModal({ ticket, user, usuarios = [], grupos = [], usuari
 
     setCargando(true);
     try {
-      // Petición PUT al servidor para actualizar en MySQL de forma permanente
       const response = await fetch(`/api/tickets/${ticket.folio}`, {
         method: 'PUT',
         headers: {
@@ -79,7 +77,6 @@ function EditarSolicitudModal({ ticket, user, usuarios = [], grupos = [], usuari
         throw new Error('Error al actualizar el ticket en el servidor');
       }
 
-      // Actualizamos el estado local en la interfaz
       if (onActualizar) {
         onActualizar(ticketActualizado);
       }
@@ -98,12 +95,24 @@ function EditarSolicitudModal({ ticket, user, usuarios = [], grupos = [], usuari
         
         {/* Cabecera del Modal */}
         <div className="flex justify-between items-center bg-slate-900/80 px-6 py-4 border-b border-slate-700">
-          <h2 className="text-lg font-bold text-white uppercase tracking-wide">
-            {esCliente ? `Ver Solicitud #${ticket.folio}` : `Gestionar Solicitud #${ticket.folio}`}
-          </h2>
+          <div className="flex items-center gap-3">
+            <h2 className="text-lg font-bold text-white uppercase tracking-wide">
+              {esCliente ? `Ver Solicitud #${ticket.folio}` : `Gestionar Solicitud #${ticket.folio}`}
+            </h2>
+            {!esCliente && onAbrirChat && (
+              <button
+                type="button"
+                onClick={() => { onClose(); onAbrirChat(ticket.folio); }}
+                className="bg-emerald-600/20 hover:bg-emerald-600 text-emerald-400 hover:text-white px-3 py-1 rounded-lg text-xs font-bold transition-all border border-emerald-500/40 flex items-center gap-1 cursor-pointer"
+              >
+                💬 Abrir Chat
+              </button>
+            )}
+          </div>
           <button 
+            type="button"
             onClick={onClose}
-            className="text-slate-400 hover:text-white font-bold text-lg px-2 py-1 rounded-lg hover:bg-slate-700 transition-colors"
+            className="text-slate-400 hover:text-white font-bold text-lg px-2 py-1 rounded-lg hover:bg-slate-700 transition-colors cursor-pointer"
           >
             ✕
           </button>
@@ -201,7 +210,6 @@ function EditarSolicitudModal({ ticket, user, usuarios = [], grupos = [], usuari
             </select>
           </div>
 
-          {/* CAMPO DE EQUIPO(S) SELECCIONADO(S) */}
           <div>
             <label className="block text-xs font-bold text-slate-300 uppercase mb-1.5">Equipo(s):</label>
             <input 
@@ -212,7 +220,6 @@ function EditarSolicitudModal({ ticket, user, usuarios = [], grupos = [], usuari
             />
           </div>
 
-          {/* SECCIÓN DE ARCHIVOS ADJUNTOS */}
           <div className="bg-slate-900/50 p-4 rounded-xl border border-slate-700 space-y-3">
             <h3 className="text-xs font-bold text-indigo-300 uppercase">Archivo Adjunto del Ticket</h3>
             
@@ -262,7 +269,7 @@ function EditarSolicitudModal({ ticket, user, usuarios = [], grupos = [], usuari
             <button 
               type="button" 
               onClick={onClose} 
-              className="bg-slate-700 hover:bg-slate-600 text-slate-200 px-4 py-2 rounded-lg font-bold text-sm transition-colors"
+              className="bg-slate-700 hover:bg-slate-600 text-slate-200 px-4 py-2 rounded-lg font-bold text-sm transition-colors cursor-pointer"
             >
               {esCliente ? 'Cerrar' : 'Cancelar'}
             </button>
@@ -270,7 +277,7 @@ function EditarSolicitudModal({ ticket, user, usuarios = [], grupos = [], usuari
               <button 
                 type="submit" 
                 disabled={cargando}
-                className="bg-green-600 hover:bg-green-500 text-white px-5 py-2 rounded-lg font-bold text-sm shadow-lg shadow-green-600/30 transition-colors disabled:opacity-50"
+                className="bg-green-600 hover:bg-green-500 text-white px-5 py-2 rounded-lg font-bold text-sm shadow-lg shadow-green-600/30 transition-colors disabled:opacity-50 cursor-pointer"
               >
                 {cargando ? 'Guardando...' : 'Guardar Cambios'}
               </button>
