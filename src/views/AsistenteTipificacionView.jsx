@@ -8,7 +8,6 @@ function AsistenteTipificacionView({ categorias = [], campanas = [], user, usuar
   const [subcatSeleccionada, setSubcatSeleccionada] = useState(null);
   const [elementoSeleccionado, setElementoSeleccionado] = useState(null);
 
-  // Estados del formulario final (Paso 5)
   const [asunto, setAsunto] = useState('');
   const [descripcion, setDescripcion] = useState('');
   const [campana, setCampana] = useState(user?.campana || '*111');
@@ -62,7 +61,7 @@ function AsistenteTipificacionView({ categorias = [], campanas = [], user, usuar
 
   const seleccionarElemento = (elem) => {
     setElementoSeleccionado(elem);
-    setPaso(4); // Pasamos al resumen y de ahí al formulario final
+    setPaso(5);
   };
 
   const handleFinalizarReporte = (e) => {
@@ -99,12 +98,12 @@ function AsistenteTipificacionView({ categorias = [], campanas = [], user, usuar
   };
 
   return (
-    <div className="animate-fade-in max-w-4xl w-full bg-slate-900 rounded-3xl shadow-2xl border border-slate-700 text-slate-200 overflow-hidden font-sans max-h-[90vh] flex flex-col">
+    <div className="animate-fade-in w-full max-w-4xl bg-slate-900 rounded-3xl shadow-2xl border border-slate-700 text-slate-200 overflow-hidden font-sans my-auto flex flex-col max-h-[85vh]">
       
-      {/* Encabezado */}
-      <div className="bg-slate-800/80 py-4 px-8 text-center border-b border-slate-700 flex justify-between items-center shrink-0">
+      {/* Encabezado fijo */}
+      <div className="bg-slate-800/90 py-4 px-6 text-center border-b border-slate-700 flex justify-between items-center shrink-0">
         <div></div>
-        <h2 className="text-xl font-black tracking-wider text-white uppercase flex items-center gap-2">
+        <h2 className="text-lg font-black tracking-wider text-white uppercase flex items-center gap-2">
           <span>🤖</span> ASISTENTE DE TIPIFICACIÓN GUIADA
         </h2>
         {onCancelar && (
@@ -114,23 +113,24 @@ function AsistenteTipificacionView({ categorias = [], campanas = [], user, usuar
         )}
       </div>
 
-      <div className="p-8 space-y-6 overflow-y-auto flex-1">
+      {/* Contenido con scroll interno fluido */}
+      <div className="p-6 space-y-6 overflow-y-auto flex-1">
         
         {/* Barra de progreso visual */}
         {paso < 5 && (
-          <div className="flex items-center justify-between mb-4 px-6">
-            <div className={`flex items-center gap-3 ${paso >= 1 ? 'text-indigo-400 font-bold' : 'text-slate-500'}`}>
-              <span className={`w-8 h-8 rounded-xl flex items-center justify-center text-xs font-bold ${paso >= 1 ? 'bg-indigo-600 text-white' : 'bg-slate-800 text-slate-400'}`}>1</span>
+          <div className="flex items-center justify-between mb-2 px-4">
+            <div className={`flex items-center gap-2 ${paso >= 1 ? 'text-indigo-400 font-bold' : 'text-slate-500'}`}>
+              <span className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold ${paso >= 1 ? 'bg-indigo-600 text-white' : 'bg-slate-800 text-slate-400'}`}>1</span>
               <span className="text-xs font-semibold uppercase">Área</span>
             </div>
             <div className={`flex-1 h-1 mx-3 rounded-full ${paso >= 2 ? 'bg-indigo-600' : 'bg-slate-800'}`}></div>
-            <div className={`flex items-center gap-3 ${paso >= 2 ? 'text-indigo-400 font-bold' : 'text-slate-500'}`}>
-              <span className={`w-8 h-8 rounded-xl flex items-center justify-center text-xs font-bold ${paso >= 2 ? 'bg-indigo-600 text-white' : 'bg-slate-800 text-slate-400'}`}>2</span>
+            <div className={`flex items-center gap-2 ${paso >= 2 ? 'text-indigo-400 font-bold' : 'text-slate-500'}`}>
+              <span className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold ${paso >= 2 ? 'bg-indigo-600 text-white' : 'bg-slate-800 text-slate-400'}`}>2</span>
               <span className="text-xs font-semibold uppercase">Módulo</span>
             </div>
             <div className={`flex-1 h-1 mx-3 rounded-full ${paso >= 3 ? 'bg-indigo-600' : 'bg-slate-800'}`}></div>
-            <div className={`flex items-center gap-3 ${paso >= 3 ? 'text-indigo-400 font-bold' : 'text-slate-500'}`}>
-              <span className={`w-8 h-8 rounded-xl flex items-center justify-center text-xs font-bold ${paso >= 3 ? 'bg-indigo-600 text-white' : 'bg-slate-800 text-slate-400'}`}>3</span>
+            <div className={`flex items-center gap-2 ${paso >= 3 ? 'text-indigo-400 font-bold' : 'text-slate-500'}`}>
+              <span className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold ${paso >= 3 ? 'bg-indigo-600 text-white' : 'bg-slate-800 text-slate-400'}`}>3</span>
               <span className="text-xs font-semibold uppercase">Falla</span>
             </div>
           </div>
@@ -139,13 +139,13 @@ function AsistenteTipificacionView({ categorias = [], campanas = [], user, usuar
         {/* PASO 1 */}
         {paso === 1 && (
           <div className="space-y-4 animate-fade-in">
-            <h3 className="text-lg font-bold text-white text-center">¿Qué área o servicio te está presentando problemas?</h3>
+            <h3 className="text-base font-bold text-white text-center">¿Qué área o servicio te está presentando problemas?</h3>
             <div className="grid grid-cols-1 gap-3 max-w-xl mx-auto">
               {opcionesMostradas.map((cat, idx) => (
                 <button
                   key={cat.id || idx}
                   onClick={() => seleccionarCat(cat)}
-                  className="p-4 rounded-2xl bg-slate-800/80 border border-slate-700 hover:border-indigo-500 transition-all text-left flex items-center justify-between group cursor-pointer shadow-md"
+                  className="p-4 rounded-xl bg-slate-800/80 border border-slate-700 hover:border-indigo-500 transition-all text-left flex items-center justify-between group cursor-pointer shadow-md"
                 >
                   <span className="font-bold text-white text-sm uppercase tracking-wide">{cat.nombre}</span>
                   <span className="text-indigo-400 group-hover:translate-x-1.5 transition-transform font-bold">→</span>
@@ -162,7 +162,7 @@ function AsistenteTipificacionView({ categorias = [], campanas = [], user, usuar
               <span className="text-xs text-slate-300">Área: <strong className="text-indigo-400 uppercase">{categoriaSeleccionada.nombre}</strong></span>
               <button onClick={() => setPaso(1)} className="text-xs font-bold text-indigo-400 hover:underline cursor-pointer">« Cambiar área</button>
             </div>
-            <h4 className="text-base font-bold text-white text-center">¿En qué módulo ocurre el problema?</h4>
+            <h4 className="text-sm font-bold text-white text-center">¿En qué módulo ocurre el problema?</h4>
             {(!categoriaSeleccionada.subcategorias || categoriaSeleccionada.subcategorias.length === 0) ? (
               <p className="text-slate-400 italic py-4 text-center text-xs">No hay módulos registrados. Puedes continuar.</p>
             ) : (
@@ -171,9 +171,9 @@ function AsistenteTipificacionView({ categorias = [], campanas = [], user, usuar
                   <button
                     key={sub.id || sub.nombre}
                     onClick={() => seleccionarSubcat(sub)}
-                    className="p-4 rounded-xl bg-slate-800/80 border border-slate-700 hover:border-indigo-500 text-left flex items-center justify-between group cursor-pointer"
+                    className="p-3.5 rounded-xl bg-slate-800/80 border border-slate-700 hover:border-indigo-500 text-left flex items-center justify-between group cursor-pointer"
                   >
-                    <span className="font-semibold text-white text-sm uppercase">{sub.nombre}</span>
+                    <span className="font-semibold text-white text-xs uppercase">{sub.nombre}</span>
                     <span className="text-indigo-400 group-hover:translate-x-1 transition-transform">→</span>
                   </button>
                 ))}
@@ -189,7 +189,7 @@ function AsistenteTipificacionView({ categorias = [], campanas = [], user, usuar
               <span className="text-xs text-slate-300">Módulo: <strong className="text-indigo-400 uppercase">{subcatSeleccionada.nombre}</strong></span>
               <button onClick={() => setPaso(2)} className="text-xs font-bold text-indigo-400 hover:underline cursor-pointer">« Cambiar módulo</button>
             </div>
-            <h4 className="text-base font-bold text-white text-center">Selecciona la falla específica:</h4>
+            <h4 className="text-sm font-bold text-white text-center">Selecciona la falla específica:</h4>
             {(!subcatSeleccionada.elementos || subcatSeleccionada.elementos.length === 0) ? (
               <p className="text-slate-400 italic py-4 text-center text-xs">No hay elementos específicos. Puedes continuar.</p>
             ) : (
@@ -198,9 +198,9 @@ function AsistenteTipificacionView({ categorias = [], campanas = [], user, usuar
                   <button
                     key={elem.id || elem.nombre}
                     onClick={() => seleccionarElemento(elem)}
-                    className="p-4 rounded-xl bg-slate-800/80 border border-slate-700 hover:border-indigo-500 text-left flex items-center justify-between group cursor-pointer"
+                    className="p-3.5 rounded-xl bg-slate-800/80 border border-slate-700 hover:border-indigo-500 text-left flex items-center justify-between group cursor-pointer"
                   >
-                    <span className="font-semibold text-white text-sm uppercase">{elem.nombre}</span>
+                    <span className="font-semibold text-white text-xs uppercase">{elem.nombre}</span>
                     <span className="text-indigo-400 group-hover:translate-x-1 transition-transform">→</span>
                   </button>
                 ))}
@@ -212,12 +212,12 @@ function AsistenteTipificacionView({ categorias = [], campanas = [], user, usuar
         {/* PASO 4: Resumen de Tipificación */}
         {paso === 4 && (
           <div className="space-y-4 animate-fade-in text-center py-2">
-            <div className="w-14 h-14 bg-emerald-500/20 text-emerald-400 rounded-2xl flex items-center justify-center mx-auto text-2xl border border-emerald-500/30">
+            <div className="w-12 h-12 bg-emerald-500/20 text-emerald-400 rounded-xl flex items-center justify-center mx-auto text-xl border border-emerald-500/30">
               ✓
             </div>
-            <h3 className="text-lg font-black text-white uppercase">Tipificación Detectada</h3>
+            <h3 className="text-base font-black text-white uppercase">Tipificación Detectada</h3>
             
-            <div className="bg-slate-800/90 p-4 rounded-xl border border-slate-700 max-w-md mx-auto text-left space-y-1.5 text-xs">
+            <div className="bg-slate-800/90 p-3.5 rounded-xl border border-slate-700 max-w-md mx-auto text-left space-y-1 text-xs">
               <div>Área: <strong className="text-white uppercase">{categoriaSeleccionada?.nombre}</strong></div>
               {subcatSeleccionada && <div>Módulo: <strong className="text-white uppercase">{subcatSeleccionada?.nombre}</strong></div>}
               {elementoSeleccionado && <div>Falla: <strong className="text-indigo-400 uppercase">{elementoSeleccionado?.nombre}</strong></div>}
@@ -227,22 +227,22 @@ function AsistenteTipificacionView({ categorias = [], campanas = [], user, usuar
               <button onClick={reiniciar} className="bg-slate-800 hover:bg-slate-700 text-slate-300 px-4 py-2 rounded-xl text-xs font-bold border border-slate-700 cursor-pointer">
                 Reiniciar
               </button>
-              <button onClick={() => setPaso(5)} className="bg-indigo-600 hover:bg-indigo-500 text-white px-6 py-2 rounded-xl text-xs font-bold shadow-lg cursor-pointer">
+              <button onClick={() => setPaso(5)} className="bg-indigo-600 hover:bg-indigo-500 text-white px-5 py-2 rounded-xl text-xs font-bold shadow-lg cursor-pointer">
                 Continuar a Detalles del Reporte →
               </button>
             </div>
           </div>
         )}
 
-        {/* PASO 5: Formulario Final (Asunto, Descripción, Equipo, Nivel, Modo, Archivo) */}
+        {/* PASO 5: Formulario Final */}
         {paso === 5 && (
-          <form onSubmit={handleFinalizarReporte} className="space-y-5 animate-fade-in">
-            <div className="flex justify-between items-center bg-slate-800/50 p-3 rounded-xl border border-slate-700">
+          <form onSubmit={handleFinalizarReporte} className="space-y-4 animate-fade-in pb-2">
+            <div className="flex justify-between items-center bg-slate-800/60 p-2.5 rounded-xl border border-slate-700">
               <span className="text-xs text-indigo-300 font-bold">📋 Complete los detalles finales de su reporte</span>
               <button type="button" onClick={() => setPaso(4)} className="text-xs font-bold text-indigo-400 hover:underline cursor-pointer">« Ver tipificación</button>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div>
                 <label className="block text-[11px] font-bold text-slate-300 uppercase mb-1">Área (Campaña):</label>
                 <input type="text" value={campana} readOnly className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-700 text-indigo-300 text-xs font-bold cursor-not-allowed" />
@@ -277,12 +277,12 @@ function AsistenteTipificacionView({ categorias = [], campanas = [], user, usuar
               ></textarea>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div>
                 <label className="block text-[11px] font-bold text-slate-300 uppercase mb-1">Equipo (Seleccione uno o más):</label>
-                <div className="w-full h-28 overflow-y-auto px-3 py-2 rounded-xl bg-slate-950 border border-slate-700 text-xs space-y-1">
+                <div className="w-full h-24 overflow-y-auto px-3 py-2 rounded-xl bg-slate-950 border border-slate-700 text-xs space-y-1">
                   {listaEquiposActuales.length === 0 ? (
-                    <span className="text-slate-500 italic">No hay equipos listados para esta campaña</span>
+                    <span className="text-slate-500 italic">No hay equipos listados</span>
                   ) : (
                     listaEquiposActuales.map((eq, idx) => (
                       <label key={idx} className="flex items-center gap-2 cursor-pointer hover:bg-slate-900 p-1 rounded">
@@ -306,7 +306,7 @@ function AsistenteTipificacionView({ categorias = [], campanas = [], user, usuar
                 <p className="text-[10px] text-indigo-400 mt-1">Seleccionados: {equiposSeleccionados.length > 0 ? equiposSeleccionados.join(', ') : 'Ninguno'}</p>
               </div>
 
-              <div className="space-y-3">
+              <div className="space-y-2.5">
                 <div>
                   <label className="block text-[11px] font-bold text-slate-300 uppercase mb-1">Nivel:</label>
                   <select value={nivel} onChange={(e) => setNivel(e.target.value)} className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-700 text-white text-xs outline-none">
@@ -339,11 +339,11 @@ function AsistenteTipificacionView({ categorias = [], campanas = [], user, usuar
               />
             </div>
 
-            <div className="flex justify-end gap-3 pt-4 border-t border-slate-800">
-              <button type="button" onClick={onCancelar} className="bg-slate-800 hover:bg-slate-700 text-slate-300 px-5 py-2 rounded-xl font-bold text-xs cursor-pointer">
+            <div className="flex justify-end gap-3 pt-3 border-t border-slate-800">
+              <button type="button" onClick={onCancelar} className="bg-slate-800 hover:bg-slate-700 text-slate-300 px-4 py-2 rounded-xl font-bold text-xs cursor-pointer">
                 Cancelar
               </button>
-              <button type="submit" className="bg-indigo-600 hover:bg-indigo-500 text-white px-6 py-2 rounded-xl font-bold text-xs shadow-lg shadow-indigo-600/30 cursor-pointer">
+              <button type="submit" className="bg-indigo-600 hover:bg-indigo-500 text-white px-5 py-2 rounded-xl font-bold text-xs shadow-lg shadow-indigo-600/30 cursor-pointer">
                 Guardar Solicitud
               </button>
             </div>
