@@ -4,17 +4,28 @@ function LiveChatView({ folio, user, onFinalizarChat }) {
   const [mensajes, setMensajes] = useState([]);
   const [nuevoMensaje, setNuevoMensaje] = useState('');
   const [conectado, setConectado] = useState(false);
+  const [nombreTecnico, setNombreTecnico] = useState('');
 
-  // Función para consultar los mensajes del servidor
   useEffect(() => {
     if (!folio) return;
 
-    const obtenerMensajes = async () => {
+    const sincronizarChatYTicket = async () => {
       try {
+        // 1. Consultamos el ticket para ver si ya tiene técnico asignado en la BD
+        const resTicket = await fetch('/api/tickets');
+        const tickets = await resTicket.json();
+        const ticketActual = tickets.find(t => String(t.folio) === String(folio));
+
+        if (ticketActual && ticketActual.tecnico && ticketActual.tecnico !== 'Sin Asignar') {
+          setConectado(true);
+          setNombreTecnico(ticketActual.tecnico);
+        }
+
+        // 2. Consultamos los mensajes del chat
         const response = await fetch(`/api/chat/${folio}`);
         const data = await response.json();
+        
         if (Array.isArray(data)) {
-          // Si la tabla está vacía para este folio, podemos inyectar un mensaje inicial del sistema automáticamente
           if (data.length === 0) {
             const mensajeInicial = {
               folio: folio,
@@ -29,19 +40,15 @@ function LiveChatView({ folio, user, onFinalizarChat }) {
             });
           } else {
             setMensajes(data);
-            // Si algún mensaje es de un técnico, cambiamos el estado a conectado
-            const hayTecnico = data.some(m => m.remitente !== 'Sistema' && m.remitente !== user?.name);
-            if (hayTecnico) setConectado(true);
           }
         }
       } catch (error) {
-        console.error('Error al sincronizar chat:', error);
+        console.error('Error al sincronizar sala de chat:', error);
       }
     };
 
-    obtenerMensajes();
-    // Consultar nuevos mensajes cada 3 segundos en segundo plano
-    const intervalo = setInterval(obtenerMensajes, 3000);
+    sincronizarChatYTicket();
+    const intervalo = setInterval(sincronizarChatYTicket, 3000);
     return () => clearInterval(intervalo);
   }, [folio, user]);
 
@@ -65,7 +72,6 @@ function LiveChatView({ folio, user, onFinalizarChat }) {
 
       if (response.ok) {
         setNuevoMensaje('');
-        // Forzar actualización inmediata tras enviar
         const res = await fetch(`/api/chat/${folio}`);
         const data = await res.json();
         if (Array.isArray(data)) setMensajes(data);
@@ -90,7 +96,7 @@ function LiveChatView({ folio, user, onFinalizarChat }) {
           <div>
             <h2 className="text-sm font-bold text-white uppercase tracking-wider">Sala de Atención en Vivo - Folio #{folio || 'S/N'}</h2>
             <p className="text-xs text-slate-400">
-              {conectado ? '🟢 Conectado con Soporte Técnico' : '⏳ En espera de asignación (Tiempo máx. 10 mins)...'}
+              {conectado ? `🟢 Conectado con Soporte Técnico (${nombreTecnico})` : '⏳ En espera de asignación (Tiempo máx. 10 mins)...'}
             </p>
           </div>
         </div>
