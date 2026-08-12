@@ -6,6 +6,25 @@ function AsistenteTipificacionView({ categorias = [], onSeleccionarTipificacion,
   const [subcatSeleccionada, setSubcatSeleccionada] = useState(null);
   const [elementoSeleccionado, setElementoSeleccionado] = useState(null);
 
+  // Definimos de forma fija y limpia las 3 únicas opciones permitidas para el Paso 1
+  const categoriasPermitidas = [
+    "HARDWARE (EQUIPO)",
+    "SOFTWARE/APLICACIONES INHOUSE",
+    "MANTENIMIENTO"
+  ];
+
+  // Filtramos las categorías reales de la BD que coincidan con estos nombres (ignorando mayúsculas/minúsculas)
+  const categoriasFiltradas = categorias.filter(cat => 
+    categoriasPermitidas.some(permitida => cat.nombre.toUpperCase().includes(permitida.split('/')[0]))
+  );
+
+  // Si por alguna razón la BD no tiene nombres exactos, creamos una lista limpia basada en los permitidos
+  const opcionesMostradas = categoriasFiltradas.length > 0 ? categoriasFiltradas : categoriasPermitidas.map((nombre, index) => ({
+    id: index + 1,
+    nombre: nombre,
+    subcategorias: []
+  }));
+
   const reiniciar = () => {
     setPaso(1);
     setCategoriaSeleccionada(null);
@@ -67,7 +86,7 @@ function AsistenteTipificacionView({ categorias = [], onSeleccionarTipificacion,
 
       <div className="p-8 space-y-8">
         
-        {/* Barra de progreso visual más grande y moderna */}
+        {/* Barra de progreso visual */}
         <div className="flex items-center justify-between mb-8 px-6">
           <div className={`flex items-center gap-3 ${paso >= 1 ? 'text-indigo-400 font-bold' : 'text-slate-500'}`}>
             <span className={`w-9 h-9 rounded-2xl flex items-center justify-center text-sm font-bold shadow-md ${paso >= 1 ? 'bg-indigo-600 text-white shadow-indigo-600/30' : 'bg-slate-800 text-slate-400'}`}>1</span>
@@ -85,18 +104,18 @@ function AsistenteTipificacionView({ categorias = [], onSeleccionarTipificacion,
           </div>
         </div>
 
-        {/* PASO 1: Seleccionar Categoría */}
+        {/* PASO 1: Las 3 únicas opciones requeridas */}
         {paso === 1 && (
           <div className="space-y-5 animate-fade-in">
             <h3 className="text-xl font-bold text-white text-center">¿Qué área o servicio te está presentando problemas?</h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-h-[400px] overflow-y-auto pr-2">
-              {categorias.map((cat) => (
+            <div className="grid grid-cols-1 gap-4 max-w-2xl mx-auto">
+              {opcionesMostradas.map((cat, idx) => (
                 <button
-                  key={cat.id}
+                  key={cat.id || idx}
                   onClick={() => seleccionarCat(cat)}
-                  className="p-5 rounded-2xl bg-slate-800/80 border border-slate-700/80 hover:border-indigo-500 hover:bg-slate-800 transition-all text-left flex items-center justify-between group cursor-pointer shadow-lg"
+                  className="p-6 rounded-2xl bg-slate-800/80 border border-slate-700/80 hover:border-indigo-500 hover:bg-slate-800 transition-all text-left flex items-center justify-between group cursor-pointer shadow-lg"
                 >
-                  <span className="font-bold text-white text-base uppercase tracking-wide">{cat.nombre}</span>
+                  <span className="font-bold text-white text-lg uppercase tracking-wide">{cat.nombre}</span>
                   <span className="text-indigo-400 group-hover:translate-x-1.5 transition-transform text-xl font-bold">→</span>
                 </button>
               ))}
@@ -117,7 +136,7 @@ function AsistenteTipificacionView({ categorias = [], onSeleccionarTipificacion,
             <h4 className="text-lg font-bold text-white text-center">¿En dónde o en qué módulo ocurre el problema?</h4>
 
             {(!categoriaSeleccionada.subcategorias || categoriaSeleccionada.subcategorias.length === 0) ? (
-              <p className="text-slate-400 italic py-6 text-center">Esta categoría no tiene subcategorías registradas.</p>
+              <p className="text-slate-400 italic py-6 text-center">No hay módulos registrados para esta área todavía.</p>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-h-[350px] overflow-y-auto pr-2">
                 {categoriaSeleccionada.subcategorias.map((sub) => (
@@ -145,10 +164,10 @@ function AsistenteTipificacionView({ categorias = [], onSeleccionarTipificacion,
               <button onClick={() => setPaso(2)} className="text-xs font-bold text-indigo-400 hover:underline cursor-pointer">« Cambiar módulo</button>
             </div>
 
-            <h4 className="text-lg font-bold text-white text-center">Selecciona el síntoma o falla específica:</h4>
+            <h4 className="text-lg font-bold text-white text-center">Selecciona la falla específica:</h4>
 
             {(!subcatSeleccionada.elementos || subcatSeleccionada.elementos.length === 0) ? (
-              <p className="text-slate-400 italic py-6 text-center">No hay elementos específicos en esta subcategoría.</p>
+              <p className="text-slate-400 italic py-6 text-center">No hay elementos específicos registrados en este módulo.</p>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-h-[350px] overflow-y-auto pr-2">
                 {subcatSeleccionada.elementos.map((elem) => (
