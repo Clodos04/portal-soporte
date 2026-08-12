@@ -314,7 +314,12 @@ function App() {
           <LiveChatView 
             folio={folioChatActivo} 
             user={user} 
+            ticket={tickets.find(t => String(t.folio) === String(folioChatActivo))}
             onFinalizarChat={() => setCurrentView('solicitudes')} 
+            onAbrirModalEdicion={(ticket) => {
+              setTicketEnEdicion(ticket);
+              setIsEditModalOpen(true);
+            }}
           />
         )}
 
