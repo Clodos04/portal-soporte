@@ -10,7 +10,7 @@ import Login from './views/Login';
 import Dashboard from './views/Dashboard';
 import SolicitudesView from './views/SolicitudesView';
 import NuevaSolicitudView from './views/NuevaSolicitudView';
-import LiveChatView from './views/LiveChatView'; // <-- Vista de Chat en Vivo
+import LiveChatView from './views/LiveChatView'; 
 import Tareas from './views/Tareas';
 import Informes from './views/Informes';
 import EncuestaView from './views/EncuestaView';
@@ -34,7 +34,7 @@ function App() {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   
   const [folioActivo, setFolioActivo] = useState(null);
-  const [folioChatActivo, setFolioChatActivo] = useState(null); // <-- Control del chat activo
+  const [folioChatActivo, setFolioChatActivo] = useState(null); 
   const [ticketEnEdicion, setTicketEnEdicion] = useState(null);
   const [ticketParaEncuesta, setTicketParaEncuesta] = useState(null);
 
@@ -126,7 +126,6 @@ function App() {
     setTickets(tickets.map(t => t.folio === folio ? { ...t, notas: [...t.notas, nuevaNota] } : t));
   };
 
-  // Guardar ticket y redirigir automáticamente al Live Chat
   const handleAgregarTicket = (nuevoTicket) => {
     fetch('/api/tickets', {
       method: 'POST',
@@ -137,7 +136,7 @@ function App() {
     .then(() => {
       setTickets([nuevoTicket, ...tickets]);
       setFolioChatActivo(nuevoTicket.folio);
-      setCurrentView('live-chat'); // Redirección instantánea al chat en vivo
+      setCurrentView('live-chat'); 
     })
     .catch(err => console.error('Error al guardar ticket:', err));
   };
@@ -236,6 +235,10 @@ function App() {
           categorias={categorias}
           onClose={() => { setIsEditModalOpen(false); setTicketEnEdicion(null); }}
           onActualizar={handleActualizarTicket}
+          onAbrirChat={(folio) => {
+            setFolioChatActivo(folio);
+            setCurrentView('live-chat');
+          }}
         />
       )}
 
@@ -274,6 +277,10 @@ function App() {
             onOpenNotes={(folio) => { setFolioActivo(folio); setIsNotesModalOpen(true); }}
             onNuevaSolicitud={() => setCurrentView('nueva-solicitud')}
             onEditarTicket={(ticket) => { setTicketEnEdicion(ticket); setIsEditModalOpen(true); }}
+            onAbrirChat={(folio) => {
+              setFolioChatActivo(folio);
+              setCurrentView('live-chat');
+            }}
             onIrAEncuestaSpecific={(ticket) => {
               setTicketParaEncuesta(ticket);
               setCurrentView('encuesta-ti');
@@ -294,7 +301,6 @@ function App() {
           />
         )}
 
-        {/* Vista del Live Chat con el técnico */}
         {currentView === 'live-chat' && (
           <LiveChatView 
             folio={folioChatActivo} 
