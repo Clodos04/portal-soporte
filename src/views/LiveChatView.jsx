@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 
-function LiveChatView({ folio, user, onFinalizarChat }) {
+function LiveChatView({ folio, user, onFinalizarChat, onAbrirModalEdicion, ticket }) {
   const [mensajes, setMensajes] = useState([]);
   const [nuevoMensaje, setNuevoMensaje] = useState('');
   const [conectado, setConectado] = useState(false);
@@ -50,7 +50,7 @@ function LiveChatView({ folio, user, onFinalizarChat }) {
     sincronizarChatYTicket();
     const intervalo = setInterval(sincronizarChatYTicket, 3000);
     return () => clearInterval(intervalo);
-  }, [folio, user]);
+  }, [folio, user, ticket]);
 
   const enviarMensaje = async (e) => {
     e.preventDefault();
@@ -101,13 +101,26 @@ function LiveChatView({ folio, user, onFinalizarChat }) {
           </div>
         </div>
 
-        <button 
-          type="button"
-          onClick={onFinalizarChat}
-          className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white rounded-xl text-xs font-bold border border-slate-700 transition-all cursor-pointer"
-        >
-          Finalizar y Salir
-        </button>
+        <div className="flex gap-2">
+          {/* Botón para que el técnico cierre el ticket abriendo el modal de resolución */}
+          {user?.role === 'support' && ticket && (
+            <button 
+              type="button"
+              onClick={() => onAbrirModalEdicion(ticket)}
+              className="px-4 py-2 bg-red-600/20 hover:bg-red-600 text-red-400 hover:text-white rounded-xl text-xs font-bold border border-red-500/30 transition-all cursor-pointer"
+            >
+              Cerrar Ticket
+            </button>
+          )}
+
+          <button 
+            type="button"
+            onClick={onFinalizarChat}
+            className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white rounded-xl text-xs font-bold border border-slate-700 transition-all cursor-pointer"
+          >
+            Finalizar y Salir
+          </button>
+        </div>
       </div>
 
       {/* Cuerpo de Mensajes */}
