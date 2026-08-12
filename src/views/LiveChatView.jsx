@@ -2,22 +2,21 @@ import React, { useState, useEffect } from 'react';
 
 function LiveChatView({ folio, user, onFinalizarChat }) {
   const [mensajes, setMensajes] = useState([
-    { remitente: 'Sistema', texto: `Folio #${folio generado o activo} registrado con éxito. Un técnico se conectará contigo en breve.`, hora: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }
+    { remitente: 'Sistema', texto: `Folio #${folio || 'S/N'} registrado con éxito. Un técnico se conectará contigo en breve.`, hora: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }
   ]);
   const [nuevoMensaje, setNuevoMensaje] = useState('');
   const [conectado, setConectado] = useState(false);
 
-  // Simulamos la conexión automática con un técnico después de 2 segundos para elevar la percepción de atención
   useEffect(() => {
     const timer = setTimeout(() => {
       setConectado(true);
       setMensajes(prev => [
         ...prev,
-        { remitente: 'Soporte Técnico (Vane)', texto: `¡Hola ${user?.name || 'Cliente'}! He tomado tu reporte #${folio}. ¿Podrías darme un poco más de detalle sobre lo que sucede?`, hora: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }
+        { remitente: 'Soporte Técnico (Vane)', texto: `¡Hola ${user?.name || 'Cliente'}! He tomado tu reporte #${folio || 'S/N'}. ¿Podrías darme un poco más de detalle sobre lo que sucede?`, hora: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }
       ]);
     }, 2000);
     return () => clearTimeout(timer);
-  }, [folio]);
+  }, [folio, user]);
 
   const enviarMensaje = (e) => {
     e.preventDefault();
@@ -46,7 +45,7 @@ function LiveChatView({ folio, user, onFinalizarChat }) {
             <span className={`absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-slate-900 ${conectado ? 'bg-emerald-500' : 'bg-amber-500 animate-pulse'}`}></span>
           </div>
           <div>
-            <h2 className="text-sm font-bold text-white uppercase tracking-wider">Sala de Atención en Vivo - Folio #{folio}</h2>
+            <h2 className="text-sm font-bold text-white uppercase tracking-wider">Sala de Atención en Vivo - Folio #{folio || 'S/N'}</h2>
             <p className="text-xs text-slate-400">
               {conectado ? '🟢 Conectado con Soporte Técnico' : '⏳ Buscando técnico disponible...'}
             </p>
