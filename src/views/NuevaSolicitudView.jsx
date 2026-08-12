@@ -19,7 +19,7 @@ function NuevaSolicitudView({ user, usuarios = [], grupos = [], campanas = [], u
   const elementosDisponibles = subcategoriaObj ? (subcategoriaObj?.elementos || []) : [];
   const [elemento, setElemento] = useState('');
 
-  // Por defecto, si entra un cliente, abrimos de inmediato el asistente de tipificación grande para guiarlo
+  // Por defecto, abrimos de inmediato el asistente de tipificación grande para guiar al usuario
   const [isAsistenteOpen, setIsAsistenteOpen] = useState(true);
 
   const campanasDisponibles = campanas.length > 0 ? campanas : listaCampanas;
@@ -36,8 +36,8 @@ function NuevaSolicitudView({ user, usuarios = [], grupos = [], campanas = [], u
   const listaEquiposActuales = equiposPorCampana[campana] || [];
 
   const [equiposSeleccionados, setEquiposSeleccionados] = useState([]);
-  const [nivel, setNivel] = useState('Seleccione Una Opcion...');
-  const [modo, setModo] = useState('Seleccione Una Opcion...');
+  const [nivel, setNivel] = useState('Bajo');
+  const [modo, setModo] = useState('WEB');
   const [archivo, setArchivo] = useState(null);
 
   const tecnicosDisponibles = usuariosPorGrupo[grupo] || [];
@@ -45,15 +45,15 @@ function NuevaSolicitudView({ user, usuarios = [], grupos = [], campanas = [], u
   // Autocompletar datos del usuario logueado al cargar
   useEffect(() => {
     if (user && user.name) {
-      // Buscamos si el usuario actual existe en la lista de usuarios registrados
       const usuarioEnBD = usuarios.find(u => `${u.nombre} ${u.paterno}`.toLowerCase() === user.name.toLowerCase() || u.username === user.username);
       
       if (usuarioEnBD) {
-        setCampana(usuarioEnBD.campana || '');
-        setAreaCliente(usuarioEnBD.campana || '');
+        setCampana(usuarioEnBD.campana || '*111');
+        setAreaCliente(usuarioEnBD.campana || '*111');
         setNombreCliente(`${usuarioEnBD.nombre} ${usuarioEnBD.paterno}`);
       } else {
         setNombreCliente(user.name);
+        setCampana('*111');
       }
     }
   }, [user, usuarios]);
@@ -92,7 +92,6 @@ function NuevaSolicitudView({ user, usuarios = [], grupos = [], campanas = [], u
     setIsAsistenteOpen(false);
   };
 
-  // Función auxiliar interna para categoría
   const setCategorySafe = (nombreCat) => {
     setCategoria(nombreCat);
   };
@@ -112,7 +111,7 @@ function NuevaSolicitudView({ user, usuarios = [], grupos = [], campanas = [], u
       estatus: estado === 'ABIERTO' ? 'Abierto' : (estado === 'EN PROCESO' ? 'En Proceso' : 'Cerrado'),
       colorEstatus: colorEstatus,
       tecnico: usuarioAsignado,
-      creador: nombreCliente || user?.name || 'SIN ASIGNAR',
+      creador: nombreCliente || user?.name || 'VALERIA GOMEZ',
       asunto: asunto,
       descripcion: descripcion,
       campana: campana,
@@ -159,14 +158,23 @@ function NuevaSolicitudView({ user, usuarios = [], grupos = [], campanas = [], u
         </div>
       </div>
 
-      {/* ASISTENTE DE TIPIFICACIÓN EN PANTALLA GRANDE SI ESTÁ ACTIVO */}
+      {/* ASISTENTE DE TIPIFICACIÓN EN PANTALLA GRANDE */}
       {isAsistenteOpen && (
         <div className="fixed inset-0 bg-slate-950/85 backdrop-blur-md flex justify-center items-center z-50 p-4 animate-fade-in">
-          <div className="max-w-4xl w-full">
+          <div className="max-w-4xl w-full flex justify-center">
             <AsistenteTipificacionView
               categorias={categoriasActivas}
-              onSeleccionarTipificacion={handleSeleccionarTipificacionDelAsistente}
-              onCancelar={() => setIsAsistenteOpen(false)}
+              campanas={campanasDisponibles}
+              user={user}
+              usuarios={usuarios}
+              onGuardarTicket={(ticketNuevo) => {
+                setIsAsistenteOpen(false);
+                onGuardar(ticketNuevo); // Guarda el ticket y abre el Live Chat automáticamente
+              }}
+              onCancelar={() => {
+                setIsAsistenteOpen(false);
+                onVolver();
+              }}
             />
           </div>
         </div>
@@ -341,7 +349,6 @@ function NuevaSolicitudView({ user, usuarios = [], grupos = [], campanas = [], u
               <div>
                 <label className="block text-xs font-bold text-slate-300 uppercase mb-1.5">Nivel:</label>
                 <select value={nivel} onChange={(e) => setNivel(e.target.value)} className="w-full px-3 py-2.5 rounded-lg bg-slate-900 border border-slate-700 text-white text-sm outline-none focus:border-indigo-500 transition-colors">
-                  <option value="Seleccione Una Opcion...">Seleccione Una Opcion...</option>
                   <option value="Bajo">Bajo</option>
                   <option value="Medio">Medio</option>
                   <option value="Experto">Experto</option>
@@ -361,11 +368,10 @@ function NuevaSolicitudView({ user, usuarios = [], grupos = [], campanas = [], u
               <div>
                 <label className="block text-xs font-bold text-slate-300 uppercase mb-1.5">Modo:</label>
                 <select value={modo} onChange={(e) => setModo(e.target.value)} className="w-full px-3 py-2.5 rounded-lg bg-slate-900 border border-slate-700 text-white text-sm outline-none focus:border-indigo-500 transition-colors">
-                  <option value="Seleccione Una Opcion...">Seleccione Una Opcion...</option>
+                  <option value="WEB">WEB</option>
                   <option value="CORREO">CORREO</option>
                   <option value="TELEFONO">TELEFONO</option>
                   <option value="VERBAL">VERBAL</option>
-                  <option value="WEB">WEB</option>
                 </select>
               </div>
             </div>
