@@ -10,6 +10,7 @@ import Login from './views/Login';
 import Dashboard from './views/Dashboard';
 import SolicitudesView from './views/SolicitudesView';
 import NuevaSolicitudView from './views/NuevaSolicitudView';
+import LiveChatView from './views/LiveChatView'; // <-- Vista de Chat en Vivo
 import Tareas from './views/Tareas';
 import Informes from './views/Informes';
 import EncuestaView from './views/EncuestaView';
@@ -33,6 +34,7 @@ function App() {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   
   const [folioActivo, setFolioActivo] = useState(null);
+  const [folioChatActivo, setFolioChatActivo] = useState(null); // <-- Control del chat activo
   const [ticketEnEdicion, setTicketEnEdicion] = useState(null);
   const [ticketParaEncuesta, setTicketParaEncuesta] = useState(null);
 
@@ -124,6 +126,7 @@ function App() {
     setTickets(tickets.map(t => t.folio === folio ? { ...t, notas: [...t.notas, nuevaNota] } : t));
   };
 
+  // Guardar ticket y redirigir automáticamente al Live Chat
   const handleAgregarTicket = (nuevoTicket) => {
     fetch('/api/tickets', {
       method: 'POST',
@@ -133,7 +136,8 @@ function App() {
     .then(res => res.json())
     .then(() => {
       setTickets([nuevoTicket, ...tickets]);
-      setCurrentView('solicitudes');
+      setFolioChatActivo(nuevoTicket.folio);
+      setCurrentView('live-chat'); // Redirección instantánea al chat en vivo
     })
     .catch(err => console.error('Error al guardar ticket:', err));
   };
@@ -157,9 +161,6 @@ function App() {
     .catch(err => console.error('Error al guardar encuesta:', err));
   };
 
-  // ==========================================
-  // FUNCIÓN DE LOGIN CORREGIDA (Sin alerts molestos)
-  // ==========================================
   const handleLogin = async (username, password) => {
     try {
       const response = await fetch('/api/login', {
@@ -169,21 +170,22 @@ function App() {
       });
 
       const data = await response.json();
+      const usuarioEncontrado = data.user || (data.success ? data : null);
 
-      if (!response.ok || !data.success) {
+      if (!response.ok || !usuarioEncontrado) {
         return false;
       }
 
-      const usuarioEncontrado = data.user; 
       const nivel = (usuarioEncontrado.nivel || '').toUpperCase();
       const esSoporte = nivel === 'ADMINISTRADOR' || nivel === 'TECNICO SUPERVISOR' || nivel === 'TECNICO';
       const role = esSoporte ? 'support' : 'client';
       
       setUser({
-        name: `${usuarioEncontrado.nombre || ''} ${usuarioEncontrado.paterno || ''}`.trim(),
+        name: `${usuarioEncontrado.nombre || ''} ${usuarioEncontrado.paterno || ''}`.trim() || usuarioEncontrado.username,
         role: role,
         nivel: usuarioEncontrado.nivel,
-        username: usuarioEncontrado.username
+        username: usuarioEncontrado.username,
+        campana: usuarioEncontrado.campana || '*111'
       });
       
       setIsLoggedIn(true);
@@ -289,6 +291,15 @@ function App() {
             categorias={categorias}
             onVolver={() => setCurrentView('solicitudes')} 
             onGuardar={handleAgregarTicket}
+          />
+        )}
+
+        {/* Vista del Live Chat con el técnico */}
+        {currentView === 'live-chat' && (
+          <LiveChatView 
+            folio={folioChatActivo} 
+            user={user} 
+            onFinalizarChat={() => setCurrentView('solicitudes')} 
           />
         )}
 
