@@ -9,7 +9,7 @@ function SolicitudesView({
   onOpenNotes, 
   onNuevaSolicitud, 
   onEditarTicket,
-  onAbrirChat, // <-- Prop para abrir la sala de chat en vivo
+  onAbrirChat,
   onIrAEncuestaSpecific,
   estadisticasEncuestas = [] 
 }) {
@@ -124,6 +124,9 @@ function SolicitudesView({
                     (ticket.id && e.ticket_id && Number(e.ticket_id) === Number(ticket.id))
                   );
 
+                  const estatusLower = (ticket.estatus || '').toLowerCase();
+                  const esActivo = estatusLower === 'abierto' || estatusLower === 'en proceso';
+
                   return (
                     <tr key={ticket.folio} className="hover:bg-slate-700/50 transition-colors">
                       <td className="px-4 py-3 font-bold text-white">#{ticket.folio}</td>
@@ -157,7 +160,8 @@ function SolicitudesView({
 
                       <td className="px-4 py-3 text-center">
                         <div className="flex justify-center items-center gap-2">
-                          {!esCliente && onAbrirChat && (
+                          {/* Botón de Chat habilitado tanto para soporte como para el cliente si el ticket está activo */}
+                          {esActivo && onAbrirChat && (
                             <button 
                               onClick={() => onAbrirChat(ticket.folio)}
                               className="px-3 py-1.5 bg-emerald-600/20 text-emerald-400 hover:bg-emerald-600 hover:text-white rounded-lg font-semibold text-xs transition-colors border border-emerald-500/30 cursor-pointer"
@@ -171,7 +175,7 @@ function SolicitudesView({
                             onClick={() => onEditarTicket(ticket)}
                             className="px-3 py-1.5 bg-indigo-600/20 text-indigo-400 hover:bg-indigo-600 hover:text-white rounded-lg font-semibold text-xs transition-colors border border-indigo-500/30 cursor-pointer"
                           >
-                            Gestionar
+                            {esCliente ? 'Ver' : 'Gestionar'}
                           </button>
 
                           {(ticket.estatus === 'Cerrado' || ticket.estatus === 'CERRADO') && user?.role === 'client' && (
