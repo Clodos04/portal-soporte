@@ -1,30 +1,78 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 
 function LiveChatView({ folio, user, onFinalizarChat }) {
-  const [mensajes, setMensajes] = useState([
-    { 
-      remitente: 'Sistema', 
-      texto: `Folio #${folio || 'S/N'} registrado con éxito. Se te asignará un técnico en un tiempo máximo de 10 minutos.`, 
-      hora: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) 
-    }
-  ]);
+  const [mensajes, setMensajes] = useState([]);
   const [nuevoMensaje, setNuevoMensaje] = useState('');
-  
-  // Mantenemos al usuario en estado de no conectado (en cola de espera) hasta que un técnico tome el caso
   const [conectado, setConectado] = useState(false);
 
-  const enviarMensaje = (e) => {
+  // Función para consultar los mensajes del servidor
+  useEffect(() => {
+    if (!folio) return;
+
+    const obtenerMensajes = async () => {
+      try {
+        const response = await fetch(`/api/chat/${folio}`);
+        const data = await response.json();
+        if (Array.isArray(data)) {
+          // Si la tabla está vacía para este folio, podemos inyectar un mensaje inicial del sistema automáticamente
+          if (data.length === 0) {
+            const mensajeInicial = {
+              folio: folio,
+              remitente: 'Sistema',
+              texto: `Folio #${folio} registrado con éxito. Se te asignará un técnico en un tiempo máximo de 10 minutos.`,
+              hora: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+            };
+            await fetch('/api/chat', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(mensajeInicial)
+            });
+          } else {
+            setMensajes(data);
+            // Si algún mensaje es de un técnico, cambiamos el estado a conectado
+            const hayTecnico = data.some(m => m.remitente !== 'Sistema' && m.remitente !== user?.name);
+            if (hayTecnico) setConectado(true);
+          }
+        }
+      } catch (error) {
+        console.error('Error al sincronizar chat:', error);
+      }
+    };
+
+    obtenerMensajes();
+    // Consultar nuevos mensajes cada 3 segundos en segundo plano
+    const intervalo = setInterval(obtenerMensajes, 3000);
+    return () => clearInterval(intervalo);
+  }, [folio, user]);
+
+  const enviarMensaje = async (e) => {
     e.preventDefault();
     if (!nuevoMensaje.trim()) return;
 
-    const mensajeCliente = {
-      remitente: user?.name || 'Tú',
+    const mensajeData = {
+      folio: folio,
+      remitente: user?.name || 'Usuario',
       texto: nuevoMensaje,
       hora: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     };
 
-    setMensajes(prev => [...prev, mensajeCliente]);
-    setNuevoMensaje('');
+    try {
+      const response = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(mensajeData)
+      });
+
+      if (response.ok) {
+        setNuevoMensaje('');
+        // Forzar actualización inmediata tras enviar
+        const res = await fetch(`/api/chat/${folio}`);
+        const data = await res.json();
+        if (Array.isArray(data)) setMensajes(data);
+      }
+    } catch (error) {
+      console.error('Error al enviar mensaje:', error);
+    }
   };
 
   return (
@@ -59,7 +107,7 @@ function LiveChatView({ folio, user, onFinalizarChat }) {
       {/* Cuerpo de Mensajes */}
       <div className="flex-1 p-6 overflow-y-auto space-y-4 bg-slate-950/60">
         {mensajes.map((m, idx) => {
-          const esCliente = m.remitente !== 'Sistema' && m.remitente !== 'Soporte Técnico';
+          const esCliente = m.remitente === user?.name;
           return (
             <div key={idx} className={`flex flex-col ${esCliente ? 'items-end' : 'items-start'}`}>
               <div className="flex items-center gap-2 mb-1">
