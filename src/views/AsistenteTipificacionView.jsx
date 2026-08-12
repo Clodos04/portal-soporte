@@ -6,19 +6,17 @@ function AsistenteTipificacionView({ categorias = [], onSeleccionarTipificacion,
   const [subcatSeleccionada, setSubcatSeleccionada] = useState(null);
   const [elementoSeleccionado, setElementoSeleccionado] = useState(null);
 
-  // Definimos de forma fija y limpia las 3 únicas opciones permitidas para el Paso 1
+  // Las 3 opciones requeridas, con Software y Aplicaciones Inhouse juntas
   const categoriasPermitidas = [
     "HARDWARE (EQUIPO)",
-    "SOFTWARE/APLICACIONES INHOUSE",
+    "SOFTWARE / APLICACIONES INHOUSE",
     "MANTENIMIENTO"
   ];
 
-  // Filtramos las categorías reales de la BD que coincidan con estos nombres (ignorando mayúsculas/minúsculas)
   const categoriasFiltradas = categorias.filter(cat => 
-    categoriasPermitidas.some(permitida => cat.nombre.toUpperCase().includes(permitida.split('/')[0]))
+    categoriasPermitidas.some(permitida => cat.nombre.toUpperCase().includes(permitida.split('/')[0].trim()))
   );
 
-  // Si por alguna razón la BD no tiene nombres exactos, creamos una lista limpia basada en los permitidos
   const opcionesMostradas = categoriasFiltradas.length > 0 ? categoriasFiltradas : categoriasPermitidas.map((nombre, index) => ({
     id: index + 1,
     nombre: nombre,
@@ -104,7 +102,7 @@ function AsistenteTipificacionView({ categorias = [], onSeleccionarTipificacion,
           </div>
         </div>
 
-        {/* PASO 1: Las 3 únicas opciones requeridas */}
+        {/* PASO 1: 3 Opciones principales unificadas */}
         {paso === 1 && (
           <div className="space-y-5 animate-fade-in">
             <h3 className="text-xl font-bold text-white text-center">¿Qué área o servicio te está presentando problemas?</h3>
