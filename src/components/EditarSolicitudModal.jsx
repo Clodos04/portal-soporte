@@ -13,7 +13,6 @@ function EditarSolicitudModal({ ticket, user, usuarios = [], grupos = [], usuari
   const [nuevoArchivo, setNuevoArchivo] = useState(null);
 
   const esCliente = user?.role === 'client';
-
   const tecnicosDisponibles = usuariosPorGrupo[grupo] || [];
 
   const categoriaObj = categorias.find(c => c.nombre === categoria);
@@ -42,19 +41,12 @@ function EditarSolicitudModal({ ticket, user, usuarios = [], grupos = [], usuari
     if (estatus === 'En Proceso' || estatus === 'EN PROCESO') colorEstatus = 'bg-orange-500';
     if (estatus === 'Cerrado' || estatus === 'CERRADO') colorEstatus = 'bg-red-500';
 
-    const ticketActualizado = {
-      ...ticket,
+    // Objeto limpio y exacto para evitar conflictos de columnas en MySQL
+    const datosActualizados = {
       estatus: estatus,
       colorEstatus: colorEstatus,
       grupo: grupo,
       tecnico: tecnico,
-      creador: ticket.creador,
-      asunto: ticket.asunto,
-      descripcion: ticket.descripcion,
-      campana: ticket.campana,
-      equipo: ticket.equipo,
-      nivel: ticket.nivel,
-      modo: ticket.modo,
       categoria: categoria,
       subcategoria: subcategoria,
       elemento: elemento,
@@ -70,15 +62,16 @@ function EditarSolicitudModal({ ticket, user, usuarios = [], grupos = [], usuari
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(ticketActualizado),
+        body: JSON.stringify(datosActualizados),
       });
 
       if (!response.ok) {
         throw new Error('Error al actualizar el ticket en el servidor');
       }
 
+      const ticketFinal = { ...ticket, ...datosActualizados };
       if (onActualizar) {
-        onActualizar(ticketActualizado);
+        onActualizar(ticketFinal);
       }
       onClose();
     } catch (error) {
@@ -218,39 +211,6 @@ function EditarSolicitudModal({ ticket, user, usuarios = [], grupos = [], usuari
               disabled 
               className="w-full px-3 py-2 rounded-lg bg-slate-900 border border-slate-700 text-green-400 font-mono text-sm outline-none opacity-90 cursor-not-allowed"
             />
-          </div>
-
-          <div className="bg-slate-900/50 p-4 rounded-xl border border-slate-700 space-y-3">
-            <h3 className="text-xs font-bold text-indigo-300 uppercase">Archivo Adjunto del Ticket</h3>
-            
-            {ticket.archivoNombre ? (
-              <div className="flex justify-between items-center bg-slate-900 p-3 rounded-lg border border-slate-700">
-                <span className="text-sm text-slate-200 truncate max-w-xs">📎 {ticket.archivoNombre}</span>
-                {ticket.archivoUrl && (
-                  <a 
-                    href={ticket.archivoUrl} 
-                    target="_blank" 
-                    rel="noopener noreferrer"
-                    className="bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold px-3 py-1.5 rounded-lg shadow transition-colors"
-                  >
-                    Ver / Descargar
-                  </a>
-                )}
-              </div>
-            ) : (
-              <p className="text-xs text-slate-400 italic">No hay archivos adjuntos en esta solicitud.</p>
-            )}
-
-            {!esCliente && (
-              <div className="pt-2">
-                <label className="block text-xs font-bold text-slate-300 uppercase mb-1.5">Adjuntar o Reemplazar Archivo:</label>
-                <input 
-                  type="file" 
-                  onChange={(e) => setNuevoArchivo(e.target.files[0])}
-                  className="text-xs text-slate-400 file:mr-4 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-slate-700 file:text-slate-200 hover:file:bg-slate-600 cursor-pointer bg-slate-900 p-1.5 rounded-lg border border-slate-700 w-full" 
-                />
-              </div>
-            )}
           </div>
 
           <div>
