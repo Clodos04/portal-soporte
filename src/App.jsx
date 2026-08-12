@@ -56,12 +56,17 @@ function App() {
   const [estadisticasEncuestas, setEstadisticasEncuestas] = useState([]);
 
   // ==========================================
-  // CARGA DE DATOS
+  // CARGA DE DATOS Y AUTO-REFRESCO SILENCIOSO
   // ==========================================
   useEffect(() => {
-    fetch('/api/tickets')
-      .then(res => res.json())
-      .then(data => { if (Array.isArray(data)) setTickets(data); });
+    const cargarDatosIniciales = () => {
+      fetch('/api/tickets')
+        .then(res => res.json())
+        .then(data => { if (Array.isArray(data)) setTickets(data); })
+        .catch(err => console.error("Error al actualizar tickets:", err));
+    };
+
+    cargarDatosIniciales();
 
     fetch('/api/usuarios')
       .then(res => res.json())
@@ -85,6 +90,10 @@ function App() {
         if (data && data.historial) setEstadisticasEncuestas(data.historial); 
       })
       .catch(err => console.error("Error al cargar encuestas:", err));
+
+    // Refrescar los tickets automáticamente cada 10 segundos sin tocar la sesión del usuario
+    const intervaloRefresco = setInterval(cargarDatosIniciales, 10000);
+    return () => clearInterval(intervaloRefresco);
   }, []);
 
   const handleSetCategorias = (nuevasCategorias) => {
