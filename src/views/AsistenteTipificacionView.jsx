@@ -6,22 +6,19 @@ function AsistenteTipificacionView({ categorias = [], onSeleccionarTipificacion,
   const [subcatSeleccionada, setSubcatSeleccionada] = useState(null);
   const [elementoSeleccionado, setElementoSeleccionado] = useState(null);
 
-  // Las 3 opciones requeridas, con Software y Aplicaciones Inhouse juntas
-  const categoriasPermitidas = [
-    "HARDWARE (EQUIPO)",
-    "SOFTWARE / APLICACIONES INHOUSE",
-    "MANTENIMIENTO"
+  // Las 4 opciones fijas solicitadas para que aparezcan de forma limpia y separada
+  const opcionesFijas = [
+    { id: 1, nombre: "HARDWARE (EQUIPO)" },
+    { id: 2, nombre: "SOFTWARE" },
+    { id: 3, nombre: "APLICACIONES INHOUSE" },
+    { id: 4, nombre: "MANTENIMIENTO" }
   ];
 
-  const categoriasFiltradas = categorias.filter(cat => 
-    categoriasPermitidas.some(permitida => cat.nombre.toUpperCase().includes(permitida.split('/')[0].trim()))
-  );
-
-  const opcionesMostradas = categoriasFiltradas.length > 0 ? categoriasFiltradas : categoriasPermitidas.map((nombre, index) => ({
-    id: index + 1,
-    nombre: nombre,
-    subcategorias: []
-  }));
+  // Intentamos buscar si alguna categoría de la BD coincide para heredar sus subcategorías, si no, usamos la opción limpia
+  const opcionesMostradas = opcionesFijas.map(opcion => {
+    const encontradaEnBD = categorias.find(cat => cat.nombre.toUpperCase().includes(opcion.nombre.split(' ')[0]));
+    return encontradaEnBD ? encontradaEnBD : { id: opcion.id, nombre: opcion.nombre, subcategorias: [] };
+  });
 
   const reiniciar = () => {
     setPaso(1);
@@ -102,7 +99,7 @@ function AsistenteTipificacionView({ categorias = [], onSeleccionarTipificacion,
           </div>
         </div>
 
-        {/* PASO 1: 3 Opciones principales unificadas */}
+        {/* PASO 1: Las 4 opciones separadas */}
         {paso === 1 && (
           <div className="space-y-5 animate-fade-in">
             <h3 className="text-xl font-bold text-white text-center">¿Qué área o servicio te está presentando problemas?</h3>
@@ -111,9 +108,9 @@ function AsistenteTipificacionView({ categorias = [], onSeleccionarTipificacion,
                 <button
                   key={cat.id || idx}
                   onClick={() => seleccionarCat(cat)}
-                  className="p-6 rounded-2xl bg-slate-800/80 border border-slate-700/80 hover:border-indigo-500 hover:bg-slate-800 transition-all text-left flex items-center justify-between group cursor-pointer shadow-lg"
+                  className="p-5 rounded-2xl bg-slate-800/80 border border-slate-700/80 hover:border-indigo-500 hover:bg-slate-800 transition-all text-left flex items-center justify-between group cursor-pointer shadow-lg"
                 >
-                  <span className="font-bold text-white text-lg uppercase tracking-wide">{cat.nombre}</span>
+                  <span className="font-bold text-white text-base uppercase tracking-wide">{cat.nombre}</span>
                   <span className="text-indigo-400 group-hover:translate-x-1.5 transition-transform text-xl font-bold">→</span>
                 </button>
               ))}
