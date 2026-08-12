@@ -115,6 +115,34 @@ app.put(['/api/tickets/:folio', '/tickets/:folio'], (req, res) => {
   });
 });
 
+// ==========================================
+// RUTAS DE CHAT EN VIVO (CONECTADAS A MYSQL)
+// ==========================================
+app.get(['/api/chat/:folio', '/chat/:folio'], (req, res) => {
+  const { folio } = req.params;
+  const query = 'SELECT * FROM mensajes_chat WHERE folio = ? ORDER BY id ASC';
+  db.query(query, [folio], (err, results) => {
+    if (err) {
+      console.error('Error al obtener mensajes:', err);
+      return res.status(500).json({ error: 'Error al obtener mensajes' });
+    }
+    res.json(results);
+  });
+});
+
+app.post(['/api/chat', '/chat'], (req, res) => {
+  const { folio, remitente, texto, hora } = req.body;
+  const query = 'INSERT INTO mensajes_chat (folio, remitente, texto, hora) VALUES (?, ?, ?, ?)';
+  
+  db.query(query, [folio, remitente, texto, hora], (err, result) => {
+    if (err) {
+      console.error('Error al guardar mensaje:', err);
+      return res.status(500).json({ error: 'Error al guardar mensaje' });
+    }
+    res.json({ success: true, id: result.insertId });
+  });
+});
+
 // Usuarios
 app.get(['/api/usuarios', '/usuarios'], (req, res) => {
   db.query('SELECT * FROM usuarios', (err, results) => {
@@ -205,7 +233,7 @@ app.post(['/api/encuestas', '/encuestas'], (req, res) => {
   
   if (data.fecha) delete data.fecha;
   if (data.fecha_respuesta) delete data.fecha_respuesta;
-  delete data.promedio; // Evita el error de columna desconocida en la BD
+  delete data.promedio;
 
   for (let key in data) {
     if (typeof data[key] === 'object' && data[key] !== null) {
