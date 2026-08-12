@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 
 function LiveChatView({ folio, user, onFinalizarChat }) {
   const [mensajes, setMensajes] = useState([
@@ -9,22 +9,9 @@ function LiveChatView({ folio, user, onFinalizarChat }) {
     }
   ]);
   const [nuevoMensaje, setNuevoMensaje] = useState('');
+  
+  // Mantenemos al usuario en estado de no conectado (en cola de espera) hasta que un técnico tome el caso
   const [conectado, setConectado] = useState(false);
-
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setConectado(true);
-      setMensajes(prev => [
-        ...prev,
-        { 
-          remitente: 'Soporte Técnico', 
-          texto: `¡Hola ${user?.name || 'Cliente'}! He tomado tu reporte #${folio || 'S/N'}. ¿Podrías darme un poco más de detalle sobre lo que sucede?`, 
-          hora: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) 
-        }
-      ]);
-    }, 3000);
-    return () => clearTimeout(timer);
-  }, [folio, user]);
 
   const enviarMensaje = (e) => {
     e.preventDefault();
