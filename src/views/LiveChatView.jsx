@@ -2,7 +2,11 @@ import React, { useState, useEffect } from 'react';
 
 function LiveChatView({ folio, user, onFinalizarChat }) {
   const [mensajes, setMensajes] = useState([
-    { remitente: 'Sistema', texto: `Folio #${folio || 'S/N'} registrado con éxito. Un técnico se conectará contigo en breve.`, hora: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }
+    { 
+      remitente: 'Sistema', 
+      texto: `Folio #${folio || 'S/N'} registrado con éxito. Se te asignará un técnico en un tiempo máximo de 10 minutos.`, 
+      hora: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) 
+    }
   ]);
   const [nuevoMensaje, setNuevoMensaje] = useState('');
   const [conectado, setConectado] = useState(false);
@@ -12,9 +16,13 @@ function LiveChatView({ folio, user, onFinalizarChat }) {
       setConectado(true);
       setMensajes(prev => [
         ...prev,
-        { remitente: 'Soporte Técnico (Vane)', texto: `¡Hola ${user?.name || 'Cliente'}! He tomado tu reporte #${folio || 'S/N'}. ¿Podrías darme un poco más de detalle sobre lo que sucede?`, hora: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }
+        { 
+          remitente: 'Soporte Técnico', 
+          texto: `¡Hola ${user?.name || 'Cliente'}! He tomado tu reporte #${folio || 'S/N'}. ¿Podrías darme un poco más de detalle sobre lo que sucede?`, 
+          hora: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) 
+        }
       ]);
-    }, 2000);
+    }, 3000);
     return () => clearTimeout(timer);
   }, [folio, user]);
 
@@ -47,12 +55,13 @@ function LiveChatView({ folio, user, onFinalizarChat }) {
           <div>
             <h2 className="text-sm font-bold text-white uppercase tracking-wider">Sala de Atención en Vivo - Folio #{folio || 'S/N'}</h2>
             <p className="text-xs text-slate-400">
-              {conectado ? '🟢 Conectado con Soporte Técnico' : '⏳ Buscando técnico disponible...'}
+              {conectado ? '🟢 Conectado con Soporte Técnico' : '⏳ En espera de asignación (Tiempo máx. 10 mins)...'}
             </p>
           </div>
         </div>
 
         <button 
+          type="button"
           onClick={onFinalizarChat}
           className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white rounded-xl text-xs font-bold border border-slate-700 transition-all cursor-pointer"
         >
@@ -63,7 +72,7 @@ function LiveChatView({ folio, user, onFinalizarChat }) {
       {/* Cuerpo de Mensajes */}
       <div className="flex-1 p-6 overflow-y-auto space-y-4 bg-slate-950/60">
         {mensajes.map((m, idx) => {
-          const esCliente = m.remitente !== 'Sistema' && m.remitente !== 'Soporte Técnico (Vane)';
+          const esCliente = m.remitente !== 'Sistema' && m.remitente !== 'Soporte Técnico';
           return (
             <div key={idx} className={`flex flex-col ${esCliente ? 'items-end' : 'items-start'}`}>
               <div className="flex items-center gap-2 mb-1">
