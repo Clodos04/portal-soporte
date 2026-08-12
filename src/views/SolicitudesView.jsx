@@ -9,6 +9,7 @@ function SolicitudesView({
   onOpenNotes, 
   onNuevaSolicitud, 
   onEditarTicket,
+  onAbrirChat, // <-- Prop para abrir la sala de chat en vivo
   onIrAEncuestaSpecific,
   estadisticasEncuestas = [] 
 }) {
@@ -18,7 +19,6 @@ function SolicitudesView({
   const rolUsuario = (user?.role || user?.nivel || '').toLowerCase();
   const esCliente = rolUsuario === 'client' || rolUsuario === 'cliente';
 
-  // Si es cliente, solo ve sus propios tickets. Si es soporte/admin, ve todos.
   const ticketsBase = esCliente 
     ? tickets.filter(t => t.creador && user?.name && t.creador.toLowerCase() === user.name.toLowerCase())
     : tickets;
@@ -50,14 +50,14 @@ function SolicitudesView({
         <div className="flex items-center gap-3 w-full md:w-auto justify-end">
           <button 
             onClick={onOpenCustomizer}
-            className="bg-slate-700 hover:bg-slate-600 text-slate-200 px-4 py-2 rounded-lg font-bold text-sm shadow transition-colors flex items-center gap-2 border border-slate-600"
+            className="bg-slate-700 hover:bg-slate-600 text-slate-200 px-4 py-2 rounded-lg font-bold text-sm shadow transition-colors flex items-center gap-2 border border-slate-600 cursor-pointer"
           >
             ⚙️ Columnas
           </button>
           
           <button 
             onClick={onNuevaSolicitud}
-            className="bg-green-600 hover:bg-green-500 text-white px-4 py-2 rounded-lg font-bold text-sm shadow transition-colors flex items-center gap-2"
+            className="bg-green-600 hover:bg-green-500 text-white px-4 py-2 rounded-lg font-bold text-sm shadow transition-colors flex items-center gap-2 cursor-pointer"
           >
             + NUEVA SOLICITUD
           </button>
@@ -69,13 +69,13 @@ function SolicitudesView({
           <div className="flex items-center gap-2 w-full md:w-auto">
             <button 
               onClick={() => setFiltroEstatus('activos')}
-              className={`px-4 py-2 rounded-lg font-bold text-sm transition-all ${filtroEstatus === 'activos' ? 'bg-green-600 text-white shadow-md' : 'bg-slate-900/60 text-slate-400 hover:text-white border border-slate-700'}`}
+              className={`px-4 py-2 rounded-lg font-bold text-sm transition-all cursor-pointer ${filtroEstatus === 'activos' ? 'bg-green-600 text-white shadow-md' : 'bg-slate-900/60 text-slate-400 hover:text-white border border-slate-700'}`}
             >
               Abiertos / En Proceso
             </button>
             <button 
               onClick={() => setFiltroEstatus('cerrados')}
-              className={`px-4 py-2 rounded-lg font-bold text-sm transition-all ${filtroEstatus === 'cerrados' ? 'bg-green-600 text-white shadow-md' : 'bg-slate-900/60 text-slate-400 hover:text-white border border-slate-700'}`}
+              className={`px-4 py-2 rounded-lg font-bold text-sm transition-all cursor-pointer ${filtroEstatus === 'cerrados' ? 'bg-green-600 text-white shadow-md' : 'bg-slate-900/60 text-slate-400 hover:text-white border border-slate-700'}`}
             >
               Cerrados
             </button>
@@ -131,7 +131,7 @@ function SolicitudesView({
                       <td className="px-4 py-3 text-center">
                         <button 
                           onClick={() => onOpenNotes(ticket.folio)}
-                          className="relative p-2 bg-slate-900/60 hover:bg-slate-700 rounded-lg text-slate-300 hover:text-white transition-colors border border-slate-700 inline-flex items-center justify-center"
+                          className="relative p-2 bg-slate-900/60 hover:bg-slate-700 rounded-lg text-slate-300 hover:text-white transition-colors border border-slate-700 inline-flex items-center justify-center cursor-pointer"
                           title="Ver Notas"
                         >
                           📄
@@ -157,9 +157,19 @@ function SolicitudesView({
 
                       <td className="px-4 py-3 text-center">
                         <div className="flex justify-center items-center gap-2">
+                          {!esCliente && onAbrirChat && (
+                            <button 
+                              onClick={() => onAbrirChat(ticket.folio)}
+                              className="px-3 py-1.5 bg-emerald-600/20 text-emerald-400 hover:bg-emerald-600 hover:text-white rounded-lg font-semibold text-xs transition-colors border border-emerald-500/30 cursor-pointer"
+                              title="Abrir Chat en Vivo"
+                            >
+                              💬 Chat
+                            </button>
+                          )}
+
                           <button 
                             onClick={() => onEditarTicket(ticket)}
-                            className="px-3 py-1.5 bg-indigo-600/20 text-indigo-400 hover:bg-indigo-600 hover:text-white rounded-lg font-semibold text-xs transition-colors border border-indigo-500/30"
+                            className="px-3 py-1.5 bg-indigo-600/20 text-indigo-400 hover:bg-indigo-600 hover:text-white rounded-lg font-semibold text-xs transition-colors border border-indigo-500/30 cursor-pointer"
                           >
                             Gestionar
                           </button>
@@ -172,7 +182,7 @@ function SolicitudesView({
                             ) : (
                               <button 
                                 onClick={() => onIrAEncuestaSpecific(ticket)}
-                                className="px-3 py-1.5 bg-green-600/20 text-green-400 hover:bg-green-600 hover:text-white rounded-lg font-semibold text-xs transition-colors border border-green-500/30"
+                                className="px-3 py-1.5 bg-green-600/20 text-green-400 hover:bg-green-600 hover:text-white rounded-lg font-semibold text-xs transition-colors border border-green-500/30 cursor-pointer"
                               >
                                 Encuesta
                               </button>
