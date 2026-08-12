@@ -166,7 +166,7 @@ function AsistenteTipificacionView({ categorias = [], campanas = [], user, usuar
             {(!categoriaSeleccionada.subcategorias || categoriaSeleccionada.subcategorias.length === 0) ? (
               <div className="text-center py-4">
                 <p className="text-slate-400 italic text-xs mb-3">No hay módulos registrados en esta área.</p>
-                <button type="button" onClick={() => setPaso(4)} className="bg-indigo-600 text-white px-4 py-2 rounded-xl text-xs font-bold">Continuar sin módulo →</button>
+                <button type="button" onClick={() => setPaso(4)} className="bg-indigo-600 text-white px-4 py-2 rounded-xl text-xs font-bold cursor-pointer">Continuar sin módulo →</button>
               </div>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -197,7 +197,7 @@ function AsistenteTipificacionView({ categorias = [], campanas = [], user, usuar
             {(!subcatSeleccionada.elementos || subcatSeleccionada.elementos.length === 0) ? (
               <div className="text-center py-4">
                 <p className="text-slate-400 italic text-xs mb-3">No hay elementos específicos en este módulo.</p>
-                <button type="button" onClick={() => setPaso(5)} className="bg-indigo-600 text-white px-4 py-2 rounded-xl text-xs font-bold">Continuar a Detalles →</button>
+                <button type="button" onClick={() => setPaso(5)} className="bg-indigo-600 text-white px-4 py-2 rounded-xl text-xs font-bold cursor-pointer">Continuar a Detalles →</button>
               </div>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
