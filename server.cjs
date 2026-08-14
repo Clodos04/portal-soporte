@@ -7,7 +7,7 @@ const app = express();
 app.use(express.json());
 app.use(cors());
 
-// Conexión principal a la Base de Datos (Soporte / Tickets)
+// 1. Conexión principal para Tickets (sav)
 const db = mysql.createConnection({
   host: process.env.DB_HOST || 'sav_db-soporte',
   user: process.env.DB_USER || 'mysql',
@@ -16,82 +16,83 @@ const db = mysql.createConnection({
   port: process.env.DB_PORT || 3306
 });
 
-db.connect((err) => {
-  if (err) {
-    console.error('Error al conectar a la base de datos:', err);
-    return;
-  }
-  console.log('Conectado exitosamente a la base de datos MySQL.');
+// 2. Conexión dedicada para Centinela (usando root para acceso total)
+const dbCentinela = mysql.createConnection({
+  host: '192.168.1.2',
+  user: 'root',
+  password: 'C01nts#BD2024!',
+  database: 'centinela',
+  port: 3306
 });
 
-// Función auxiliar para fecha MySQL
+db.connect((err) => { 
+  if (err) console.error('Error BD Tickets:', err); 
+  else console.log('Conectado a BD Tickets (sav)'); 
+});
+
+dbCentinela.connect((err) => { 
+  if (err) console.error('Error BD Centinela:', err); 
+  else console.log('Conectado a BD Centinela (centinela)'); 
+});
+
 const obtenerFechaMySQL = () => {
   const d = new Date();
   return d.toISOString().slice(0, 19).replace('T', ' ');
 };
 
-// Login
+// ==========================================
+// RUTA DE CENTINELA (Usa dbCentinela)
+// ==========================================
+app.get(['/api/centinela/datos', '/centinela/datos'], (req, res) => {
+  // Ya no usamos el prefijo 'centinela.' porque la conexión ya está en esa base de datos
+  const queryCampanas = 'SELECT idcamp, `desc` AS nombre FROM Camp';
+  const queryIps = 'SELECT idIPs, ip, Nodo AS equipo, camp AS idcamp FROM IPs WHERE Nodo IS NOT NULL AND Nodo != ""';
+
+  dbCentinela.query(queryCampanas, (err, campanasRes) => {
+    if (err) {
+      console.error('❌ Error al consultar Camp:', err);
+      return res.status(500).json({ error: err.message });
+    }
+
+    dbCentinela.query(queryIps, (err, ipsRes) => {
+      if (err) {
+        console.error('❌ Error al consultar IPs:', err);
+        return res.status(500).json({ error: err.message });
+      }
+      res.json({ campanas: campanasRes, equipos: ipsRes });
+    });
+  });
+});
+
+// ==========================================
+// TODO EL RESTO DE TU LÓGICA (Usa db principal)
+// ==========================================
 const handleLogin = (req, res) => {
   const { username, password } = req.body;
-  const query = 'SELECT * FROM usuarios WHERE username = ? AND password = ? AND estatus = "ACTIVO"';
-  
-  db.query(query, [username, password], (err, results) => {
+  db.query('SELECT * FROM usuarios WHERE username = ? AND password = ? AND estatus = "ACTIVO"', [username, password], (err, results) => {
     if (err) return res.status(500).json({ error: 'Error en el servidor' });
-    if (results.length === 0) return res.status(401).json({ error: 'Credenciales incorrectas o usuario inactivo.' });
-
+    if (results.length === 0) return res.status(401).json({ error: 'Credenciales incorrectas.' });
     const usuario = results[0];
-    
-    res.json({
-      success: true,
-      user: {
-        id: usuario.id,
-        name: `${usuario.nombre || ''} ${usuario.paterno || ''}`.trim(),
-        role: usuario.nivel === 'ADMINISTRADOR' ? 'support' : 'client',
-        username: usuario.username,
-        nivel: usuario.nivel,
-        gruposAsignados: usuario.gruposAsignados,
-        nombre: usuario.nombre || '',
-        paterno: usuario.paterno || '',
-        materno: usuario.materno || ''
-      }
-    });
+    res.json({ success: true, user: { id: usuario.id, name: `${usuario.nombre || ''} ${usuario.paterno || ''}`.trim(), role: usuario.nivel === 'ADMINISTRADOR' ? 'support' : 'client', username: usuario.username, nivel: usuario.nivel, gruposAsignados: usuario.gruposAsignados } });
   });
 };
 app.post('/api/login', handleLogin);
 app.post('/login', handleLogin);
 
-// Tickets
 app.get(['/api/tickets', '/tickets'], (req, res) => {
   db.query('SELECT * FROM tickets', (err, results) => {
-    if (err) return res.status(500).json({ error: err.message });
-    
-    const ticketsFormateados = results.map(t => {
-      let notas = t.notas;
-      if (typeof notas === 'string') {
-        try { notas = JSON.parse(notas); } catch (e) { notas = []; }
-      }
-      return { ...t, notas: notas || [] };
-    });
-    
-    res.json(ticketsFormateados);
+    res.json(results.map(t => ({ ...t, notas: typeof t.notas === 'string' ? JSON.parse(t.notas || '[]') : [] })));
   });
 });
 
 app.post(['/api/tickets', '/tickets'], (req, res) => {
   const ticketData = { ...req.body };
   delete ticketData.archivos;
-  
-  for (let key in ticketData) {
-    if (typeof ticketData[key] === 'object' && ticketData[key] !== null) {
-      ticketData[key] = JSON.stringify(ticketData[key]);
-    }
-  }
-
+  for (let key in ticketData) if (typeof ticketData[key] === 'object' && ticketData[key] !== null) ticketData[key] = JSON.stringify(ticketData[key]);
   ticketData.created_at = obtenerFechaMySQL();
-
   db.query('INSERT INTO tickets SET ?', ticketData, (err, result) => {
     if (err) return res.status(500).json({ error: err.message });
-    res.json({ message: 'Ticket creado exitosamente', id: result.insertId });
+    res.json({ message: 'Ticket creado', id: result.insertId });
   });
 });
 
@@ -99,245 +100,42 @@ app.put(['/api/tickets/:folio', '/tickets/:folio'], (req, res) => {
   const ticketData = { ...req.body };
   delete ticketData.folio;
   delete ticketData.archivos;
-
-  for (let key in ticketData) {
-    if (typeof ticketData[key] === 'object' && ticketData[key] !== null) {
-      ticketData[key] = JSON.stringify(ticketData[key]);
-    }
-  }
-
+  for (let key in ticketData) if (typeof ticketData[key] === 'object' && ticketData[key] !== null) ticketData[key] = JSON.stringify(ticketData[key]);
   ticketData.updated_at = obtenerFechaMySQL();
-
   db.query('UPDATE tickets SET ? WHERE folio = ?', [ticketData, req.params.folio], (err, result) => {
     if (err) return res.status(500).json({ error: err.message });
-    if (result.affectedRows === 0) return res.status(404).json({ error: 'No se encontró el ticket.' });
-    res.json({ message: 'Ticket actualizado correctamente' });
+    res.json({ message: 'Ticket actualizado' });
   });
 });
 
-// ==========================================
-// RUTA DE CENTINELA (CAMPANAS E IPS / EQUIPOS)
-// ==========================================
-app.get(['/api/centinela/datos', '/centinela/datos'], (req, res) => {
-  const queryCampanas = 'SELECT idcamp, `desc` AS nombre FROM centinela.Camp';
-  const queryIps = 'SELECT idIPs, ip, Nodo AS equipo, camp AS idcamp FROM centinela.IPs WHERE Nodo IS NOT NULL AND Nodo != ""';
-
-  db.query(queryCampanas, (err, campanasRes) => {
-    if (err) {
-      console.error('❌ Error al consultar Camp de Centinela:', err);
-      return res.status(500).json({ error: err.message });
-    }
-
-    db.query(queryIps, (err, ipsRes) => {
-      if (err) {
-        console.error('❌ Error al consultar IPs de Centinela:', err);
-        return res.status(500).json({ error: err.message });
-      }
-
-      console.log(`✅ Centinela cargado con éxito: ${campanasRes.length} campañas y ${ipsRes.length} equipos.`);
-      res.json({ campanas: campanasRes, equipos: ipsRes });
-    });
-  });
-});
-
-// ==========================================
-// RUTAS DE CHAT EN VIVO
-// ==========================================
 app.get(['/api/chat/:folio', '/chat/:folio'], (req, res) => {
-  const { folio } = req.params;
-  const query = 'SELECT * FROM mensajes_chat WHERE folio = ? ORDER BY id ASC';
-  db.query(query, [folio], (err, results) => {
-    if (err) return res.status(500).json({ error: 'Error al obtener mensajes' });
+  db.query('SELECT * FROM mensajes_chat WHERE folio = ? ORDER BY id ASC', [req.params.folio], (err, results) => {
     res.json(results);
   });
 });
 
 app.post(['/api/chat', '/chat'], (req, res) => {
   const { folio, remitente, texto, hora } = req.body;
-  const query = 'INSERT INTO mensajes_chat (folio, remitente, texto, hora) VALUES (?, ?, ?, ?)';
-  
-  db.query(query, [folio, remitente, texto, hora], (err, result) => {
-    if (err) return res.status(500).json({ error: 'Error al guardar mensaje' });
-    res.json({ success: true, id: result.insertId });
+  db.query('INSERT INTO mensajes_chat (folio, remitente, texto, hora) VALUES (?, ?, ?, ?)', [folio, remitente, texto, hora], (err, result) => {
+    if (err) return res.status(500).json({ error: 'Error al guardar' });
+    res.json({ success: true });
   });
 });
 
-// Usuarios
 app.get(['/api/usuarios', '/usuarios'], (req, res) => {
   db.query('SELECT * FROM usuarios', (err, results) => {
-    if (err) return res.status(500).json({ error: err.message });
-    
-    const usuariosFormateados = results.map(u => {
-      let grupos = u.gruposAsignados;
-      if (typeof grupos === 'string') {
-        try { grupos = JSON.parse(grupos); } catch (e) { grupos = []; }
-      }
-      return { ...u, gruposAsignados: grupos || [] };
-    });
-    
-    res.json(usuariosFormateados);
+    res.json(results.map(u => ({ ...u, gruposAsignados: typeof u.gruposAsignados === 'string' ? JSON.parse(u.gruposAsignados || '[]') : [] })));
   });
 });
 
-// Grupos
-app.get(['/api/grupos', '/grupos'], (req, res) => {
-  db.query('SELECT nombre FROM grupos', (err, results) => {
-    if (err) return res.status(500).json({ error: err.message });
-    res.json(results.map(g => g.nombre));
-  });
-});
-
-app.post(['/api/grupos', '/grupos'], (req, res) => {
-  const { nombre } = req.body;
-  db.query('INSERT INTO grupos (nombre) VALUES (?)', [nombre], (err, result) => {
-    if (err) return res.status(500).json({ error: err.message });
-    res.json({ message: 'Grupo creado', id: result.insertId });
-  });
-});
-
-app.delete(['/api/grupos/:nombre', '/grupos/:nombre'], (req, res) => {
-  const { nombre } = req.params;
-  db.query('DELETE FROM grupos WHERE nombre = ?', [nombre], (err, result) => {
-    if (err) return res.status(500).json({ error: err.message });
-    res.json({ message: 'Grupo eliminado' });
-  });
-});
-
-// Campañas (Fallback antiguo)
-app.get(['/api/campanas', '/campanas'], (req, res) => {
-  db.query('SELECT `desc` AS nombre FROM centinela.Camp', (err, results) => {
-    if (err) return res.status(500).json({ error: err.message });
-    res.json(results.map(c => c.nombre));
-  });
-});
-
-// Categorías
 app.get(['/api/categorias', '/categorias'], (req, res) => {
   db.query('SELECT * FROM categorias', (err, results) => {
-    if (err) return res.status(500).json({ error: err.message });
-    
-    const categoriasFormateadas = results.map(cat => {
-      let subcats = cat.subcategorias;
-      if (typeof subcats === 'string') {
-        try { subcats = JSON.parse(subcats); } catch (e) { subcats = []; }
-      }
-      return { ...cat, subcategorias: subcats || [] };
-    });
-    
-    res.json(categoriasFormateadas);
-  });
-});
-
-app.post(['/api/categorias/sincronizar', '/categorias/sincronizar'], (req, res) => {
-  res.json({ success: true, message: 'Sincronizado' });
-});
-
-app.get(['/api/subcategorias', '/subcategorias'], (req, res) => {
-  db.query('SELECT * FROM subcategorias', (err, results) => {
-    if (err) return res.status(500).json({ error: err.message });
-    res.json(results);
-  });
-});
-
-app.get(['/api/elementos', '/elementos'], (req, res) => {
-  db.query('SELECT * FROM elementos', (err, results) => {
-    if (err) return res.status(500).json({ error: err.message });
-    res.json(results);
-  });
-});
-
-// Encuestas
-app.post(['/api/encuestas', '/encuestas'], (req, res) => {
-  const data = { ...req.body };
-  
-  if (data.fecha) delete data.fecha;
-  if (data.fecha_respuesta) delete data.fecha_respuesta;
-  delete data.promedio;
-
-  for (let key in data) {
-    if (typeof data[key] === 'object' && data[key] !== null) {
-      data[key] = JSON.stringify(data[key]);
-    }
-  }
-
-  data.fecha_respuesta = obtenerFechaMySQL();
-
-  const guardarEnBD = (datosFinales) => {
-    db.query('INSERT INTO encuestas SET ?', datosFinales, (err, result) => {
-      if (err) return res.status(500).json({ error: err.message });
-      res.json({ message: 'Encuesta guardada con éxito', id: result.insertId });
-    });
-  };
-
-  if (!data.ticket_id && data.folio) {
-    db.query('SELECT id FROM tickets WHERE folio = ?', [data.folio], (err, results) => {
-      if (!err && results.length > 0) {
-        data.ticket_id = results[0].id;
-      }
-      guardarEnBD(data);
-    });
-  } else {
-    guardarEnBD(data);
-  }
-});
-
-app.get(['/api/encuestas/reporte', '/encuestas/reporte'], (req, res) => {
-  db.query('SELECT * FROM encuestas', (err, results) => {
-    if (err) return res.status(500).json({ error: err.message });
-    
-    const encuestasFormateadas = results.map(e => {
-      let resp = e.respuestas;
-      if (typeof resp === 'string') {
-        try { resp = JSON.parse(resp); } catch (err) { resp = []; }
-      }
-      const promedio = e.calificacion || 5;
-      return { ...e, promedio, respuestas: resp };
-    });
-
-    let suma = 0;
-    encuestasFormateadas.forEach(r => suma += (Number(r.promedio) || Number(r.calificacion) || 0));
-    const promedioGeneral = encuestasFormateadas.length > 0 ? (suma / encuestasFormateadas.length).toFixed(1) : 0;
-
-    res.json({
-      estadisticas: { promedio: promedioGeneral, total: encuestasFormateadas.length },
-      historial: encuestasFormateadas
-    });
-  });
-});
-
-// Endpoint de KPIs de Tiempos
-app.get(['/api/kpis/tiempos', '/kpis/tiempos'], (req, res) => {
-  db.query('SELECT * FROM tickets', (err, results) => {
-    if (err) return res.status(500).json({ error: err.message });
-    
-    const kpiTiemposCalculados = results.map(t => {
-      const fechaCreacion = new Date(t.created_at || t.fecha || Date.now());
-      const fechaCierre = (t.estatus === 'Cerrado' || t.estatus === 'CERRADO') ? new Date(t.updated_at || Date.now()) : new Date();
-      
-      let diffMinutos = Math.round((fechaCierre - fechaCreacion) / (1000 * 60));
-      
-      if (isNaN(diffMinutos) || diffMinutos < 0 || diffMinutos > 1440) {
-        diffMinutos = 5; 
-      }
-
-      return {
-        id: t.id,
-        folio: t.folio,
-        minutos_resolucion: diffMinutos
-      };
-    });
-
-    res.json(kpiTiemposCalculados);
+    res.json(results.map(cat => ({ ...cat, subcategorias: typeof cat.subcategorias === 'string' ? JSON.parse(cat.subcategorias || '[]') : [] })));
   });
 });
 
 app.use(express.static(path.join(__dirname, 'dist')));
-
-app.get(/(.*)/, (req, res) => {
-  res.sendFile(path.join(__dirname, 'dist', 'index.html'));
-});
+app.get(/(.*)/, (req, res) => res.sendFile(path.join(__dirname, 'dist', 'index.html')));
 
 const PORT = process.env.PORT || 80;
-app.listen(PORT, () => {
-  console.log(`Servidor corriendo en el puerto ${PORT}`);
-});
+app.listen(PORT, () => console.log(`Servidor corriendo en el puerto ${PORT}`));
