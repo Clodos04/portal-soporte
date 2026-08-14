@@ -7,7 +7,7 @@ const app = express();
 app.use(express.json());
 app.use(cors());
 
-// Conexión a la Base de Datos (Easypanel)
+// Conexión principal a la Base de Datos (Soporte / Tickets)
 const db = mysql.createConnection({
   host: process.env.DB_HOST || 'sav_db-soporte',
   user: process.env.DB_USER || 'mysql',
@@ -24,7 +24,7 @@ db.connect((err) => {
   console.log('Conectado exitosamente a la base de datos MySQL.');
 });
 
-// Función auxiliar para obtener la fecha en formato MySQL (YYYY-MM-DD HH:MM:SS)
+// Función auxiliar para fecha MySQL
 const obtenerFechaMySQL = () => {
   const d = new Date();
   return d.toISOString().slice(0, 19).replace('T', ' ');
@@ -116,16 +116,36 @@ app.put(['/api/tickets/:folio', '/tickets/:folio'], (req, res) => {
 });
 
 // ==========================================
-// RUTAS DE CHAT EN VIVO (CONECTADAS A MYSQL)
+// RUTA DE CENTINELA (CAMPANAS E IPS / EQUIPOS)
+// ==========================================
+app.get(['/api/centinela/datos', '/centinela/datos'], (req, res) => {
+  const queryCampanas = 'SELECT idcamp, desc AS nombre FROM centinela.Camp WHERE Activo = 1';
+  const queryIps = 'SELECT idIPs, ip, Nodo AS equipo, camp AS idcamp FROM centinela.IPs WHERE Activo = 1 AND Nodo IS NOT NULL AND Nodo != ""';
+
+  db.query(queryCampanas, (err, campanasRes) => {
+    if (err) {
+      console.error('Error al consultar Camp:', err);
+      return res.status(500).json({ error: err.message });
+    }
+
+    db.query(queryIps, (err, ipsRes) => {
+      if (err) {
+        console.error('Error al consultar IPs:', err);
+        return res.status(500).json({ error: err.message });
+      }
+      res.json({ campanas: campanasRes, equipos: ipsRes });
+    });
+  });
+});
+
+// ==========================================
+// RUTAS DE CHAT EN VIVO
 // ==========================================
 app.get(['/api/chat/:folio', '/chat/:folio'], (req, res) => {
   const { folio } = req.params;
   const query = 'SELECT * FROM mensajes_chat WHERE folio = ? ORDER BY id ASC';
   db.query(query, [folio], (err, results) => {
-    if (err) {
-      console.error('Error al obtener mensajes:', err);
-      return res.status(500).json({ error: 'Error al obtener mensajes' });
-    }
+    if (err) return res.status(500).json({ error: 'Error al obtener mensajes' });
     res.json(results);
   });
 });
@@ -135,10 +155,7 @@ app.post(['/api/chat', '/chat'], (req, res) => {
   const query = 'INSERT INTO mensajes_chat (folio, remitente, texto, hora) VALUES (?, ?, ?, ?)';
   
   db.query(query, [folio, remitente, texto, hora], (err, result) => {
-    if (err) {
-      console.error('Error al guardar mensaje:', err);
-      return res.status(500).json({ error: 'Error al guardar mensaje' });
-    }
+    if (err) return res.status(500).json({ error: 'Error al guardar mensaje' });
     res.json({ success: true, id: result.insertId });
   });
 });
@@ -184,11 +201,11 @@ app.delete(['/api/grupos/:nombre', '/grupos/:nombre'], (req, res) => {
   });
 });
 
-// Campañas
+// Campañas (Fallback antiguo)
 app.get(['/api/campanas', '/campanas'], (req, res) => {
-  db.query('SELECT * FROM campanas', (err, results) => {
+  db.query('SELECT desc AS nombre FROM centinela.Camp WHERE Activo = 1', (err, results) => {
     if (err) return res.status(500).json({ error: err.message });
-    res.json(results.map(c => c.nombre || c.campana || c.descripcion || Object.values(c)[1] || c.id || ""));
+    res.json(results.map(c => c.nombre));
   });
 });
 
