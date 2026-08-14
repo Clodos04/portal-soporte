@@ -7,7 +7,7 @@ const app = express();
 app.use(express.json());
 app.use(cors());
 
-// 1. Conexión principal para Tickets y lógica general (sav)
+// 1. CONEXIÓN PRINCIPAL (Tickets - sav)
 const db = mysql.createConnection({
   host: process.env.DB_HOST || 'sav_db-soporte',
   user: process.env.DB_USER || 'mysql',
@@ -16,7 +16,7 @@ const db = mysql.createConnection({
   port: process.env.DB_PORT || 3306
 });
 
-// 2. Conexión dedicada para Centinela (acceso total con root)
+// 2. CONEXIÓN DEDICADA CENTINELA (Equipos - root)
 const dbCentinela = mysql.createConnection({
   host: '192.168.1.2',
   user: 'root',
@@ -25,15 +25,12 @@ const dbCentinela = mysql.createConnection({
   port: 3306
 });
 
-db.connect((err) => { if (err) console.error('Error BD Tickets:', err); else console.log('Conectado a BD Tickets (sav)'); });
-dbCentinela.connect((err) => { if (err) console.error('Error BD Centinela:', err); else console.log('Conectado a BD Centinela (centinela)'); });
+db.connect((err) => { if (err) console.error('Error BD Tickets:', err); else console.log('Conectado a BD Tickets'); });
+dbCentinela.connect((err) => { if (err) console.error('Error BD Centinela:', err); else console.log('Conectado a BD Centinela'); });
 
-const obtenerFechaMySQL = () => {
-  const d = new Date();
-  return d.toISOString().slice(0, 19).replace('T', ' ');
-};
+const obtenerFechaMySQL = () => new Date().toISOString().slice(0, 19).replace('T', ' ');
 
-// Login
+// LOGIN (Usa db)
 const handleLogin = (req, res) => {
   const { username, password } = req.body;
   db.query('SELECT * FROM usuarios WHERE username = ? AND password = ? AND estatus = "ACTIVO"', [username, password], (err, results) => {
@@ -45,7 +42,7 @@ const handleLogin = (req, res) => {
 };
 app.post(['/api/login', '/login'], handleLogin);
 
-// Tickets (CRUD)
+// TICKETS (Usa db)
 app.get(['/api/tickets', '/tickets'], (req, res) => {
   db.query('SELECT * FROM tickets', (err, results) => {
     if (err) return res.status(500).json({ error: err.message });
@@ -77,7 +74,7 @@ app.put(['/api/tickets/:folio', '/tickets/:folio'], (req, res) => {
 });
 
 // ==========================================
-// RUTA DE CENTINELA (Usando dbCentinela)
+// RUTA CENTINELA (Usa dbCentinela - Conexión dedicada)
 // ==========================================
 app.get(['/api/centinela/datos', '/centinela/datos'], (req, res) => {
   dbCentinela.query('SELECT idcamp, `desc` AS nombre FROM Camp', (err, campanasRes) => {
@@ -89,7 +86,7 @@ app.get(['/api/centinela/datos', '/centinela/datos'], (req, res) => {
   });
 });
 
-// Chats
+// CHATS, USUARIOS, GRUPOS (Usa db)
 app.get(['/api/chat/:folio', '/chat/:folio'], (req, res) => {
   db.query('SELECT * FROM mensajes_chat WHERE folio = ? ORDER BY id ASC', [req.params.folio], (err, results) => {
     res.json(results);
@@ -104,7 +101,6 @@ app.post(['/api/chat', '/chat'], (req, res) => {
   });
 });
 
-// Usuarios, Grupos, Categorías
 app.get(['/api/usuarios', '/usuarios'], (req, res) => {
   db.query('SELECT * FROM usuarios', (err, results) => {
     res.json(results.map(u => ({ ...u, gruposAsignados: typeof u.gruposAsignados === 'string' ? JSON.parse(u.gruposAsignados || '[]') : [] })));
@@ -115,17 +111,13 @@ app.get(['/api/grupos', '/grupos'], (req, res) => {
   db.query('SELECT nombre FROM grupos', (err, results) => res.json(results.map(g => g.nombre)));
 });
 
-app.post('/api/grupos', (req, res) => {
-  db.query('INSERT INTO grupos (nombre) VALUES (?)', [req.body.nombre], (err, result) => res.json({ message: 'Creado' }));
-});
-
 app.get(['/api/categorias', '/categorias'], (req, res) => {
   db.query('SELECT * FROM categorias', (err, results) => {
     res.json(results.map(cat => ({ ...cat, subcategorias: typeof cat.subcategorias === 'string' ? JSON.parse(cat.subcategorias || '[]') : [] })));
   });
 });
 
-// Encuestas
+// ENCUESTAS Y KPIs (Usa db)
 app.post(['/api/encuestas', '/encuestas'], (req, res) => {
   const data = { ...req.body };
   delete data.fecha; delete data.fecha_respuesta; delete data.promedio;
@@ -139,12 +131,11 @@ app.post(['/api/encuestas', '/encuestas'], (req, res) => {
 
 app.get(['/api/encuestas/reporte', '/encuestas/reporte'], (req, res) => {
   db.query('SELECT * FROM encuestas', (err, results) => {
-    const data = results.map(e => ({ ...e, respuestas: typeof e.respuestas === 'string' ? JSON.parse(e.respuestas || '[]') : [] }));
-    res.json({ historial: data });
+    if (err) return res.status(500).json({ error: err.message });
+    res.json({ historial: results.map(e => ({ ...e, respuestas: typeof e.respuestas === 'string' ? JSON.parse(e.respuestas || '[]') : [] })) });
   });
 });
 
-// KPIs
 app.get(['/api/kpis/tiempos', '/kpis/tiempos'], (req, res) => {
   db.query('SELECT * FROM tickets', (err, results) => {
     res.json(results.map(t => ({ folio: t.folio, minutos_resolucion: 5 })));
