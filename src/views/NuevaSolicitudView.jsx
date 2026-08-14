@@ -1,9 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { equiposPorCampana } from '../../equiposData.cjs';
-import { listaCampanas } from '../../campanasData.cjs';
 import AsistenteTipificacionView from './AsistenteTipificacionView';
 
-function NuevaSolicitudView({ user, usuarios = [], grupos = [], campanas = [], usuariosPorGrupo = {}, categorias = [], onVolver, onGuardar }) {
+function NuevaSolicitudView({ user, usuarios = [], grupos = [], usuariosPorGrupo = {}, categorias = [], onVolver, onGuardar }) {
   const [estado, setEstado] = useState('ABIERTO');
   const [grupo, setGrupo] = useState('');
   const [usuarioAsignado, setUsuarioAsignado] = useState('Sin Asignar');
@@ -19,21 +17,17 @@ function NuevaSolicitudView({ user, usuarios = [], grupos = [], campanas = [], u
   const elementosDisponibles = subcategoriaObj ? (subcategoriaObj?.elementos || []) : [];
   const [elemento, setElemento] = useState('');
 
-  // Por defecto, abrimos de inmediato el asistente de tipificación grande para guiar al usuario
   const [isAsistenteOpen, setIsAsistenteOpen] = useState(true);
 
-  const campanasDisponibles = campanas.length > 0 ? campanas : listaCampanas;
-  
-  const [areaCliente, setAreaCliente] = useState('');
-  const [campana, setCampana] = useState('');
+  // Estados dinámicos para Campañas y Equipos desde MySQL (Centinela)
+  const [campanasBD, setCampanasBD] = useState([]);
+  const [equiposBD, setEquiposBD] = useState([]);
 
-  const clientesDisponibles = usuarios.filter(u => u.campana === campana && u.estatus === 'ACTIVO');
-  
+  const [areaCliente, setAreaCliente] = useState('');
+  const [campanaSeleccionadaId, setCampanaSeleccionadaId] = useState('');
   const [nombreCliente, setNombreCliente] = useState('');
   const [asunto, setAsunto] = useState('');
   const [descripcion, setDescripcion] = useState('');
-
-  const listaEquiposActuales = equiposPorCampana[campana] || [];
 
   const [equiposSeleccionados, setEquiposSeleccionados] = useState([]);
   const [nivel, setNivel] = useState('Bajo');
@@ -42,58 +36,50 @@ function NuevaSolicitudView({ user, usuarios = [], grupos = [], campanas = [], u
 
   const tecnicosDisponibles = usuariosPorGrupo[grupo] || [];
 
-  // Autocompletar datos del usuario logueado al cargar
+  // Cargar datos dinámicos de Campanas e IPs desde el servidor
   useEffect(() => {
-    if (user && user.name) {
+    fetch('/api/centinela/datos')
+      .then(res => res.json())
+      .then(data => {
+        if (data.campanas) setCampanasBD(data.campanas);
+        if (data.equipos) setEquiposBD(data.equipos);
+      })
+      .catch(err => console.error("Error al cargar datos de centinela:", err));
+  }, []);
+
+  // Filtrar los nodos (equipos) estrictamente según el ID de la campaña seleccionada
+  const listaEquiposActuales = equiposBD
+    .filter(eq => String(eq.idcamp) === String(campanaSeleccionadaId))
+    .map(eq => eq.equipo);
+
+  useEffect(() => {
+    if (user && user.name && campanasBD.length > 0) {
       const usuarioEnBD = usuarios.find(u => `${u.nombre} ${u.paterno}`.toLowerCase() === user.name.toLowerCase() || u.username === user.username);
-      
       if (usuarioEnBD) {
-        setCampana(usuarioEnBD.campana || '*111');
-        setAreaCliente(usuarioEnBD.campana || '*111');
         setNombreCliente(`${usuarioEnBD.nombre} ${usuarioEnBD.paterno}`);
       } else {
         setNombreCliente(user.name);
-        setCampana('*111');
       }
     }
-  }, [user, usuarios]);
+  }, [user, usuarios, campanasBD]);
 
   const handleCambioCampana = (e) => {
-    const nuevaCampana = e.target.value;
-    setCampana(nuevaCampana);
-    setAreaCliente(nuevaCampana);
-    setEquiposSeleccionados([]);
-
-    const filtrados = usuarios.filter(u => u.campana === nuevaCampana && u.estatus === 'ACTIVO');
-    if (filtrados.length > 0) {
-      setNombreCliente(`${filtrados[0].nombre} ${filtrados[0].paterno}`);
-    } else {
-      setNombreCliente('');
-    }
+    const idCamp = e.target.value;
+    setCampanaSeleccionadaId(idCamp);
+    const campObj = campanasBD.find(c => String(c.idcamp) === String(idCamp));
+    setAreaCliente(campObj ? campObj.nombre : '');
+    setEquiposSeleccionados([]); // Limpiar selección previa al cambiar de campaña
   };
 
   const handleCambioCategoria = (e) => {
-    const nuevaCat = e.target.value;
-    setCategoria(nuevaCat);
+    setCategoria(e.target.value);
     setSubCategoria('');
     setElemento('');
   };
 
   const handleCambioSubcategoria = (e) => {
-    const nuevaSub = e.target.value;
-    setSubCategoria(nuevaSub);
+    setSubCategoria(e.target.value);
     setElemento('');
-  };
-
-  const handleSeleccionarTipificacionDelAsistente = (resultado) => {
-    if (resultado.categoria) setCategorySafe(resultado.categoria.nombre);
-    if (resultado.subcategoria) setSubCategoria(resultado.subcategoria.nombre);
-    if (resultado.elemento) setElemento(resultado.elemento.nombre);
-    setIsAsistenteOpen(false);
-  };
-
-  const setCategorySafe = (nombreCat) => {
-    setCategoria(nombreCat);
   };
 
   const handleSubmit = (e) => {
@@ -105,6 +91,8 @@ function NuevaSolicitudView({ user, usuarios = [], grupos = [], campanas = [], u
     if (estado === 'EN PROCESO') colorEstatus = 'bg-orange-500';
     if (estado === 'CERRADO') colorEstatus = 'bg-red-500';
 
+    const campObj = campanasBD.find(c => String(c.idcamp) === String(campanaSeleccionadaId));
+
     const ticketNuevo = {
       folio: nuevoFolio,
       notas: [],
@@ -114,7 +102,7 @@ function NuevaSolicitudView({ user, usuarios = [], grupos = [], campanas = [], u
       creador: nombreCliente || user?.name || 'VALERIA GOMEZ',
       asunto: asunto,
       descripcion: descripcion,
-      campana: campana,
+      campana: campObj ? campObj.nombre : 'General',
       equipo: equiposSeleccionados.length > 0 ? equiposSeleccionados.join(', ') : 'Ninguno',
       nivel: nivel,
       modo: modo,
@@ -144,7 +132,7 @@ function NuevaSolicitudView({ user, usuarios = [], grupos = [], campanas = [], u
           <button 
             type="button" 
             onClick={() => setIsAsistenteOpen(true)}
-            className="bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-500 hover:to-blue-500 text-white px-4 py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider shadow-lg shadow-indigo-600/30 transition-all flex items-center gap-2 cursor-pointer"
+            className="bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-500 hover:to-blue-500 text-white px-4 py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider shadow-lg shadow-indigo-600/35 transition-all flex items-center gap-2 cursor-pointer"
           >
             <span>🤖</span> Abrir Asistente Guiado
           </button>
@@ -158,18 +146,18 @@ function NuevaSolicitudView({ user, usuarios = [], grupos = [], campanas = [], u
         </div>
       </div>
 
-      {/* ASISTENTE DE TIPIFICACIÓN EN PANTALLA GRANDE */}
       {isAsistenteOpen && (
         <div className="fixed inset-0 bg-slate-950/85 backdrop-blur-md flex justify-center items-center z-50 p-4 animate-fade-in">
           <div className="max-w-4xl w-full flex justify-center">
             <AsistenteTipificacionView
               categorias={categoriasActivas}
-              campanas={campanasDisponibles}
+              campanas={campanasBD}
+              equipos={equiposBD}
               user={user}
               usuarios={usuarios}
               onGuardarTicket={(ticketNuevo) => {
                 setIsAsistenteOpen(false);
-                onGuardar(ticketNuevo); // Guarda el ticket y abre el Live Chat automáticamente
+                onGuardar(ticketNuevo);
               }}
               onCancelar={() => {
                 setIsAsistenteOpen(false);
@@ -260,15 +248,15 @@ function NuevaSolicitudView({ user, usuarios = [], grupos = [], campanas = [], u
           </div>
 
           <div className="space-y-4 pt-2">
-            <h2 className="text-lg font-bold text-indigo-300 border-b border-slate-700 pb-2">Información del Cliente (Autocompletada)</h2>
+            <h2 className="text-lg font-bold text-indigo-300 border-b border-slate-700 pb-2">Información del Cliente</h2>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
                 <label className="block text-xs font-bold text-slate-300 uppercase mb-1.5">Área (Campaña):</label>
-                <select value={areaCliente} onChange={(e) => { setAreaCliente(e.target.value); handleCambioCampana(e); }} className="w-full px-3 py-2.5 rounded-lg bg-slate-900 border border-slate-700 text-white text-sm outline-none focus:border-indigo-500 transition-colors">
-                  <option value="">Seleccione Área</option>
-                  {campanasDisponibles.map((camp, idx) => (
-                    <option key={idx} value={camp}>{camp}</option>
+                <select value={campanaSeleccionadaId} onChange={handleCambioCampana} className="w-full px-3 py-2.5 rounded-lg bg-slate-900 border border-slate-700 text-white text-sm outline-none focus:border-indigo-500 transition-colors">
+                  <option value="">Seleccione Campaña</option>
+                  {campanasBD.map((camp) => (
+                    <option key={camp.idcamp} value={camp.idcamp}>{camp.nombre}</option>
                   ))}
                 </select>
               </div>
@@ -352,16 +340,6 @@ function NuevaSolicitudView({ user, usuarios = [], grupos = [], campanas = [], u
                   <option value="Bajo">Bajo</option>
                   <option value="Medio">Medio</option>
                   <option value="Experto">Experto</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-slate-300 uppercase mb-1.5">Campaña:</label>
-                <select value={campana} onChange={handleCambioCampana} className="w-full px-3 py-2.5 rounded-lg bg-slate-900 border border-slate-700 text-white text-sm outline-none focus:border-indigo-500 transition-colors">
-                  <option value="">Seleccione Campaña</option>
-                  {campanasDisponibles.map((camp, idx) => (
-                    <option key={idx} value={camp}>{camp}</option>
-                  ))}
                 </select>
               </div>
 
