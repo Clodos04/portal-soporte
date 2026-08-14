@@ -1,8 +1,6 @@
 import React, { useState } from 'react';
-import { equiposPorCampana } from '../../equiposData.cjs';
-import { listaCampanas } from '../../campanasData.cjs';
 
-function AsistenteTipificacionView({ categorias = [], campanas = [], user, usuarios = [], onGuardarTicket, onCancelar }) {
+function AsistenteTipificacionView({ categorias = [], campanas = [], equipos = [], user, usuarios = [], onGuardarTicket, onCancelar }) {
   const [paso, setPaso] = useState(1);
   const [categoriaSeleccionada, setCategoriaSeleccionada] = useState(null);
   const [subcatSeleccionada, setSubcatSeleccionada] = useState(null);
@@ -10,7 +8,7 @@ function AsistenteTipificacionView({ categorias = [], campanas = [], user, usuar
 
   const [asunto, setAsunto] = useState('');
   const [descripcion, setDescripcion] = useState('');
-  const [campana, setCampana] = useState(user?.campana || '*111');
+  const [campanaSeleccionadaId, setCampanaSeleccionadaId] = useState('');
   const [equiposSeleccionados, setEquiposSeleccionados] = useState([]);
   const [nivel, setNivel] = useState('Bajo');
   const [modo, setModo] = useState('WEB');
@@ -28,8 +26,10 @@ function AsistenteTipificacionView({ categorias = [], campanas = [], user, usuar
     return encontradaEnBD ? encontradaEnBD : { id: opcion.id, nombre: opcion.nombre, subcategorias: [] };
   });
 
-  const campanasDisponibles = campanas.length > 0 ? campanas : listaCampanas;
-  const listaEquiposActuales = equiposPorCampana[campana] || [];
+  // Filtrado dinámico de equipos por ID de campaña en el asistente
+  const listaEquiposActuales = equipos
+    .filter(eq => String(eq.idcamp) === String(campanaSeleccionadaId))
+    .map(eq => eq.equipo);
 
   const reiniciar = () => {
     setPaso(1);
@@ -67,6 +67,7 @@ function AsistenteTipificacionView({ categorias = [], campanas = [], user, usuar
   const handleFinalizarReporte = () => {
     const nuevoFolio = Math.floor(10000 + Math.random() * 90000).toString();
     const fechaHoy = new Date().toISOString().split('T')[0];
+    const campObj = campanas.find(c => String(c.idcamp) === String(campanaSeleccionadaId));
 
     const ticketNuevo = {
       folio: nuevoFolio,
@@ -77,7 +78,7 @@ function AsistenteTipificacionView({ categorias = [], campanas = [], user, usuar
       creador: user?.name || 'VALERIA GOMEZ',
       asunto: asunto || 'Sin asunto',
       descripcion: descripcion || 'Sin descripción',
-      campana: campana || '*111',
+      campana: campObj ? campObj.nombre : 'General',
       equipo: equiposSeleccionados.length > 0 ? equiposSeleccionados.join(', ') : 'Ninguno',
       nivel: nivel,
       modo: modo,
@@ -99,7 +100,6 @@ function AsistenteTipificacionView({ categorias = [], campanas = [], user, usuar
   return (
     <div className="animate-fade-in w-full max-w-4xl bg-slate-900 rounded-3xl shadow-2xl border border-slate-700 text-slate-200 overflow-hidden font-sans my-auto flex flex-col max-h-[85vh]">
       
-      {/* Encabezado fijo */}
       <div className="bg-slate-800/90 py-4 px-6 text-center border-b border-slate-700 flex justify-between items-center shrink-0">
         <div></div>
         <h2 className="text-lg font-black tracking-wider text-white uppercase flex items-center gap-2">
@@ -112,10 +112,8 @@ function AsistenteTipificacionView({ categorias = [], campanas = [], user, usuar
         )}
       </div>
 
-      {/* Contenido con scroll interno fluido */}
       <div className="p-6 space-y-6 overflow-y-auto flex-1">
         
-        {/* Barra de progreso visual */}
         {paso < 5 && (
           <div className="flex items-center justify-between mb-2 px-4">
             <div className={`flex items-center gap-2 ${paso >= 1 ? 'text-indigo-400 font-bold' : 'text-slate-500'}`}>
@@ -135,7 +133,6 @@ function AsistenteTipificacionView({ categorias = [], campanas = [], user, usuar
           </div>
         )}
 
-        {/* PASO 1 */}
         {paso === 1 && (
           <div className="space-y-4 animate-fade-in">
             <h3 className="text-base font-bold text-white text-center">¿Qué área o servicio te está presentando problemas?</h3>
@@ -155,7 +152,6 @@ function AsistenteTipificacionView({ categorias = [], campanas = [], user, usuar
           </div>
         )}
 
-        {/* PASO 2 */}
         {paso === 2 && categoriaSeleccionada && (
           <div className="space-y-4 animate-fade-in">
             <div className="flex justify-between items-center bg-slate-800/50 p-3 rounded-xl border border-slate-700">
@@ -186,7 +182,6 @@ function AsistenteTipificacionView({ categorias = [], campanas = [], user, usuar
           </div>
         )}
 
-        {/* PASO 3 */}
         {paso === 3 && subcatSeleccionada && (
           <div className="space-y-4 animate-fade-in">
             <div className="flex justify-between items-center bg-slate-800/50 p-3 rounded-xl border border-slate-700">
@@ -217,7 +212,6 @@ function AsistenteTipificacionView({ categorias = [], campanas = [], user, usuar
           </div>
         )}
 
-        {/* PASO 4: Resumen de Tipificación */}
         {paso === 4 && (
           <div className="space-y-4 animate-fade-in text-center py-2">
             <div className="w-12 h-12 bg-emerald-500/20 text-emerald-400 rounded-xl flex items-center justify-center mx-auto text-xl border border-emerald-500/30">
@@ -242,7 +236,6 @@ function AsistenteTipificacionView({ categorias = [], campanas = [], user, usuar
           </div>
         )}
 
-        {/* PASO 5: Formulario Final */}
         {paso === 5 && (
           <div className="space-y-4 animate-fade-in pb-2">
             <div className="flex justify-between items-center bg-slate-800/60 p-2.5 rounded-xl border border-slate-700">
@@ -253,7 +246,12 @@ function AsistenteTipificacionView({ categorias = [], campanas = [], user, usuar
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div>
                 <label className="block text-[11px] font-bold text-slate-300 uppercase mb-1">Área (Campaña):</label>
-                <input type="text" value={campana} readOnly className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-700 text-indigo-300 text-xs font-bold cursor-not-allowed" />
+                <select value={campanaSeleccionadaId} onChange={(e) => setCampanaSeleccionadaId(e.target.value)} className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-700 text-white text-xs outline-none">
+                  <option value="">Seleccione Campaña</option>
+                  {campanas.map((camp) => (
+                    <option key={camp.idcamp} value={camp.idcamp}>{camp.nombre}</option>
+                  ))}
+                </select>
               </div>
               <div>
                 <label className="block text-[11px] font-bold text-slate-300 uppercase mb-1">Nombre (Usuario Logueado):</label>
@@ -288,7 +286,7 @@ function AsistenteTipificacionView({ categorias = [], campanas = [], user, usuar
                 <label className="block text-[11px] font-bold text-slate-300 uppercase mb-1">Equipo (Seleccione uno o más):</label>
                 <div className="w-full h-24 overflow-y-auto px-3 py-2 rounded-xl bg-slate-950 border border-slate-700 text-xs space-y-1">
                   {listaEquiposActuales.length === 0 ? (
-                    <span className="text-slate-500 italic">No hay equipos listados</span>
+                    <span className="text-slate-500 italic">Seleccione una campaña</span>
                   ) : (
                     listaEquiposActuales.map((eq, idx) => (
                       <label key={idx} className="flex items-center gap-2 cursor-pointer hover:bg-slate-900 p-1 rounded">
