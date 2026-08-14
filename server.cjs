@@ -119,20 +119,22 @@ app.put(['/api/tickets/:folio', '/tickets/:folio'], (req, res) => {
 // RUTA DE CENTINELA (CAMPANAS E IPS / EQUIPOS)
 // ==========================================
 app.get(['/api/centinela/datos', '/centinela/datos'], (req, res) => {
-  const queryCampanas = 'SELECT idcamp, desc AS nombre FROM centinela.Camp WHERE Activo = 1';
-  const queryIps = 'SELECT idIPs, ip, Nodo AS equipo, camp AS idcamp FROM centinela.IPs WHERE Activo = 1 AND Nodo IS NOT NULL AND Nodo != ""';
+  const queryCampanas = 'SELECT idcamp, desc AS nombre FROM centinela.Camp';
+  const queryIps = 'SELECT idIPs, ip, Nodo AS equipo, camp AS idcamp FROM centinela.IPs WHERE Nodo IS NOT NULL AND Nodo != ""';
 
   db.query(queryCampanas, (err, campanasRes) => {
     if (err) {
-      console.error('Error al consultar Camp:', err);
+      console.error('❌ Error al consultar Camp de Centinela:', err);
       return res.status(500).json({ error: err.message });
     }
 
     db.query(queryIps, (err, ipsRes) => {
       if (err) {
-        console.error('Error al consultar IPs:', err);
+        console.error('❌ Error al consultar IPs de Centinela:', err);
         return res.status(500).json({ error: err.message });
       }
+
+      console.log(`✅ Centinela cargado con éxito: ${campanasRes.length} campañas y ${ipsRes.length} equipos.`);
       res.json({ campanas: campanasRes, equipos: ipsRes });
     });
   });
@@ -203,7 +205,7 @@ app.delete(['/api/grupos/:nombre', '/grupos/:nombre'], (req, res) => {
 
 // Campañas (Fallback antiguo)
 app.get(['/api/campanas', '/campanas'], (req, res) => {
-  db.query('SELECT desc AS nombre FROM centinela.Camp WHERE Activo = 1', (err, results) => {
+  db.query('SELECT desc AS nombre FROM centinela.Camp', (err, results) => {
     if (err) return res.status(500).json({ error: err.message });
     res.json(results.map(c => c.nombre));
   });
