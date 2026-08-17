@@ -53,7 +53,18 @@ function SupervisorPanel({ user }) {
 
   const ticketsFiltrados = tickets.filter(t => {
     const cumpleCampana = filtroCampana === 'TODAS' || t.campana === filtroCampana;
-    const cumpleTecnico = filtroTecnico === 'TODOS' || t.tecnico === filtroTecnico;
+    
+    // Búsqueda flexible del técnico corregida (compara por username o nombre completo)
+    let cumpleTecnico = true;
+    if (filtroTecnico !== 'TODOS') {
+      const tecnicoObj = tecnicos.find(u => u.username === filtroTecnico);
+      const nombreCompleto = tecnicoObj ? `${tecnicoObj.nombre || ''} ${tecnicoObj.paterno || ''}`.trim().toLowerCase() : '';
+      const usernameLower = filtroTecnico.toLowerCase();
+      const ticketTecnicoLower = (t.tecnico || '').toLowerCase();
+
+      cumpleTecnico = ticketTecnicoLower.includes(usernameLower) || (nombreCompleto !== '' && ticketTecnicoLower.includes(nombreCompleto));
+    }
+
     const cumpleFolio = (t.folio || '').toLowerCase().includes(busquedaFolio.toLowerCase()) || 
                         (t.asunto || '').toLowerCase().includes(busquedaFolio.toLowerCase());
     return cumpleCampana && cumpleTecnico && cumpleFolio;
@@ -74,7 +85,6 @@ function SupervisorPanel({ user }) {
 
   const historialEncuestasFiltrado = encuestasData.historial.filter(e => idsFiltrados.has(e.ticket_id) || idsFiltrados.has(e.folio));
   
-  // Cálculo exacto con decimales conservados (sin redondeo a enteros)
   let promedioCSAT = '4.3';
   if (historialEncuestasFiltrado.length > 0) {
     const sumaCalif = historialEncuestasFiltrado.reduce((acc, curr) => acc + (Number(curr.promedio) || Number(curr.calificacion) || 0), 0);
