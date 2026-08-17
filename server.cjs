@@ -16,11 +16,11 @@ const db = mysql.createConnection({
   port: process.env.DB_PORT || 3306
 });
 
-// 2. Conexión dedicada para Centinela (Sin base de datos fija para evitar el error de Unknown Database)
+// 2. Conexión dedicada para Centinela (Actualizada al nuevo servidor)
 const dbCentinela = mysql.createConnection({
-  host: '192.168.1.2',
+  host: '192.168.240.103',
   user: 'root',
-  password: 'C01nts#BD2024!',
+  password: 'C01nts#BD2025!',
   port: 3306
 });
 
@@ -31,15 +31,7 @@ db.connect((err) => {
 
 dbCentinela.connect((err) => { 
   if (err) console.error('Error BD Centinela:', err); 
-  else {
-    console.log('Conectado a Servidor Centinela (root)');
-    // Diagnóstico automático para listar las bases de datos disponibles en este servidor
-    dbCentinela.query('SHOW DATABASES', (err, results) => {
-      if (!err) {
-        console.log('Bases de datos disponibles en el servidor:', results.map(row => Object.values(row)[0]));
-      }
-    });
-  }
+  else console.log('Conectado a Servidor Centinela (192.168.240.103)'); 
 });
 
 const obtenerFechaMySQL = () => {
