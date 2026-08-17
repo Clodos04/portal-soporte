@@ -108,21 +108,21 @@ app.put(['/api/tickets/:folio', '/tickets/:folio'], (req, res) => {
 });
 
 // ==========================================
-// RUTA DE CENTINELA (Datos para Asistente)
+// RUTA DE CENTINELA (Datos para Asistente) - CORREGIDO SIN PREFIJO
 // ==========================================
 app.get(['/api/centinela/datos', '/centinela/datos'], (req, res) => {
-  dbCentinela.query('SELECT idcamp, `desc` AS nombre FROM centinela.Camp', (err, campanasRes) => {
+  dbCentinela.query('SELECT idcamp, `desc` AS nombre FROM Camp', (err, campanasRes) => {
     if (err) return res.status(500).json({ error: 'Error al consultar Camp: ' + err.message });
-    dbCentinela.query('SELECT idIPs, ip, Nodo AS equipo, camp AS idcamp FROM centinela.IPs WHERE Nodo IS NOT NULL AND Nodo != ""', (err, ipsRes) => {
+    dbCentinela.query('SELECT idIPs, ip, Nodo AS equipo, camp AS idcamp FROM IPs WHERE Nodo IS NOT NULL AND Nodo != ""', (err, ipsRes) => {
       if (err) return res.status(500).json({ error: 'Error al consultar IPs: ' + err.message });
       res.json({ campanas: campanasRes, equipos: ipsRes });
     });
   });
 });
 
-// Campañas (Fallback solicitado por SupervisorPanel)
+// Campañas (Fallback solicitado por SupervisorPanel) - CORREGIDO SIN PREFIJO
 app.get(['/api/campanas', '/campanas'], (req, res) => {
-  dbCentinela.query('SELECT `desc` AS nombre FROM centinela.Camp', (err, results) => {
+  dbCentinela.query('SELECT `desc` AS nombre FROM Camp', (err, results) => {
     if (err) return res.status(500).json({ error: err.message });
     res.json(results.map(c => c.nombre));
   });
