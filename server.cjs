@@ -16,11 +16,12 @@ const db = mysql.createConnection({
   port: process.env.DB_PORT || 3306
 });
 
-// 2. Conexión dedicada para Centinela (Actualizada al nuevo servidor)
+// 2. Conexión dedicada para Centinela (Apuntando a la base de datos 'Centinela')
 const dbCentinela = mysql.createConnection({
   host: '192.168.240.103',
   user: 'root',
   password: 'C01nts#BD2025!',
+  database: 'Centinela',
   port: 3306
 });
 
@@ -31,7 +32,7 @@ db.connect((err) => {
 
 dbCentinela.connect((err) => { 
   if (err) console.error('Error BD Centinela:', err); 
-  else console.log('Conectado a Servidor Centinela (192.168.240.103)'); 
+  else console.log('Conectado a Servidor Centinela (Base de datos: Centinela)'); 
 });
 
 const obtenerFechaMySQL = () => {
@@ -108,7 +109,7 @@ app.put(['/api/tickets/:folio', '/tickets/:folio'], (req, res) => {
 });
 
 // ==========================================
-// RUTA DE CENTINELA (Datos para Asistente) - CORREGIDO SIN PREFIJO
+// RUTA DE CENTINELA (Datos para Asistente)
 // ==========================================
 app.get(['/api/centinela/datos', '/centinela/datos'], (req, res) => {
   dbCentinela.query('SELECT idcamp, `desc` AS nombre FROM Camp', (err, campanasRes) => {
@@ -120,7 +121,7 @@ app.get(['/api/centinela/datos', '/centinela/datos'], (req, res) => {
   });
 });
 
-// Campañas (Fallback solicitado por SupervisorPanel) - CORREGIDO SIN PREFIJO
+// Campañas (Fallback solicitado por SupervisorPanel)
 app.get(['/api/campanas', '/campanas'], (req, res) => {
   dbCentinela.query('SELECT `desc` AS nombre FROM Camp', (err, results) => {
     if (err) return res.status(500).json({ error: err.message });
