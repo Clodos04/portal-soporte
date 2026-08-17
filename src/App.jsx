@@ -70,19 +70,23 @@ function App() {
 
     fetch('/api/usuarios')
       .then(res => res.json())
-      .then(data => { if (Array.isArray(data)) setUsuarios(data); });
+      .then(data => { if (Array.isArray(data)) setUsuarios(data); })
+      .catch(err => console.error("Error al cargar usuarios:", err));
 
     fetch('/api/grupos')
       .then(res => res.json())
-      .then(data => { if (Array.isArray(data)) setGrupos(data); });
+      .then(data => { if (Array.isArray(data)) setGrupos(data); })
+      .catch(err => console.error("Error al cargar grupos:", err));
 
     fetch('/api/campanas')
       .then(res => res.json())
-      .then(data => { if (Array.isArray(data)) setCampanas(data); });
+      .then(data => { if (Array.isArray(data)) setCampanas(data); })
+      .catch(err => console.error("Error al cargar campañas:", err));
 
     fetch('/api/categorias')
       .then(res => res.json())
-      .then(data => { if (Array.isArray(data)) setCategorias(data); });
+      .then(data => { if (Array.isArray(data)) setCategorias(data); })
+      .catch(err => console.error("Error al cargar categorías:", err));
 
     fetch('/api/encuestas/reporte')
       .then(res => res.json())
