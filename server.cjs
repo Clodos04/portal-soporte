@@ -16,17 +16,31 @@ const db = mysql.createConnection({
   port: process.env.DB_PORT || 3306
 });
 
-// 2. Conexión dedicada para Centinela (acceso total con root)
+// 2. Conexión dedicada para Centinela (Sin base de datos fija para evitar el error de Unknown Database)
 const dbCentinela = mysql.createConnection({
   host: '192.168.1.2',
   user: 'root',
   password: 'C01nts#BD2024!',
-  database: 'centinela',
   port: 3306
 });
 
-db.connect((err) => { if (err) console.error('Error BD Tickets:', err); else console.log('Conectado a BD Tickets (sav)'); });
-dbCentinela.connect((err) => { if (err) console.error('Error BD Centinela:', err); else console.log('Conectado a BD Centinela (centinela)'); });
+db.connect((err) => { 
+  if (err) console.error('Error BD Tickets:', err); 
+  else console.log('Conectado a BD Tickets (sav)'); 
+});
+
+dbCentinela.connect((err) => { 
+  if (err) console.error('Error BD Centinela:', err); 
+  else {
+    console.log('Conectado a Servidor Centinela (root)');
+    // Diagnóstico automático para listar las bases de datos disponibles en este servidor
+    dbCentinela.query('SHOW DATABASES', (err, results) => {
+      if (!err) {
+        console.log('Bases de datos disponibles en el servidor:', results.map(row => Object.values(row)[0]));
+      }
+    });
+  }
+});
 
 const obtenerFechaMySQL = () => {
   const d = new Date();
@@ -105,9 +119,9 @@ app.put(['/api/tickets/:folio', '/tickets/:folio'], (req, res) => {
 // RUTA DE CENTINELA (Datos para Asistente)
 // ==========================================
 app.get(['/api/centinela/datos', '/centinela/datos'], (req, res) => {
-  dbCentinela.query('SELECT idcamp, `desc` AS nombre FROM Camp', (err, campanasRes) => {
+  dbCentinela.query('SELECT idcamp, `desc` AS nombre FROM centinela.Camp', (err, campanasRes) => {
     if (err) return res.status(500).json({ error: 'Error al consultar Camp: ' + err.message });
-    dbCentinela.query('SELECT idIPs, ip, Nodo AS equipo, camp AS idcamp FROM IPs WHERE Nodo IS NOT NULL AND Nodo != ""', (err, ipsRes) => {
+    dbCentinela.query('SELECT idIPs, ip, Nodo AS equipo, camp AS idcamp FROM centinela.IPs WHERE Nodo IS NOT NULL AND Nodo != ""', (err, ipsRes) => {
       if (err) return res.status(500).json({ error: 'Error al consultar IPs: ' + err.message });
       res.json({ campanas: campanasRes, equipos: ipsRes });
     });
@@ -116,7 +130,7 @@ app.get(['/api/centinela/datos', '/centinela/datos'], (req, res) => {
 
 // Campañas (Fallback solicitado por SupervisorPanel)
 app.get(['/api/campanas', '/campanas'], (req, res) => {
-  dbCentinela.query('SELECT `desc` AS nombre FROM Camp', (err, results) => {
+  dbCentinela.query('SELECT `desc` AS nombre FROM centinela.Camp', (err, results) => {
     if (err) return res.status(500).json({ error: err.message });
     res.json(results.map(c => c.nombre));
   });
