@@ -76,9 +76,8 @@ app.get(['/api/tickets', '/tickets'], (req, res) => {
   });
 });
 
-app.post(['/api/tickets', '/tickets'], (req, res) => {
-  const ticketData = { ...req.body };
-  delete ticketData.archivos;
+// FUNCIÓN AUXILIAR PARA INSERTAR EN LA BD
+const continuarInsercionTicket = (ticketData, res) => {
   for (let key in ticketData) {
     if (typeof ticketData[key] === 'object' && ticketData[key] !== null) {
       ticketData[key] = JSON.stringify(ticketData[key]);
@@ -89,6 +88,37 @@ app.post(['/api/tickets', '/tickets'], (req, res) => {
     if (err) return res.status(500).json({ error: err.message });
     res.json({ message: 'Ticket creado exitosamente', id: result.insertId });
   });
+};
+
+app.post(['/api/tickets', '/tickets'], (req, res) => {
+  const ticketData = { ...req.body };
+  delete ticketData.archivos;
+
+  // Validación estricta en el Servidor para Centinela (1 reporte por componente por nodo al día)
+  if (ticketData.tipo_solicitud === 'CENTINELA' && ticketData.equipo && ticketData.subcategoria) {
+    const fechaHoy = new Date().toISOString().split('T')[0];
+    const queryVerificacion = `
+      SELECT * FROM tickets 
+      WHERE tipo_solicitud = 'CENTINELA' 
+      AND equipo = ? 
+      AND subcategoria = ? 
+      AND (DATE(created_at) = ? OR fecha = ?)
+    `;
+
+    db.query(queryVerificacion, [ticketData.equipo, ticketData.subcategoria, fechaHoy, fechaHoy], (err, results) => {
+      if (err) return res.status(500).json({ error: 'Error al verificar duplicidad: ' + err.message });
+      
+      if (results.length > 0) {
+        return res.status(400).json({ 
+          error: `El nodo "${ticketData.equipo}" ya cuenta con un reporte Centinela de "${ticketData.subcategoria}" registrado el día de hoy.` 
+        });
+      }
+
+      continuarInsercionTicket(ticketData, res);
+    });
+  } else {
+    continuarInsercionTicket(ticketData, res);
+  }
 });
 
 app.put(['/api/tickets/:folio', '/tickets/:folio'], (req, res) => {
