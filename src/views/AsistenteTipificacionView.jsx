@@ -1,15 +1,14 @@
 import React, { useState } from 'react';
 
-function AsistenteTipificacionView({ categorias = [], campanas = [], equipos = [], user, usuarios = [], onGuardarTicket, onCancelar }) {
-  const [tipoReporte, setTipoReporte] = useState(null); // 'REPORTE' o 'CENTINELA'
+function AsistenteTipificacionView({ categorias = [], campanas = [], equipos = [], ticketsExistentes = [], user, usuarios = [], onGuardarTicket, onCancelar }) {
+  const [tipoReporte, setTipoReporte] = useState(null);
   const [paso, setPaso] = useState(1);
   const [categoriaSeleccionada, setCategoriaSeleccionada] = useState(null);
   const [subcatSeleccionada, setSubcatSeleccionada] = useState(null);
   const [elementoSeleccionado, setElementoSeleccionado] = useState(null);
 
-  // Estados específicos para el árbol de Centinela (Periféricos y Monitores)
-  const [perifericoCentinela, setPerifericoCentinela] = useState(null); // 'TECLADO', 'MOUSE', 'DIADEMA', 'MONITOR'
-  const [subFallaCentinela, setSubFallaCentinela] = useState(null); // Opciones de segundo y tercer nivel
+  const [perifericoCentinela, setPerifericoCentinela] = useState(null);
+  const [subFallaCentinela, setSubFallaCentinela] = useState(null);
 
   const [asunto, setAsunto] = useState('');
   const [descripcion, setDescripcion] = useState('');
@@ -18,6 +17,7 @@ function AsistenteTipificacionView({ categorias = [], campanas = [], equipos = [
   const [nivel, setNivel] = useState('Bajo');
   const [modo, setModo] = useState('WEB');
   const [archivo, setArchivo] = useState(null);
+  const [errorDuplicado, setErrorDuplicado] = useState('');
 
   const opcionesFijas = [
     { id: 1, nombre: "HARDWARE (EQUIPO)" },
@@ -48,8 +48,7 @@ function AsistenteTipificacionView({ categorias = [], campanas = [], equipos = [
     setPerifericoCentinela(null);
     setSubFallaCentinela(null);
     setEquiposSeleccionados([]);
-    setAsunto('');
-    setDescripcion('');
+    setErrorDuplicado('');
   };
 
   const seleccionarCat = (cat) => {
@@ -90,11 +89,27 @@ function AsistenteTipificacionView({ categorias = [], campanas = [], equipos = [
   };
 
   const handleFinalizarReporte = () => {
-    const fechaHoy = new Date().toISOString().split('T')[0];
+    setErrorDuplicado('');
+    const fechaHoy = new Date().toISOString().split('T')[0]; // Formato 'YYYY-MM-DD'
     const campObj = campanas.find(c => String(c.idcamp) === String(campanaSeleccionadaId));
 
-    // Si es Centinela, autogeneramos el asunto y descripción sin requerir que el usuario escriba nada
     if (tipoReporte === 'CENTINELA' && equiposSeleccionados.length > 0) {
+      // Validar si alguno de los nodos seleccionados ya tiene un reporte Centinela de este mismo periférico hoy
+      for (const nodoUnico of equiposSeleccionados) {
+        const yaReportadoHoy = ticketsExistentes.some(t => {
+          const esCent = t.tipo_solicitud === 'CENTINELA' || (t.categoria || '').toUpperCase().includes('CENTINELA');
+          const fechaTicket = (t.fecha || t.created_at || '').split('T')[0];
+          const mismoNodo = (t.equipo || '').trim().toLowerCase() === nodoUnico.trim().toLowerCase();
+          const mismoPeriferico = (t.subcategoria || '').toUpperCase() === (perifericoCentinela || '').toUpperCase();
+          return esCent && mismoNodo && mismoPeriferico && fechaTicket === fechaHoy;
+        });
+
+        if (yaReportadoHoy) {
+          setErrorDuplicado(`⚠️ El nodo "${nodoUnico}" ya cuenta con un reporte Centinela de "${perifericoCentinela}" registrado el día de hoy.`);
+          return;
+        }
+      }
+
       equiposSeleccionados.forEach((nodoUnico, index) => {
         const nuevoFolio = Math.floor(10000 + Math.random() * 90000).toString() + '-' + (index + 1);
         const detalleFalla = subFallaCentinela ? subFallaCentinela : 'Falla general de periférico';
@@ -113,7 +128,7 @@ function AsistenteTipificacionView({ categorias = [], campanas = [], equipos = [
           nivel: 'Medio',
           modo: modo,
           fecha: fechaHoy,
-          grupo: 'Soporte Técnico',
+          grupo: 'CENTINELA',
           categoria: 'CENTINELA (PERIFÉRICO)',
           subcategoria: perifericoCentinela || '',
           elemento: subFallaCentinela || '',
@@ -130,7 +145,6 @@ function AsistenteTipificacionView({ categorias = [], campanas = [], equipos = [
       return;
     }
 
-    // Comportamiento normal para reportes estándar de soporte
     const nuevoFolio = Math.floor(10000 + Math.random() * 90000).toString();
     const ticketNuevo = {
       folio: nuevoFolio,
@@ -271,7 +285,6 @@ function AsistenteTipificacionView({ categorias = [], campanas = [], equipos = [
               </div>
             )}
 
-            {/* ÁRBOL RÁPIDO PARA CENTINELA */}
             {paso === 2.5 && perifericoCentinela && (
               <div className="space-y-4 animate-fade-in max-w-xl mx-auto">
                 <div className="flex justify-between items-center bg-slate-800/50 p-3 rounded-xl border border-slate-700">
@@ -405,7 +418,7 @@ function AsistenteTipificacionView({ categorias = [], campanas = [], equipos = [
                 {(!subcatSeleccionada.elementos || subcatSeleccionada.elementos.length === 0) ? (
                   <div className="text-center py-4">
                     <p className="text-slate-400 italic text-xs mb-3">No hay elementos específicos en este módulo.</p>
-                    <button type="button" onClick={() => setPaso(5)} className="bg-indigo-600 text-white px-4 py-2 rounded-xl text-xs font-bold cursor-pointer">Continuar a Detalles →</button>
+                    <button type="button" onClick={() => setPaso(5)} className="bg-indigo-600 text-white px-4 py-2 rounded-xl text-xs font-bold cursor-pointer">Continuar sin módulo →</button>
                   </div>
                 ) : (
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -466,6 +479,12 @@ function AsistenteTipificacionView({ categorias = [], campanas = [], equipos = [
                   <button type="button" onClick={() => setPaso(4)} className="text-xs font-bold text-indigo-400 hover:underline cursor-pointer">« Ver tipificación</button>
                 </div>
 
+                {errorDuplicado && (
+                  <div className="bg-red-950/60 border border-red-500 text-red-200 p-3 rounded-xl text-xs font-bold">
+                    {errorDuplicado}
+                  </div>
+                )}
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   <div>
                     <label className="block text-[11px] font-bold text-slate-300 uppercase mb-1">Área (Campaña):</label>
@@ -482,7 +501,6 @@ function AsistenteTipificacionView({ categorias = [], campanas = [], equipos = [
                   </div>
                 </div>
 
-                {/* SI ES REPORTE NORMAL MOSTRAMOS ASUNTO Y DESCRIPCIÓN. SI ES CENTINELA SE OCULTAN Y SE AUTOGENERAN */}
                 {tipoReporte !== 'CENTINELA' ? (
                   <>
                     <div>
@@ -511,7 +529,6 @@ function AsistenteTipificacionView({ categorias = [], campanas = [], equipos = [
                   <div className="bg-purple-950/30 border border-purple-500/30 p-3.5 rounded-xl text-xs space-y-1">
                     <div className="text-purple-300 font-bold uppercase">🛡️ Resumen automático Centinela:</div>
                     <div className="text-slate-300">Asunto: <strong className="text-white font-mono">[CENTINELA] {perifericoCentinela}: {subFallaCentinela}</strong></div>
-                    <div className="text-slate-400 text-[11px]">Los campos de asunto y descripción se han autogenerado con base en la selección del árbol.</div>
                   </div>
                 )}
 
