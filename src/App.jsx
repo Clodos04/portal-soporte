@@ -17,6 +17,7 @@ import EncuestaView from './views/EncuestaView';
 import GuiaTicketsView from './views/GuiaTicketsView';
 import AdminReportesView from './views/AdminReportesView';
 import SupervisorPanel from './views/SupervisorPanel';
+import CentinelaDetallesView from './views/CentinelaDetallesView';
 
 import AdminGruposView from './views/AdminGruposView';
 import AdminUsuariosView from './views/AdminUsuariosView';
@@ -55,9 +56,6 @@ function App() {
   const [categorias, setCategorias] = useState([]);
   const [estadisticasEncuestas, setEstadisticasEncuestas] = useState([]);
 
-  // ==========================================
-  // CARGA DE DATOS Y AUTO-REFRESCO SILENCIOSO
-  // ==========================================
   useEffect(() => {
     const cargarDatosIniciales = () => {
       fetch('/api/tickets')
@@ -95,7 +93,6 @@ function App() {
       })
       .catch(err => console.error("Error al cargar encuestas:", err));
 
-    // Refrescar los tickets automáticamente cada 10 segundos sin tocar la sesión del usuario
     const intervaloRefresco = setInterval(cargarDatosIniciales, 10000);
     return () => clearInterval(intervaloRefresco);
   }, []);
@@ -374,7 +371,19 @@ function App() {
         )}
 
         {currentView === 'admin-supervisor-panel' && (
-          <SupervisorPanel user={user} />
+          <SupervisorPanel 
+            user={user} 
+            tickets={tickets}
+            onVerDetallesCentinela={() => setCurrentView('centinela-detalles')}
+          />
+        )}
+
+        {currentView === 'centinela-detalles' && (
+          <CentinelaDetallesView 
+            tickets={tickets}
+            onVolver={() => setCurrentView('admin-supervisor-panel')}
+            onEditarTicket={(ticket) => { setTicketEnEdicion(ticket); setIsEditModalOpen(true); }}
+          />
         )}
 
         {currentView === 'tareas' && <Tareas />}
