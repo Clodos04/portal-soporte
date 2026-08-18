@@ -7,6 +7,10 @@ function AsistenteTipificacionView({ categorias = [], campanas = [], equipos = [
   const [subcatSeleccionada, setSubcatSeleccionada] = useState(null);
   const [elementoSeleccionado, setElementoSeleccionado] = useState(null);
 
+  // Estados específicos para el árbol de Centinela (Periféricos y Monitores)
+  const [perifericoCentinela, setPerifericoCentinela] = useState(null); // 'TECLADO', 'MOUSE', 'DIADEMA', 'MONITOR'
+  const [subFallaCentinela, setSubFallaCentinela] = useState(null); // Opciones de segundo y tercer nivel
+
   const [asunto, setAsunto] = useState('');
   const [descripcion, setDescripcion] = useState('');
   const [campanaSeleccionadaId, setCampanaSeleccionadaId] = useState('');
@@ -22,7 +26,7 @@ function AsistenteTipificacionView({ categorias = [], campanas = [], equipos = [
     { id: 4, nombre: "MANTENIMIENTO" }
   ];
 
-  // Si es CENTINELA, filtramos estrictamente para mostrar únicamente Hardware
+  // Si es CENTINELA, solo permitimos Hardware
   const opcionesBase = tipoReporte === 'CENTINELA' 
     ? opcionesFijas.filter(op => op.nombre.includes("HARDWARE")) 
     : opcionesFijas;
@@ -42,6 +46,8 @@ function AsistenteTipificacionView({ categorias = [], campanas = [], equipos = [
     setCategoriaSeleccionada(null);
     setSubcatSeleccionada(null);
     setElementoSeleccionado(null);
+    setPerifericoCentinela(null);
+    setSubFallaCentinela(null);
     setEquiposSeleccionados([]);
   };
 
@@ -59,10 +65,22 @@ function AsistenteTipificacionView({ categorias = [], campanas = [], equipos = [
   const seleccionarSubcat = (sub) => {
     setSubcatSeleccionada(sub);
     setElementoSeleccionado(null);
-    if (sub.elementos && sub.elementos.length > 0) {
-      setPaso(3);
+
+    // Si es Centinela, detectamos si seleccionó Teclado, Mouse, Diadema o Monitor para desplegar su árbol especial
+    const nombreSub = sub.nombre.toUpperCase();
+    if (tipoReporte === 'CENTINELA' && (nombreSub.includes('TECLADO') || nombreSub.includes('MOUSE') || nombreSub.includes('DIADEMA') || nombreSub.includes('MONITOR'))) {
+      if (nombreSub.includes('TECLADO')) setPerifericoCentinela('TECLADO');
+      else if (nombreSub.includes('MOUSE')) setPerifericoCentinela('MOUSE');
+      else if (nombreSub.includes('DIADEMA')) setPerifericoCentinela('DIADEMA');
+      else if (nombreSub.includes('MONITOR')) setPerifericoCentinela('MONITOR');
+      
+      setPaso(2.5); // Paso intermedio para las opciones rápidas de Centinela
     } else {
-      setPaso(4);
+      if (sub.elementos && sub.elementos.length > 0) {
+        setPaso(3);
+      } else {
+        setPaso(4);
+      }
     }
   };
 
@@ -75,10 +93,12 @@ function AsistenteTipificacionView({ categorias = [], campanas = [], equipos = [
     const fechaHoy = new Date().toISOString().split('T')[0];
     const campObj = campanas.find(c => String(c.idcamp) === String(campanaSeleccionadaId));
 
-    // Si es Centinela y seleccionó varios equipos, creamos un ticket por cada equipo individualmente
+    // Si es Centinela y seleccionó varios equipos, generamos un ticket independiente por cada nodo
     if (tipoReporte === 'CENTINELA' && equiposSeleccionados.length > 0) {
       equiposSeleccionados.forEach((nodoUnico, index) => {
         const nuevoFolio = Math.floor(10000 + Math.random() * 90000).toString() + '-' + (index + 1);
+        const detalleFalla = subFallaCentinela ? `[${perifericoCentinela}] ${subFallaCentinela}` : (asunto || 'Falla de periférico');
+        
         const ticketIndependiente = {
           folio: nuevoFolio,
           notas: [],
@@ -86,17 +106,17 @@ function AsistenteTipificacionView({ categorias = [], campanas = [], equipos = [
           colorEstatus: 'bg-purple-500',
           tecnico: 'Sin Asignar',
           creador: user?.name || 'VALERIA GOMEZ',
-          asunto: `[CENTINELA] Falla de periférico en nodo ${nodoUnico} - ${asunto || 'Requisición'}`,
-          descripcion: descripcion || 'Reporte automático de periférico dañado.',
+          asunto: `[CENTINELA] ${detalleFalla} en nodo ${nodoUnico}`,
+          descripcion: descripcion || `Reporte automático de componente dañado (${perifericoCentinela} - ${subFallaCentinela || 'General'}).`,
           campana: campObj ? campObj.nombre : 'General',
-          equipo: nodoUnico, // Se guarda un equipo por cada ticket generado
+          equipo: nodoUnico,
           nivel: 'Medio',
           modo: modo,
           fecha: fechaHoy,
           grupo: 'Soporte Técnico',
           categoria: 'CENTINELA (PERIFÉRICO)',
-          subcategoria: subcatSeleccionada?.nombre || '',
-          elemento: elementoSeleccionado?.nombre || '',
+          subcategoria: perifericoCentinela || subcatSeleccionada?.nombre || '',
+          elemento: subFallaCentinela || elementoSeleccionado?.nombre || '',
           resolucion: '',
           archivoNombre: archivo ? archivo.name : null,
           archivoUrl: archivo ? URL.createObjectURL(archivo) : null,
@@ -178,7 +198,6 @@ function AsistenteTipificacionView({ categorias = [], campanas = [], equipos = [
                 type="button"
                 onClick={() => {
                   setTipoReporte('CENTINELA');
-                  // Si selecciona Centinela, auto-seleccionamos Hardware para mayor velocidad
                   const catHardware = categorias.find(c => c.nombre.toUpperCase().includes('HARDWARE')) || { id: 1, nombre: "HARDWARE (EQUIPO)", subcategorias: [] };
                   setCategoriaSeleccionada(catHardware);
                 }}
@@ -186,7 +205,7 @@ function AsistenteTipificacionView({ categorias = [], campanas = [], equipos = [
               >
                 <div className="text-2xl">🛡️</div>
                 <div className="font-bold text-purple-300 text-sm uppercase">Reporte Centinela</div>
-                <div className="text-xs text-slate-400">Reporte de periféricos dañados por nodo (Genera un ticket por cada nodo seleccionado).</div>
+                <div className="text-xs text-slate-400">Árbol rápido para periféricos y monitores dañados.</div>
               </button>
             </div>
           </div>
@@ -197,7 +216,7 @@ function AsistenteTipificacionView({ categorias = [], campanas = [], equipos = [
                 <div className="text-xs font-semibold text-indigo-400 bg-indigo-950/60 px-3 py-1 rounded-full border border-indigo-800">
                   Modo: {tipoReporte === 'CENTINELA' ? '🛡️ CENTINELA' : '🛠️ REPORTE NORMAL'}
                 </div>
-                <button type="button" onClick={() => { setTipoReporte(null); setEquiposSeleccionados([]); }} className="text-xs font-bold text-slate-400 hover:text-white underline cursor-pointer">
+                <button type="button" onClick={reiniciar} className="text-xs font-bold text-slate-400 hover:text-white underline cursor-pointer">
                   « Cambiar tipo
                 </button>
               </div>
@@ -252,6 +271,134 @@ function AsistenteTipificacionView({ categorias = [], campanas = [], equipos = [
               </div>
             )}
 
+            {/* PASO 2.5: ÁRBOL RÁPIDO Y ESPECÍFICO PARA CENTINELA (TECLADO, MOUSE, DIADEMA, MONITOR) */}
+            {paso === 2.5 && perifericoCentinela && (
+              <div className="space-y-4 animate-fade-in max-w-xl mx-auto">
+                <div className="flex justify-between items-center bg-slate-800/50 p-3 rounded-xl border border-slate-700">
+                  <span className="text-xs text-slate-300">Componente: <strong className="text-purple-400 uppercase">{perifericoCentinela}</strong></span>
+                  <button type="button" onClick={() => setPaso(2)} className="text-xs font-bold text-indigo-400 hover:underline cursor-pointer">« Cambiar componente</button>
+                </div>
+
+                <h4 className="text-sm font-bold text-white text-center">Selecciona el problema específico:</h4>
+
+                {/* OPCIONES DE TECLADO */}
+                {perifericoCentinela === 'TECLADO' && (
+                  <div className="grid grid-cols-1 gap-2.5">
+                    {['Falso contacto / Falla intermitente', 'Sin teclas (Desgaste visual / No se ven)', 'Teclas duras / Trabajo pesado'].map((op, idx) => (
+                      <button
+                        key={idx}
+                        type="button"
+                        onClick={() => { setSubFallaCentinela(op); setPaso(4); }}
+                        className="p-3.5 rounded-xl bg-slate-800 border border-slate-700 hover:border-purple-500 text-left font-semibold text-xs text-white uppercase flex justify-between items-center group cursor-pointer"
+                      >
+                        <span>{op}</span>
+                        <span className="text-purple-400 group-hover:translate-x-1 transition-transform">→</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+
+                {/* OPCIONES DE MOUSE */}
+                {perifericoCentinela === 'MOUSE' && (
+                  <div className="grid grid-cols-1 gap-2.5">
+                    {['Falso contacto / Cable dañado', 'Clicks ya no responden / Fallan', 'Scroll (Ruedita) no responde'].map((op, idx) => (
+                      <button
+                        key={idx}
+                        type="button"
+                        onClick={() => { setSubFallaCentinela(op); setPaso(4); }}
+                        className="p-3.5 rounded-xl bg-slate-800 border border-slate-700 hover:border-purple-500 text-left font-semibold text-xs text-white uppercase flex justify-between items-center group cursor-pointer"
+                      >
+                        <span>{op}</span>
+                        <span className="text-purple-400 group-hover:translate-x-1 transition-transform">→</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+
+                {/* OPCIONES DE MONITOR */}
+                {perifericoCentinela === 'MONITOR' && (
+                  <div className="grid grid-cols-1 gap-2.5">
+                    {['No prende / Sin energía', 'Daño físico (Pantalla rota o golpeada)', 'Líneas en la pantalla', 'Manchas en la pantalla'].map((op, idx) => (
+                      <button
+                        key={idx}
+                        type="button"
+                        onClick={() => { setSubFallaCentinela(op); setPaso(4); }}
+                        className="p-3.5 rounded-xl bg-slate-800 border border-slate-700 hover:border-purple-500 text-left font-semibold text-xs text-white uppercase flex justify-between items-center group cursor-pointer"
+                      >
+                        <span>{op}</span>
+                        <span className="text-purple-400 group-hover:translate-x-1 transition-transform">→</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+
+                {/* OPCIONES DE DIADEMA Y SU RAMA DE DAÑO FÍSICO */}
+                {perifericoCentinela === 'DIADEMA' && (
+                  <div className="space-y-3">
+                    {!subFallaCentinela ? (
+                      <div className="grid grid-cols-1 gap-2.5">
+                        <button
+                          type="button"
+                          onClick={() => { setSubFallaCentinela('Falso contacto'); setPaso(4); }}
+                          className="p-3.5 rounded-xl bg-slate-800 border border-slate-700 hover:border-purple-500 text-left font-semibold text-xs text-white uppercase flex justify-between items-center group cursor-pointer"
+                        >
+                          <span>Falso contacto</span>
+                          <span className="text-purple-400">→</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => { setSubFallaCentinela('Volumen bajo'); setPaso(4); }}
+                          className="p-3.5 rounded-xl bg-slate-800 border border-slate-700 hover:border-purple-500 text-left font-semibold text-xs text-white uppercase flex justify-between items-center group cursor-pointer"
+                        >
+                          <span>Volumen bajo</span>
+                          <span className="text-purple-400">→</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => { setSubFallaCentinela('DAÑO FÍSICO'); }}
+                          className="p-3.5 rounded-xl bg-purple-950/40 border border-purple-700/60 hover:border-purple-500 text-left font-semibold text-xs text-purple-200 uppercase flex justify-between items-center group cursor-pointer"
+                        >
+                          <span>🛡️ Daño Físico (Desplegar opciones)</span>
+                          <span className="text-purple-400">↓</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => { setSubFallaCentinela('Cable pelado'); setPaso(4); }}
+                          className="p-3.5 rounded-xl bg-slate-800 border border-slate-700 hover:border-purple-500 text-left font-semibold text-xs text-white uppercase flex justify-between items-center group cursor-pointer"
+                        >
+                          <span>Cable pelado</span>
+                          <span className="text-purple-400">→</span>
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="space-y-3 bg-slate-800/70 p-4 rounded-xl border border-purple-500/40">
+                        <div className="text-xs text-purple-300 font-bold uppercase">Selecciona el tipo de Daño Físico:</div>
+                        <div className="grid grid-cols-1 gap-2">
+                          {[
+                            'Sin almohadilla',
+                            'Micrófono roto (Pero lo demás sirve)',
+                            'Diadema rota / Bocina zafada'
+                          ].map((dano, i) => (
+                            <button
+                              key={i}
+                              type="button"
+                              onClick={() => { setSubFallaCentinela(`Daño Físico: ${dano}`); setPaso(4); }}
+                              className="p-3 rounded-lg bg-slate-900 border border-slate-700 hover:border-purple-500 text-left text-xs font-bold text-white uppercase cursor-pointer"
+                            >
+                              • {dano}
+                            </button>
+                          ))}
+                        </div>
+                        <button type="button" onClick={() => setSubFallaCentinela(null)} className="text-[11px] text-slate-400 hover:text-white underline pt-1 cursor-pointer">
+                          « Volver a opciones de diadema
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
             {paso === 3 && subcatSeleccionada && (
               <div className="space-y-4 animate-fade-in">
                 <div className="flex justify-between items-center bg-slate-800/50 p-3 rounded-xl border border-slate-700">
@@ -292,8 +439,17 @@ function AsistenteTipificacionView({ categorias = [], campanas = [], equipos = [
                 <div className="bg-slate-800/90 p-3.5 rounded-xl border border-slate-700 max-w-md mx-auto text-left space-y-1 text-xs">
                   <div>Tipo: <strong className={tipoReporte === 'CENTINELA' ? 'text-purple-400' : 'text-indigo-400'}>{tipoReporte}</strong></div>
                   <div>Área: <strong className="text-white uppercase">{categoriaSeleccionada?.nombre}</strong></div>
-                  {subcatSeleccionada && <div>Módulo: <strong className="text-white uppercase">{subcatSeleccionada?.nombre}</strong></div>}
-                  {elementoSeleccionado && <div>Falla: <strong className="text-indigo-400 uppercase">{elementoSeleccionado?.nombre}</strong></div>}
+                  {perifericoCentinela ? (
+                    <>
+                      <div>Componente: <strong className="text-purple-400 uppercase">{perifericoCentinela}</strong></div>
+                      <div>Falla Específica: <strong className="text-indigo-300 uppercase">{subFallaCentinela}</strong></div>
+                    </>
+                  ) : (
+                    <>
+                      {subcatSeleccionada && <div>Módulo: <strong className="text-white uppercase">{subcatSeleccionada?.nombre}</strong></div>}
+                      {elementoSeleccionado && <div>Falla: <strong className="text-indigo-400 uppercase">{elementoSeleccionado?.nombre}</strong></div>}
+                    </>
+                  )}
                 </div>
 
                 <div className="flex justify-center gap-3 pt-2">
