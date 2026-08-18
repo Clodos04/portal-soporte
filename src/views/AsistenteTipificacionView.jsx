@@ -26,7 +26,6 @@ function AsistenteTipificacionView({ categorias = [], campanas = [], equipos = [
     { id: 4, nombre: "MANTENIMIENTO" }
   ];
 
-  // Si es CENTINELA, solo permitimos Hardware
   const opcionesBase = tipoReporte === 'CENTINELA' 
     ? opcionesFijas.filter(op => op.nombre.includes("HARDWARE")) 
     : opcionesFijas;
@@ -49,6 +48,8 @@ function AsistenteTipificacionView({ categorias = [], campanas = [], equipos = [
     setPerifericoCentinela(null);
     setSubFallaCentinela(null);
     setEquiposSeleccionados([]);
+    setAsunto('');
+    setDescripcion('');
   };
 
   const seleccionarCat = (cat) => {
@@ -66,7 +67,6 @@ function AsistenteTipificacionView({ categorias = [], campanas = [], equipos = [
     setSubcatSeleccionada(sub);
     setElementoSeleccionado(null);
 
-    // Si es Centinela, detectamos si seleccionó Teclado, Mouse, Diadema o Monitor para desplegar su árbol especial
     const nombreSub = sub.nombre.toUpperCase();
     if (tipoReporte === 'CENTINELA' && (nombreSub.includes('TECLADO') || nombreSub.includes('MOUSE') || nombreSub.includes('DIADEMA') || nombreSub.includes('MONITOR'))) {
       if (nombreSub.includes('TECLADO')) setPerifericoCentinela('TECLADO');
@@ -74,7 +74,7 @@ function AsistenteTipificacionView({ categorias = [], campanas = [], equipos = [
       else if (nombreSub.includes('DIADEMA')) setPerifericoCentinela('DIADEMA');
       else if (nombreSub.includes('MONITOR')) setPerifericoCentinela('MONITOR');
       
-      setPaso(2.5); // Paso intermedio para las opciones rápidas de Centinela
+      setPaso(2.5);
     } else {
       if (sub.elementos && sub.elementos.length > 0) {
         setPaso(3);
@@ -93,11 +93,11 @@ function AsistenteTipificacionView({ categorias = [], campanas = [], equipos = [
     const fechaHoy = new Date().toISOString().split('T')[0];
     const campObj = campanas.find(c => String(c.idcamp) === String(campanaSeleccionadaId));
 
-    // Si es Centinela y seleccionó varios equipos, generamos un ticket independiente por cada nodo
+    // Si es Centinela, autogeneramos el asunto y descripción sin requerir que el usuario escriba nada
     if (tipoReporte === 'CENTINELA' && equiposSeleccionados.length > 0) {
       equiposSeleccionados.forEach((nodoUnico, index) => {
         const nuevoFolio = Math.floor(10000 + Math.random() * 90000).toString() + '-' + (index + 1);
-        const detalleFalla = subFallaCentinela ? `[${perifericoCentinela}] ${subFallaCentinela}` : (asunto || 'Falla de periférico');
+        const detalleFalla = subFallaCentinela ? subFallaCentinela : 'Falla general de periférico';
         
         const ticketIndependiente = {
           folio: nuevoFolio,
@@ -106,8 +106,8 @@ function AsistenteTipificacionView({ categorias = [], campanas = [], equipos = [
           colorEstatus: 'bg-purple-500',
           tecnico: 'Sin Asignar',
           creador: user?.name || 'VALERIA GOMEZ',
-          asunto: `[CENTINELA] ${detalleFalla} en nodo ${nodoUnico}`,
-          descripcion: descripcion || `Reporte automático de componente dañado (${perifericoCentinela} - ${subFallaCentinela || 'General'}).`,
+          asunto: `[CENTINELA] ${perifericoCentinela || 'HARDWARE'}: ${detalleFalla}`,
+          descripcion: `Reporte automático de componente dañado. Componente: ${perifericoCentinela}, Falla: ${detalleFalla}, Nodo: ${nodoUnico}.`,
           campana: campObj ? campObj.nombre : 'General',
           equipo: nodoUnico,
           nivel: 'Medio',
@@ -115,8 +115,8 @@ function AsistenteTipificacionView({ categorias = [], campanas = [], equipos = [
           fecha: fechaHoy,
           grupo: 'Soporte Técnico',
           categoria: 'CENTINELA (PERIFÉRICO)',
-          subcategoria: perifericoCentinela || subcatSeleccionada?.nombre || '',
-          elemento: subFallaCentinela || elementoSeleccionado?.nombre || '',
+          subcategoria: perifericoCentinela || '',
+          elemento: subFallaCentinela || '',
           resolucion: '',
           archivoNombre: archivo ? archivo.name : null,
           archivoUrl: archivo ? URL.createObjectURL(archivo) : null,
@@ -130,7 +130,7 @@ function AsistenteTipificacionView({ categorias = [], campanas = [], equipos = [
       return;
     }
 
-    // Comportamiento normal para reportes estándar
+    // Comportamiento normal para reportes estándar de soporte
     const nuevoFolio = Math.floor(10000 + Math.random() * 90000).toString();
     const ticketNuevo = {
       folio: nuevoFolio,
@@ -271,7 +271,7 @@ function AsistenteTipificacionView({ categorias = [], campanas = [], equipos = [
               </div>
             )}
 
-            {/* PASO 2.5: ÁRBOL RÁPIDO Y ESPECÍFICO PARA CENTINELA (TECLADO, MOUSE, DIADEMA, MONITOR) */}
+            {/* ÁRBOL RÁPIDO PARA CENTINELA */}
             {paso === 2.5 && perifericoCentinela && (
               <div className="space-y-4 animate-fade-in max-w-xl mx-auto">
                 <div className="flex justify-between items-center bg-slate-800/50 p-3 rounded-xl border border-slate-700">
@@ -281,7 +281,6 @@ function AsistenteTipificacionView({ categorias = [], campanas = [], equipos = [
 
                 <h4 className="text-sm font-bold text-white text-center">Selecciona el problema específico:</h4>
 
-                {/* OPCIONES DE TECLADO */}
                 {perifericoCentinela === 'TECLADO' && (
                   <div className="grid grid-cols-1 gap-2.5">
                     {['Falso contacto / Falla intermitente', 'Sin teclas (Desgaste visual / No se ven)', 'Teclas duras / Trabajo pesado'].map((op, idx) => (
@@ -298,7 +297,6 @@ function AsistenteTipificacionView({ categorias = [], campanas = [], equipos = [
                   </div>
                 )}
 
-                {/* OPCIONES DE MOUSE */}
                 {perifericoCentinela === 'MOUSE' && (
                   <div className="grid grid-cols-1 gap-2.5">
                     {['Falso contacto / Cable dañado', 'Clicks ya no responden / Fallan', 'Scroll (Ruedita) no responde'].map((op, idx) => (
@@ -315,7 +313,6 @@ function AsistenteTipificacionView({ categorias = [], campanas = [], equipos = [
                   </div>
                 )}
 
-                {/* OPCIONES DE MONITOR */}
                 {perifericoCentinela === 'MONITOR' && (
                   <div className="grid grid-cols-1 gap-2.5">
                     {['No prende / Sin energía', 'Daño físico (Pantalla rota o golpeada)', 'Líneas en la pantalla', 'Manchas en la pantalla'].map((op, idx) => (
@@ -332,7 +329,6 @@ function AsistenteTipificacionView({ categorias = [], campanas = [], equipos = [
                   </div>
                 )}
 
-                {/* OPCIONES DE DIADEMA Y SU RAMA DE DAÑO FÍSICO */}
                 {perifericoCentinela === 'DIADEMA' && (
                   <div className="space-y-3">
                     {!subFallaCentinela ? (
@@ -486,27 +482,38 @@ function AsistenteTipificacionView({ categorias = [], campanas = [], equipos = [
                   </div>
                 </div>
 
-                <div>
-                  <label className="block text-[11px] font-bold text-slate-300 uppercase mb-1">Asunto:</label>
-                  <input 
-                    type="text" 
-                    placeholder="Breve resumen del problema..."
-                    value={asunto}
-                    onChange={(e) => setAsunto(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-700 text-white text-xs outline-none focus:border-indigo-500"
-                  />
-                </div>
+                {/* SI ES REPORTE NORMAL MOSTRAMOS ASUNTO Y DESCRIPCIÓN. SI ES CENTINELA SE OCULTAN Y SE AUTOGENERAN */}
+                {tipoReporte !== 'CENTINELA' ? (
+                  <>
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-300 uppercase mb-1">Asunto:</label>
+                      <input 
+                        type="text" 
+                        placeholder="Breve resumen del problema..."
+                        value={asunto}
+                        onChange={(e) => setAsunto(e.target.value)}
+                        className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-700 text-white text-xs outline-none focus:border-indigo-500"
+                      />
+                    </div>
 
-                <div>
-                  <label className="block text-[11px] font-bold text-slate-300 uppercase mb-1">Descripción:</label>
-                  <textarea 
-                    rows="2" 
-                    placeholder="Detalla los síntomas o pasos para reproducir el fallo..."
-                    value={descripcion}
-                    onChange={(e) => setDescripcion(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-700 text-white text-xs outline-none focus:border-indigo-500 resize-none"
-                  ></textarea>
-                </div>
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-300 uppercase mb-1">Descripción:</label>
+                      <textarea 
+                        rows="2" 
+                        placeholder="Detalla los síntomas o pasos para reproducir el fallo..."
+                        value={descripcion}
+                        onChange={(e) => setDescripcion(e.target.value)}
+                        className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-700 text-white text-xs outline-none focus:border-indigo-500 resize-none"
+                      ></textarea>
+                    </div>
+                  </>
+                ) : (
+                  <div className="bg-purple-950/30 border border-purple-500/30 p-3.5 rounded-xl text-xs space-y-1">
+                    <div className="text-purple-300 font-bold uppercase">🛡️ Resumen automático Centinela:</div>
+                    <div className="text-slate-300">Asunto: <strong className="text-white font-mono">[CENTINELA] {perifericoCentinela}: {subFallaCentinela}</strong></div>
+                    <div className="text-slate-400 text-[11px]">Los campos de asunto y descripción se han autogenerado con base en la selección del árbol.</div>
+                  </div>
+                )}
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   <div>
