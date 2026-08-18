@@ -4,8 +4,8 @@ function EditarSolicitudModal({ ticket, user, usuarios = [], grupos = [], usuari
   const esCentinela = ticket.tipo_solicitud === 'CENTINELA' || (ticket.categoria || '').toUpperCase().includes('CENTINELA') || (ticket.asunto || '').toUpperCase().includes('CENTINELA');
 
   const [estatus, setEstatus] = useState(ticket.estatus || 'Abierto');
-  // Si es Centinela, por defecto asignamos el grupo 'CENTINELA' si existe, o el que tenga
-  const [grupo, setGrupo] = useState(ticket.grupo || (esCentinela ? 'CENTINELA' : (grupos[0] || '')));
+  // Si es Centinela, forzamos que el grupo por defecto sea "CENTINELA"
+  const [grupo, setGrupo] = useState(esCentinela ? 'CENTINELA' : (ticket.grupo || grupos[0] || ''));
   const [tecnico, setTecnico] = useState(ticket.tecnico || 'Sin Asignar');
   const [categoria, setCategoria] = useState(ticket.categoria || (esCentinela ? 'CENTINELA (PERIFÉRICO)' : ''));
   const [subcategoria, setSubcategoria] = useState(ticket.subcategoria || '');
@@ -88,7 +88,6 @@ function EditarSolicitudModal({ ticket, user, usuarios = [], grupos = [], usuari
     <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm flex justify-center items-center z-50 p-4">
       <div className="bg-slate-800 border border-slate-700 rounded-2xl shadow-2xl max-w-2xl w-full overflow-hidden text-slate-200 animate-fade-in max-h-[90vh] flex flex-col">
         
-        {/* Cabecera del Modal */}
         <div className="flex justify-between items-center bg-slate-900/80 px-6 py-4 border-b border-slate-700">
           <div className="flex items-center gap-3">
             <h2 className="text-lg font-bold text-white uppercase tracking-wide flex items-center gap-2">
@@ -115,7 +114,6 @@ function EditarSolicitudModal({ ticket, user, usuarios = [], grupos = [], usuari
           </button>
         </div>
 
-        {/* Cuerpo del Formulario */}
         <form onSubmit={handleSubmit} className="p-6 space-y-4 overflow-y-auto flex-grow">
           
           <div>
@@ -162,7 +160,6 @@ function EditarSolicitudModal({ ticket, user, usuarios = [], grupos = [], usuari
             </select>
           </div>
 
-          {/* SI ES CENTINELA, MOSTRAMOS LOS DATOS FIJOS DE TIPIFICACIÓN RÁPIDA PARA EVITAR RETRABAJO */}
           {esCentinela ? (
             <div className="bg-purple-950/30 border border-purple-500/30 p-4 rounded-xl space-y-2 text-xs">
               <div className="text-purple-300 font-bold uppercase">🛡️ Tipificación Automática Centinela:</div>
