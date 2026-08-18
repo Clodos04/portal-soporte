@@ -1,10 +1,13 @@
 import React, { useState } from 'react';
 
 function EditarSolicitudModal({ ticket, user, usuarios = [], grupos = [], usuariosPorGrupo = {}, categorias = [], onClose, onActualizar, onAbrirChat }) {
+  const esCentinela = ticket.tipo_solicitud === 'CENTINELA' || (ticket.categoria || '').toUpperCase().includes('CENTINELA') || (ticket.asunto || '').toUpperCase().includes('CENTINELA');
+
   const [estatus, setEstatus] = useState(ticket.estatus || 'Abierto');
-  const [grupo, setGrupo] = useState(ticket.grupo || grupos[0] || '');
+  // Si es Centinela, por defecto asignamos el grupo 'CENTINELA' si existe, o el que tenga
+  const [grupo, setGrupo] = useState(ticket.grupo || (esCentinela ? 'CENTINELA' : (grupos[0] || '')));
   const [tecnico, setTecnico] = useState(ticket.tecnico || 'Sin Asignar');
-  const [categoria, setCategoria] = useState(ticket.categoria || '');
+  const [categoria, setCategoria] = useState(ticket.categoria || (esCentinela ? 'CENTINELA (PERIFÉRICO)' : ''));
   const [subcategoria, setSubcategoria] = useState(ticket.subcategoria || '');
   const [elemento, setElemento] = useState(ticket.elemento || '');
   const [resolucion, setResolucion] = useState(ticket.resolucion || '');
@@ -41,7 +44,6 @@ function EditarSolicitudModal({ ticket, user, usuarios = [], grupos = [], usuari
     if (estatus === 'En Proceso' || estatus === 'EN PROCESO') colorEstatus = 'bg-orange-500';
     if (estatus === 'Cerrado' || estatus === 'CERRADO') colorEstatus = 'bg-red-500';
 
-    // Objeto limpio y exacto para evitar conflictos de columnas en MySQL
     const datosActualizados = {
       estatus: estatus,
       colorEstatus: colorEstatus,
@@ -89,8 +91,10 @@ function EditarSolicitudModal({ ticket, user, usuarios = [], grupos = [], usuari
         {/* Cabecera del Modal */}
         <div className="flex justify-between items-center bg-slate-900/80 px-6 py-4 border-b border-slate-700">
           <div className="flex items-center gap-3">
-            <h2 className="text-lg font-bold text-white uppercase tracking-wide">
+            <h2 className="text-lg font-bold text-white uppercase tracking-wide flex items-center gap-2">
+              {esCentinela && <span className="text-purple-400">🛡️</span>}
               {esCliente ? `Ver Solicitud #${ticket.folio}` : `Gestionar Solicitud #${ticket.folio}`}
+              {esCentinela && <span className="text-xs bg-purple-950 text-purple-300 px-2 py-0.5 rounded border border-purple-800 ml-2">CENTINELA</span>}
             </h2>
             {!esCliente && onAbrirChat && (
               <button
@@ -158,53 +162,66 @@ function EditarSolicitudModal({ ticket, user, usuarios = [], grupos = [], usuari
             </select>
           </div>
 
-          <div>
-            <label className="block text-xs font-bold text-slate-300 uppercase mb-1.5">Categoría:</label>
-            <select 
-              value={categoria} 
-              disabled={esCliente}
-              onChange={(e) => { setCategoria(e.target.value); setSubcategoria(''); setElemento(''); }} 
-              className="w-full px-3 py-2 rounded-lg bg-slate-900 border border-slate-700 text-white text-sm outline-none focus:border-green-500 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
-            >
-              <option value="">Seleccione Categoría</option>
-              {categorias.filter(c => c.estatus === 'ACTIVO').map((cat, idx) => (
-                <option key={idx} value={cat.nombre}>{cat.nombre}</option>
-              ))}
-            </select>
-          </div>
+          {/* SI ES CENTINELA, MOSTRAMOS LOS DATOS FIJOS DE TIPIFICACIÓN RÁPIDA PARA EVITAR RETRABAJO */}
+          {esCentinela ? (
+            <div className="bg-purple-950/30 border border-purple-500/30 p-4 rounded-xl space-y-2 text-xs">
+              <div className="text-purple-300 font-bold uppercase">🛡️ Tipificación Automática Centinela:</div>
+              <div className="grid grid-cols-2 gap-2 text-slate-300">
+                <div>Componente: <strong className="text-white uppercase">{ticket.subcategoria || 'Periférico'}</strong></div>
+                <div>Falla: <strong className="text-white uppercase">{ticket.elemento || 'Daño reportado'}</strong></div>
+              </div>
+            </div>
+          ) : (
+            <>
+              <div>
+                <label className="block text-xs font-bold text-slate-300 uppercase mb-1.5">Categoría:</label>
+                <select 
+                  value={categoria} 
+                  disabled={esCliente}
+                  onChange={(e) => { setCategoria(e.target.value); setSubcategoria(''); setElemento(''); }} 
+                  className="w-full px-3 py-2 rounded-lg bg-slate-900 border border-slate-700 text-white text-sm outline-none focus:border-green-500 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                >
+                  <option value="">Seleccione Categoría</option>
+                  {categorias.filter(c => c.estatus === 'ACTIVO').map((cat, idx) => (
+                    <option key={idx} value={cat.nombre}>{cat.nombre}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-300 uppercase mb-1.5">Sub-Categoría:</label>
+                <select 
+                  value={subcategoria} 
+                  disabled={esCliente}
+                  onChange={(e) => { setSubcategoria(e.target.value); setElemento(''); }} 
+                  className="w-full px-3 py-2 rounded-lg bg-slate-900 border border-slate-700 text-white text-sm outline-none focus:border-green-500 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                >
+                  <option value="">Seleccione Sub-Categoría</option>
+                  {subcategoriasDisponibles.map((sub, idx) => (
+                    <option key={idx} value={sub.nombre}>{sub.nombre}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-300 uppercase mb-1.5">Elemento:</label>
+                <select 
+                  value={elemento} 
+                  disabled={esCliente}
+                  onChange={(e) => setElemento(e.target.value)} 
+                  className="w-full px-3 py-2 rounded-lg bg-slate-900 border border-slate-700 text-white text-sm outline-none focus:border-green-500 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                >
+                  <option value="">Seleccione Elemento</option>
+                  {elementosDisponibles.map((elem, idx) => (
+                    <option key={idx} value={elem.nombre}>{elem.nombre}</option>
+                  ))}
+                </select>
+              </div>
+            </>
+          )}
 
           <div>
-            <label className="block text-xs font-bold text-slate-300 uppercase mb-1.5">Sub-Categoría:</label>
-            <select 
-              value={subcategoria} 
-              disabled={esCliente}
-              onChange={(e) => { setSubcategoria(e.target.value); setElemento(''); }} 
-              className="w-full px-3 py-2 rounded-lg bg-slate-900 border border-slate-700 text-white text-sm outline-none focus:border-green-500 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
-            >
-              <option value="">Seleccione Sub-Categoría</option>
-              {subcategoriasDisponibles.map((sub, idx) => (
-                <option key={idx} value={sub.nombre}>{sub.nombre}</option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-xs font-bold text-slate-300 uppercase mb-1.5">Elemento:</label>
-            <select 
-              value={elemento} 
-              disabled={esCliente}
-              onChange={(e) => setElemento(e.target.value)} 
-              className="w-full px-3 py-2 rounded-lg bg-slate-900 border border-slate-700 text-white text-sm outline-none focus:border-green-500 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
-            >
-              <option value="">Seleccione Elemento</option>
-              {elementosDisponibles.map((elem, idx) => (
-                <option key={idx} value={elem.nombre}>{elem.nombre}</option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-xs font-bold text-slate-300 uppercase mb-1.5">Equipo(s):</label>
+            <label className="block text-xs font-bold text-slate-300 uppercase mb-1.5">Equipo(s) / Nodo:</label>
             <input 
               type="text" 
               value={ticket.equipo || 'Ninguno'} 
