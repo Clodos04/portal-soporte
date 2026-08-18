@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 
-function SupervisorPanel({ user }) {
+function SupervisorPanel({ user, onVerDetallesCentinela }) {
   const [tickets, setTickets] = useState([]);
   const [encuestasData, setEncuestasData] = useState({ estadisticas: { promedio: 0, total: 0 }, historial: [] });
   const [kpiTiempos, setKpiTiempos] = useState([]);
@@ -149,7 +149,7 @@ function SupervisorPanel({ user }) {
         </div>
       </div>
 
-      {/* SECCIÓN DE ESTACIONES / NODOS PARA REQUISICIÓN DE COMPRA (SEPARADO POR PERIFÉRICO) */}
+      {/* SECCIÓN DE ESTACIONES / NODOS PARA REQUISICIÓN DE COMPRA (CON BOTÓN VER MÁS DETALLES) */}
       <div className="bg-gradient-to-r from-purple-950/50 to-slate-800 border border-purple-500/40 rounded-2xl p-6 shadow-xl space-y-4">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
           <div>
@@ -160,9 +160,21 @@ function SupervisorPanel({ user }) {
               Control independiente por componente (Teclados, Diademas, Mouses, Monitores) con 5 o más reportes por nodo.
             </p>
           </div>
-          <span className="bg-purple-600/30 text-purple-300 border border-purple-500/50 px-3 py-1 rounded-xl text-xs font-extrabold">
-            {nodosParaRequisicion.length} Requisiciones Pendientes
-          </span>
+          
+          <div className="flex items-center gap-3">
+            <span className="bg-purple-600/30 text-purple-300 border border-purple-500/50 px-3 py-1 rounded-xl text-xs font-extrabold">
+              {nodosParaRequisicion.length} Requisiciones Pendientes
+            </span>
+
+            {onVerDetallesCentinela && (
+              <button
+                onClick={onVerDetallesCentinela}
+                className="bg-purple-600 hover:bg-purple-500 text-white px-4 py-2 rounded-xl text-xs font-extrabold shadow-lg transition-all cursor-pointer whitespace-nowrap flex items-center gap-2"
+              >
+                <span>📋</span> Ver Más Detalles
+              </button>
+            )}
+          </div>
         </div>
 
         {nodosParaRequisicion.length === 0 ? (
