@@ -22,7 +22,12 @@ function AsistenteTipificacionView({ categorias = [], campanas = [], equipos = [
     { id: 4, nombre: "MANTENIMIENTO" }
   ];
 
-  const opcionesMostradas = opcionesFijas.map(opcion => {
+  // Si es CENTINELA, filtramos estrictamente para mostrar únicamente Hardware
+  const opcionesBase = tipoReporte === 'CENTINELA' 
+    ? opcionesFijas.filter(op => op.nombre.includes("HARDWARE")) 
+    : opcionesFijas;
+
+  const opcionesMostradas = opcionesBase.map(opcion => {
     const encontradaEnBD = categorias.find(cat => cat.nombre.toUpperCase().includes(opcion.nombre.split(' ')[0]));
     return encontradaEnBD ? encontradaEnBD : { id: opcion.id, nombre: opcion.nombre, subcategorias: [] };
   });
@@ -37,6 +42,7 @@ function AsistenteTipificacionView({ categorias = [], campanas = [], equipos = [
     setCategoriaSeleccionada(null);
     setSubcatSeleccionada(null);
     setElementoSeleccionado(null);
+    setEquiposSeleccionados([]);
   };
 
   const seleccionarCat = (cat) => {
@@ -66,35 +72,68 @@ function AsistenteTipificacionView({ categorias = [], campanas = [], equipos = [
   };
 
   const handleFinalizarReporte = () => {
-    const nuevoFolio = Math.floor(10000 + Math.random() * 90000).toString();
     const fechaHoy = new Date().toISOString().split('T')[0];
     const campObj = campanas.find(c => String(c.idcamp) === String(campanaSeleccionadaId));
 
-    // Si es Centinela, ajustamos el prefijo del asunto o una etiqueta especial para identificarlo
-    const prefijoTitulo = tipoReporte === 'CENTINELA' ? '[CENTINELA - REQUISICIÓN] ' : '[REPORTE] ';
+    // Si es Centinela y seleccionó varios equipos, creamos un ticket por cada equipo individualmente
+    if (tipoReporte === 'CENTINELA' && equiposSeleccionados.length > 0) {
+      equiposSeleccionados.forEach((nodoUnico, index) => {
+        const nuevoFolio = Math.floor(10000 + Math.random() * 90000).toString() + '-' + (index + 1);
+        const ticketIndependiente = {
+          folio: nuevoFolio,
+          notas: [],
+          estatus: 'Abierto',
+          colorEstatus: 'bg-purple-500',
+          tecnico: 'Sin Asignar',
+          creador: user?.name || 'VALERIA GOMEZ',
+          asunto: `[CENTINELA] Falla de periférico en nodo ${nodoUnico} - ${asunto || 'Requisición'}`,
+          descripcion: descripcion || 'Reporte automático de periférico dañado.',
+          campana: campObj ? campObj.nombre : 'General',
+          equipo: nodoUnico, // Se guarda un equipo por cada ticket generado
+          nivel: 'Medio',
+          modo: modo,
+          fecha: fechaHoy,
+          grupo: 'Soporte Técnico',
+          categoria: 'CENTINELA (PERIFÉRICO)',
+          subcategoria: subcatSeleccionada?.nombre || '',
+          elemento: elementoSeleccionado?.nombre || '',
+          resolucion: '',
+          archivoNombre: archivo ? archivo.name : null,
+          archivoUrl: archivo ? URL.createObjectURL(archivo) : null,
+          tipo_solicitud: 'CENTINELA'
+        };
 
+        if (onGuardarTicket) {
+          onGuardarTicket(ticketIndependiente);
+        }
+      });
+      return;
+    }
+
+    // Comportamiento normal para reportes estándar
+    const nuevoFolio = Math.floor(10000 + Math.random() * 90000).toString();
     const ticketNuevo = {
       folio: nuevoFolio,
       notas: [],
       estatus: 'Abierto',
-      colorEstatus: tipoReporte === 'CENTINELA' ? 'bg-purple-500' : 'bg-green-500',
+      colorEstatus: 'bg-green-500',
       tecnico: 'Sin Asignar',
       creador: user?.name || 'VALERIA GOMEZ',
-      asunto: prefijoTitulo + (asunto || (tipoReporte === 'CENTINELA' ? 'Falla recurrente de periférico' : 'Sin asunto')),
+      asunto: asunto || 'Sin asunto',
       descripcion: descripcion || 'Sin descripción',
       campana: campObj ? campObj.nombre : 'General',
       equipo: equiposSeleccionados.length > 0 ? equiposSeleccionados.join(', ') : 'Ninguno',
-      nivel: tipoReporte === 'CENTINELA' ? 'Medio' : nivel,
+      nivel: nivel,
       modo: modo,
       fecha: fechaHoy,
       grupo: 'Soporte Técnico',
-      categoria: tipoReporte === 'CENTINELA' ? 'CENTINELA (PERIFÉRICO)' : (categoriaSeleccionada?.nombre || 'GENERAL'),
+      categoria: categoriaSeleccionada?.nombre || 'GENERAL',
       subcategoria: subcatSeleccionada?.nombre || '',
       elemento: elementoSeleccionado?.nombre || '',
       resolucion: '',
       archivoNombre: archivo ? archivo.name : null,
       archivoUrl: archivo ? URL.createObjectURL(archivo) : null,
-      tipo_solicitud: tipoReporte // Guardamos si es REPORTE o CENTINELA
+      tipo_solicitud: 'REPORTE'
     };
 
     if (onGuardarTicket) {
@@ -119,7 +158,6 @@ function AsistenteTipificacionView({ categorias = [], campanas = [], equipos = [
 
       <div className="p-6 space-y-6 overflow-y-auto flex-1">
         
-        {/* PASO 0: Seleccionar tipo de solicitud (Reporte vs Centinela) */}
         {!tipoReporte ? (
           <div className="space-y-4 animate-fade-in py-4 text-center">
             <h3 className="text-lg font-bold text-white">¿Qué tipo de registro deseas realizar?</h3>
@@ -138,12 +176,17 @@ function AsistenteTipificacionView({ categorias = [], campanas = [], equipos = [
 
               <button
                 type="button"
-                onClick={() => setTipoReporte('CENTINELA')}
+                onClick={() => {
+                  setTipoReporte('CENTINELA');
+                  // Si selecciona Centinela, auto-seleccionamos Hardware para mayor velocidad
+                  const catHardware = categorias.find(c => c.nombre.toUpperCase().includes('HARDWARE')) || { id: 1, nombre: "HARDWARE (EQUIPO)", subcategorias: [] };
+                  setCategoriaSeleccionada(catHardware);
+                }}
                 className="p-5 rounded-2xl bg-purple-950/40 border-2 border-purple-800/60 hover:border-purple-500 text-left transition-all group cursor-pointer shadow-lg space-y-2"
               >
                 <div className="text-2xl">🛡️</div>
                 <div className="font-bold text-purple-300 text-sm uppercase">Reporte Centinela</div>
-                <div className="text-xs text-slate-400">Acumulación de reportes por periférico dañado (Requiere 5+ para requisición).</div>
+                <div className="text-xs text-slate-400">Reporte de periféricos dañados por nodo (Genera un ticket por cada nodo seleccionado).</div>
               </button>
             </div>
           </div>
@@ -154,7 +197,7 @@ function AsistenteTipificacionView({ categorias = [], campanas = [], equipos = [
                 <div className="text-xs font-semibold text-indigo-400 bg-indigo-950/60 px-3 py-1 rounded-full border border-indigo-800">
                   Modo: {tipoReporte === 'CENTINELA' ? '🛡️ CENTINELA' : '🛠️ REPORTE NORMAL'}
                 </div>
-                <button type="button" onClick={() => setTipoReporte(null)} className="text-xs font-bold text-slate-400 hover:text-white underline cursor-pointer">
+                <button type="button" onClick={() => { setTipoReporte(null); setEquiposSeleccionados([]); }} className="text-xs font-bold text-slate-400 hover:text-white underline cursor-pointer">
                   « Cambiar tipo
                 </button>
               </div>
@@ -335,7 +378,7 @@ function AsistenteTipificacionView({ categorias = [], campanas = [], equipos = [
                         ))
                       )}
                     </div>
-                    <p className="text-[10px] text-indigo-400 mt-1">Seleccionados: {equiposSeleccionados.length > 0 ? equiposSeleccionados.join(', ') : 'Ninguno'}</p>
+                    <p className="text-[10px] text-indigo-400 mt-1">Seleccionados ({equiposSeleccionados.length}): {equiposSeleccionados.length > 0 ? equiposSeleccionados.join(', ') : 'Ninguno'}</p>
                   </div>
 
                   <div className="space-y-2.5">
@@ -378,7 +421,7 @@ function AsistenteTipificacionView({ categorias = [], campanas = [], equipos = [
                     onClick={handleFinalizarReporte} 
                     className="bg-indigo-600 hover:bg-indigo-500 text-white px-5 py-2 rounded-xl font-bold text-xs shadow-lg shadow-indigo-600/30 cursor-pointer"
                   >
-                    Guardar {tipoReporte === 'CENTINELA' ? 'Reporte Centinela' : 'Solicitud'}
+                    Guardar {tipoReporte === 'CENTINELA' ? `(${equiposSeleccionados.length}) Reportes Centinela` : 'Solicitud'}
                   </button>
                 </div>
               </div>
