@@ -91,32 +91,13 @@ function AsistenteTipificacionView({ categorias = [], campanas = [], equipos = [
     setPaso(5);
   };
 
-  const handleFinalizarReporte = () => {
+  const handleFinalizarReporte = async () => {
     setErrorDuplicado('');
-    const fechaHoy = new Date().toISOString().split('T')[0]; // Formato 'YYYY-MM-DD'
+    const fechaHoy = new Date().toISOString().split('T')[0];
     const campObj = campanas.find(c => String(c.idcamp) === String(campanaSeleccionadaId));
 
-    // Si es Centinela, validamos duplicidad estricta por componente principal y nodo en el día actual
     if (tipoReporte === 'CENTINELA' && equiposSeleccionados.length > 0) {
-      for (const nodoUnico of equiposSeleccionados) {
-        const yaReportadoHoy = ticketsExistentes.some(t => {
-          const esCent = t.tipo_solicitud === 'CENTINELA' || (t.categoria || '').toUpperCase().includes('CENTINELA');
-          const fechaTicket = (t.fecha || t.created_at || '').split('T')[0];
-          const mismoNodo = (t.equipo || '').trim().toLowerCase() === nodoUnico.trim().toLowerCase();
-          
-          // Comparamos el componente principal (ej. DIADEMA, TECLADO) para bloquear cualquier repetición del mismo periférico hoy
-          const mismoComponente = (t.subcategoria || '').toUpperCase() === (perifericoCentinela || '').toUpperCase();
-          
-          return esCent && mismoNodo && mismoComponente && fechaTicket === fechaHoy;
-        });
-
-        if (yaReportadoHoy) {
-          setErrorDuplicado(`⚠️ El nodo "${nodoUnico}" ya cuenta con un reporte Centinela de "${perifericoCentinela}" registrado el día de hoy. No se permite duplicar el mismo componente.`);
-          return;
-        }
-      }
-
-      equiposSeleccionados.forEach((nodoUnico, index) => {
+      for (const [index, nodoUnico] of equiposSeleccionados.entries()) {
         const nuevoFolio = Math.floor(10000 + Math.random() * 90000).toString() + '-' + (index + 1);
         const detalleFalla = subFallaCentinela ? subFallaCentinela : 'Falla general de periférico';
         
@@ -144,14 +125,35 @@ function AsistenteTipificacionView({ categorias = [], campanas = [], equipos = [
           tipo_solicitud: 'CENTINELA'
         };
 
-        if (onGuardarTicket) {
-          onGuardarTicket(ticketIndependiente);
+        try {
+          const response = await fetch('/api/tickets', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(ticketIndependiente)
+          });
+
+          const data = await response.json();
+
+          // Si el servidor detecta duplicado (400), detenemos todo y mostramos el error visualmente
+          if (!response.ok) {
+            setErrorDuplicado(data.error || `El nodo "${nodoUnico}" ya cuenta con un reporte de este componente hoy.`);
+            return; // Frena la ejecución y evita abrir el chat o dar por creado
+          }
+
+          if (onGuardarTicket) {
+            onGuardarTicket(ticketIndependiente);
+          }
+        } catch (err) {
+          setErrorDuplicado('Error de red al intentar conectar con el servidor.');
+          return;
         }
-      });
+      }
+
+      if (onCancelar) onCancelar();
       return;
     }
 
-    // Comportamiento normal para reportes estándar de soporte
+    // Comportamiento normal para reportes estándar
     const nuevoFolio = Math.floor(10000 + Math.random() * 90000).toString();
     const ticketNuevo = {
       folio: nuevoFolio,
@@ -177,8 +179,17 @@ function AsistenteTipificacionView({ categorias = [], campanas = [], equipos = [
       tipo_solicitud: 'REPORTE'
     };
 
-    if (onGuardarTicket) {
-      onGuardarTicket(ticketNuevo);
+    try {
+      const response = await fetch('/api/tickets', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(ticketNuevo)
+      });
+      if (response.ok && onGuardarTicket) {
+        onGuardarTicket(ticketNuevo);
+      }
+    } catch (e) {
+      console.error(e);
     }
   };
 
@@ -487,8 +498,8 @@ function AsistenteTipificacionView({ categorias = [], campanas = [], equipos = [
                 </div>
 
                 {errorDuplicado && (
-                  <div className="bg-red-950/60 border border-red-500 text-red-200 p-3 rounded-xl text-xs font-bold">
-                    {errorDuplicado}
+                  <div className="bg-red-950/80 border border-red-500 text-red-200 p-3 rounded-xl text-xs font-bold shadow-lg flex items-center gap-2">
+                    <span>❌</span> {errorDuplicado}
                   </div>
                 )}
 
