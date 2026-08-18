@@ -190,6 +190,26 @@ app.get(['/api/usuarios', '/usuarios'], (req, res) => {
   });
 });
 
+// Actualizar Usuario (Ruta PUT añadida para solucionar el error 404)
+app.put(['/api/usuarios/:id', '/usuarios/:id'], (req, res) => {
+  const { id } = req.params;
+  const { nombre, paterno, materno, campana, username, estatus, nivel, gruposAsignados } = req.body;
+
+  const gruposStr = Array.isArray(gruposAsignados) ? JSON.stringify(gruposAsignados) : (gruposAsignados || '[]');
+
+  const query = `
+    UPDATE usuarios 
+    SET nombre = ?, paterno = ?, materno = ?, campana = ?, username = ?, estatus = ?, nivel = ?, gruposAsignados = ? 
+    WHERE id = ?
+  `;
+
+  db.query(query, [nombre, paterno, materno, campana, username, estatus, nivel, gruposStr, id], (err, result) => {
+    if (err) return res.status(500).json({ error: err.message });
+    if (result.affectedRows === 0) return res.status(404).json({ error: 'No se encontró el usuario.' });
+    res.json({ message: 'Usuario actualizado correctamente' });
+  });
+});
+
 // Grupos
 app.get(['/api/grupos', '/grupos'], (req, res) => {
   db.query('SELECT nombre FROM grupos', (err, results) => {
