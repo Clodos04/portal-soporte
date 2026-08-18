@@ -1,14 +1,15 @@
 import React, { useState } from 'react';
 
 function AsistenteTipificacionView({ categorias = [], campanas = [], equipos = [], ticketsExistentes = [], user, usuarios = [], onGuardarTicket, onCancelar }) {
-  const [tipoReporte, setTipoReporte] = useState(null);
+  const [tipoReporte, setTipoReporte] = useState(null); // 'REPORTE' o 'CENTINELA'
   const [paso, setPaso] = useState(1);
   const [categoriaSeleccionada, setCategoriaSeleccionada] = useState(null);
   const [subcatSeleccionada, setSubcatSeleccionada] = useState(null);
   const [elementoSeleccionado, setElementoSeleccionado] = useState(null);
 
-  const [perifericoCentinela, setPerifericoCentinela] = useState(null);
-  const [subFallaCentinela, setSubFallaCentinela] = useState(null);
+  // Estados específicos para el árbol de Centinela (Periféricos y Monitores)
+  const [perifericoCentinela, setPerifericoCentinela] = useState(null); // 'TECLADO', 'MOUSE', 'DIADEMA', 'MONITOR'
+  const [subFallaCentinela, setSubFallaCentinela] = useState(null); // Opciones de segundo y tercer nivel
 
   const [asunto, setAsunto] = useState('');
   const [descripcion, setDescripcion] = useState('');
@@ -49,6 +50,8 @@ function AsistenteTipificacionView({ categorias = [], campanas = [], equipos = [
     setSubFallaCentinela(null);
     setEquiposSeleccionados([]);
     setErrorDuplicado('');
+    setAsunto('');
+    setDescripcion('');
   };
 
   const seleccionarCat = (cat) => {
@@ -93,19 +96,22 @@ function AsistenteTipificacionView({ categorias = [], campanas = [], equipos = [
     const fechaHoy = new Date().toISOString().split('T')[0]; // Formato 'YYYY-MM-DD'
     const campObj = campanas.find(c => String(c.idcamp) === String(campanaSeleccionadaId));
 
+    // Si es Centinela, validamos duplicidad estricta por componente principal y nodo en el día actual
     if (tipoReporte === 'CENTINELA' && equiposSeleccionados.length > 0) {
-      // Validar si alguno de los nodos seleccionados ya tiene un reporte Centinela de este mismo periférico hoy
       for (const nodoUnico of equiposSeleccionados) {
         const yaReportadoHoy = ticketsExistentes.some(t => {
           const esCent = t.tipo_solicitud === 'CENTINELA' || (t.categoria || '').toUpperCase().includes('CENTINELA');
           const fechaTicket = (t.fecha || t.created_at || '').split('T')[0];
           const mismoNodo = (t.equipo || '').trim().toLowerCase() === nodoUnico.trim().toLowerCase();
-          const mismoPeriferico = (t.subcategoria || '').toUpperCase() === (perifericoCentinela || '').toUpperCase();
-          return esCent && mismoNodo && mismoPeriferico && fechaTicket === fechaHoy;
+          
+          // Comparamos el componente principal (ej. DIADEMA, TECLADO) para bloquear cualquier repetición del mismo periférico hoy
+          const mismoComponente = (t.subcategoria || '').toUpperCase() === (perifericoCentinela || '').toUpperCase();
+          
+          return esCent && mismoNodo && mismoComponente && fechaTicket === fechaHoy;
         });
 
         if (yaReportadoHoy) {
-          setErrorDuplicado(`⚠️ El nodo "${nodoUnico}" ya cuenta con un reporte Centinela de "${perifericoCentinela}" registrado el día de hoy.`);
+          setErrorDuplicado(`⚠️ El nodo "${nodoUnico}" ya cuenta con un reporte Centinela de "${perifericoCentinela}" registrado el día de hoy. No se permite duplicar el mismo componente.`);
           return;
         }
       }
@@ -145,6 +151,7 @@ function AsistenteTipificacionView({ categorias = [], campanas = [], equipos = [
       return;
     }
 
+    // Comportamiento normal para reportes estándar de soporte
     const nuevoFolio = Math.floor(10000 + Math.random() * 90000).toString();
     const ticketNuevo = {
       folio: nuevoFolio,
