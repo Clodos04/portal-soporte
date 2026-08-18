@@ -51,10 +51,25 @@ function SupervisorPanel({ user }) {
     cargarDatosSupervisor();
   }, []);
 
+  // --- CÁLCULO DE CENTINELAS (5+ REPORTES POR NODO) ---
+  const ticketsCentinela = tickets.filter(t => t.tipo_solicitud === 'CENTINELA' || (t.asunto && t.asunto.includes('[CENTINELA')));
+  
+  const conteoNodosCentinela = ticketsCentinela.reduce((acc, t) => {
+    if (t.equipo && t.equipo !== 'Ninguno') {
+      const equiposList = t.equipo.split(',').map(e => e.trim());
+      equiposList.forEach(eq => {
+        acc[eq] = (acc[eq] || 0) + 1;
+      });
+    }
+    return acc;
+  }, {});
+
+  const nodosParaRequisicion = Object.entries(conteoNodosCentinela).filter(([eq, count]) => count >= 5);
+  // ----------------------------------------------------
+
   const ticketsFiltrados = tickets.filter(t => {
     const cumpleCampana = filtroCampana === 'TODAS' || t.campana === filtroCampana;
     
-    // Búsqueda flexible del técnico corregida (compara por username o nombre completo)
     let cumpleTecnico = true;
     if (filtroTecnico !== 'TODOS') {
       const tecnicoObj = tecnicos.find(u => u.username === filtroTecnico);
@@ -115,6 +130,45 @@ function SupervisorPanel({ user }) {
         <div className="bg-slate-900/80 px-4 py-2 rounded-xl border border-slate-700 text-xs font-semibold text-indigo-400">
           Supervisor: {user?.nombre || user?.name || 'Administrador'}
         </div>
+      </div>
+
+      {/* SECCIÓN DE NODOS CANDIDATOS A REQUISICIÓN DE COMPRA (5+ CENTINELAS) */}
+      <div className="bg-gradient-to-r from-purple-950/50 to-slate-800 border border-purple-500/40 rounded-2xl p-6 shadow-xl space-y-4">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
+          <div>
+            <h2 className="text-lg font-bold text-purple-300 uppercase flex items-center gap-2">
+              🛡️ Estaciones / Nodos para Requisición de Compra (5+ Centinelas)
+            </h2>
+            <p className="text-xs text-slate-300 mt-1">
+              Periféricos dañados con recurrencia mayor o igual a 5 reportes listos para trámite de compra.
+            </p>
+          </div>
+          <span className="bg-purple-600/30 text-purple-300 border border-purple-500/50 px-3 py-1 rounded-xl text-xs font-extrabold">
+            {nodosParaRequisicion.length} Nodos Candidatos
+          </span>
+        </div>
+
+        {nodosParaRequisicion.length === 0 ? (
+          <div className="text-xs text-slate-400 italic bg-slate-900/40 p-3 rounded-xl border border-slate-700/60">
+            No hay nodos con 5 o más reportes Centinela registrados actualmente.
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            {nodosParaRequisicion.map(([nodo, totalReportes], idx) => (
+              <div key={idx} className="bg-slate-900/90 border border-purple-500/30 p-4 rounded-xl flex justify-between items-center shadow-md">
+                <div>
+                  <span className="text-xs text-slate-400 block uppercase font-bold">Estación / Nodo:</span>
+                  <span className="text-sm font-mono font-extrabold text-white">{nodo}</span>
+                </div>
+                <div className="text-right">
+                  <span className="bg-purple-500/20 text-purple-300 px-2.5 py-1 rounded-lg text-xs font-bold border border-purple-500/40">
+                    {totalReportes} Reportes
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       <div className="bg-slate-800 p-5 rounded-xl border border-slate-700 grid grid-cols-1 md:grid-cols-3 gap-4 shadow-lg">
