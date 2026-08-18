@@ -32,7 +32,7 @@ function Dashboard({ user, tickets = [], onIrANuevaSolicitud, onIrAEncuesta, est
     return (
       <div className="animate-fade-in space-y-8">
         
-        {/* Banner de Bienvenida y Asistencia Rápida (Estilo Moderno) */}
+        {/* Banner de Bienvenida y Asistencia Rápida */}
         <div className="relative overflow-hidden bg-gradient-to-r from-indigo-900/80 via-slate-900 to-blue-950 p-8 rounded-3xl border border-indigo-500/30 shadow-2xl flex flex-col md:flex-row justify-between items-center gap-6">
           <div className="absolute -right-10 -bottom-10 w-64 h-64 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none"></div>
           
@@ -62,7 +62,7 @@ function Dashboard({ user, tickets = [], onIrANuevaSolicitud, onIrAEncuesta, est
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           
           {/* Mis Tickets Abiertos */}
-          <div className="bg-slate-800/90 backdrop-blur-xl rounded-2xl shadow-xl p-6 border border-slate-700/80 flex flex-col justify-between">
+          <div className="bg-slate-800/95 backdrop-blur-xl rounded-2xl shadow-xl p-6 border border-slate-700/80 flex flex-col justify-between">
             <div>
               <div className="flex justify-between items-center mb-4">
                 <h2 className="text-base font-bold text-white uppercase tracking-wider flex items-center gap-2">
@@ -98,7 +98,7 @@ function Dashboard({ user, tickets = [], onIrANuevaSolicitud, onIrAEncuesta, est
           </div>
 
           {/* Última Actualización / Respuesta */}
-          <div className="bg-slate-800/90 backdrop-blur-xl rounded-2xl shadow-xl p-6 border border-slate-700/80 flex flex-col justify-between">
+          <div className="bg-slate-800/95 backdrop-blur-xl rounded-2xl shadow-xl p-6 border border-slate-700/80 flex flex-col justify-between">
             <div>
               <div className="flex justify-between items-center mb-4">
                 <h2 className="text-base font-bold text-white uppercase tracking-wider flex items-center gap-2">
@@ -167,10 +167,17 @@ function Dashboard({ user, tickets = [], onIrANuevaSolicitud, onIrAEncuesta, est
     { nombre: 'Atención a Clientes', tickets: countAtencion },
   ];
 
-  const ticketsAtendidosSla = safeTickets.filter(t => t.tecnico && t.tecnico !== 'Sin Asignar').length;
-  const porcentajeSla = safeTickets.length > 0  
-    ? Math.round((ticketsAtendidosSla / safeTickets.length) * 100)  
-    : 98;
+  // FILTRO: Excluimos los tickets Centinela del cálculo del SLA para no inflar las métricas
+  const ticketsEstandar = safeTickets.filter(t => 
+    t.tipo_solicitud !== 'CENTINELA' && 
+    !(t.categoria || '').toUpperCase().includes('CENTINELA') &&
+    !(t.grupo || '').toUpperCase().includes('CENTINELA')
+  );
+
+  const ticketsAtendidosSla = ticketsEstandar.filter(t => t.estatus && t.estatus.toLowerCase() !== 'abierto').length;
+  const porcentajeSla = ticketsEstandar.length > 0  
+    ? Math.round((ticketsAtendidosSla / ticketsEstandar.length) * 100)  
+    : 100;
 
   const encuestasPorTecnico = (estadisticasEncuestas || []).reduce((acc, curr) => {
     if (!curr.tecnico) return acc;
