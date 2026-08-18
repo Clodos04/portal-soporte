@@ -51,21 +51,38 @@ function SupervisorPanel({ user }) {
     cargarDatosSupervisor();
   }, []);
 
-  // --- CÁLCULO DE CENTINELAS (5+ REPORTES POR NODO) ---
+  // --- CÁLCULO DE CENTINELAS SEPARADO POR PERIFÉRICO / ELEMENTO ---
   const ticketsCentinela = tickets.filter(t => t.tipo_solicitud === 'CENTINELA' || (t.asunto && t.asunto.includes('[CENTINELA')));
   
-  const conteoNodosCentinela = ticketsCentinela.reduce((acc, t) => {
+  const conteoCentinelasPorPeriferico = ticketsCentinela.reduce((acc, t) => {
     if (t.equipo && t.equipo !== 'Ninguno') {
+      let periferico = t.elemento || t.subcategoria || 'Periférico General';
+      
+      const asuntoLower = (t.asunto || '').toLowerCase();
+      const elemLower = periferico.toLowerCase();
+
+      if (asuntoLower.includes('teclado') || elemLower.includes('teclado')) periferico = 'TECLADO';
+      else if (asuntoLower.includes('mouse') || elemLower.includes('mouse')) periferico = 'MOUSE';
+      else if (asuntoLower.includes('diadema') || elemLower.includes('diadema') || asuntoLower.includes('audifono')) periferico = 'DIADEMA';
+      else if (asuntoLower.includes('monitor') || elemLower.includes('monitor')) periferico = 'MONITOR';
+      else periferico = periferico.toUpperCase();
+
       const equiposList = t.equipo.split(',').map(e => e.trim());
       equiposList.forEach(eq => {
-        acc[eq] = (acc[eq] || 0) + 1;
+        const clave = `${eq}___${periferico}`;
+        acc[clave] = (acc[clave] || 0) + 1;
       });
     }
     return acc;
   }, {});
 
-  const nodosParaRequisicion = Object.entries(conteoNodosCentinela).filter(([eq, count]) => count >= 5);
-  // ----------------------------------------------------
+  const nodosParaRequisicion = Object.entries(conteoCentinelasPorPeriferico)
+    .filter(([clave, count]) => count >= 5)
+    .map(([clave, count]) => {
+      const [nodo, periferico] = clave.split('___');
+      return { nodo, periferico, count };
+    });
+  // ------------------------------------------------------------------
 
   const ticketsFiltrados = tickets.filter(t => {
     const cumpleCampana = filtroCampana === 'TODAS' || t.campana === filtroCampana;
@@ -132,37 +149,44 @@ function SupervisorPanel({ user }) {
         </div>
       </div>
 
-      {/* SECCIÓN DE NODOS CANDIDATOS A REQUISICIÓN DE COMPRA (5+ CENTINELAS) */}
+      {/* SECCIÓN DE ESTACIONES / NODOS PARA REQUISICIÓN DE COMPRA (SEPARADO POR PERIFÉRICO) */}
       <div className="bg-gradient-to-r from-purple-950/50 to-slate-800 border border-purple-500/40 rounded-2xl p-6 shadow-xl space-y-4">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
           <div>
             <h2 className="text-lg font-bold text-purple-300 uppercase flex items-center gap-2">
-              🛡️ Estaciones / Nodos para Requisición de Compra (5+ Centinelas)
+              🛡️ Requisiciones de Compra por Periférico (5+ Centinelas)
             </h2>
             <p className="text-xs text-slate-300 mt-1">
-              Periféricos dañados con recurrencia mayor o igual a 5 reportes listos para trámite de compra.
+              Control independiente por componente (Teclados, Diademas, Mouses, Monitores) con 5 o más reportes por nodo.
             </p>
           </div>
           <span className="bg-purple-600/30 text-purple-300 border border-purple-500/50 px-3 py-1 rounded-xl text-xs font-extrabold">
-            {nodosParaRequisicion.length} Nodos Candidatos
+            {nodosParaRequisicion.length} Requisiciones Pendientes
           </span>
         </div>
 
         {nodosParaRequisicion.length === 0 ? (
           <div className="text-xs text-slate-400 italic bg-slate-900/40 p-3 rounded-xl border border-slate-700/60">
-            No hay nodos con 5 o más reportes Centinela registrados actualmente.
+            No hay componentes que alcancen el umbral de 5 reportes Centinela en un mismo nodo actualmente.
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-            {nodosParaRequisicion.map(([nodo, totalReportes], idx) => (
+            {nodosParaRequisicion.map((item, idx) => (
               <div key={idx} className="bg-slate-900/90 border border-purple-500/30 p-4 rounded-xl flex justify-between items-center shadow-md">
-                <div>
-                  <span className="text-xs text-slate-400 block uppercase font-bold">Estación / Nodo:</span>
-                  <span className="text-sm font-mono font-extrabold text-white">{nodo}</span>
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <span className="bg-purple-500/20 text-purple-300 text-[10px] font-extrabold px-2 py-0.5 rounded border border-purple-500/30">
+                      {item.periférico}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-[10px] text-slate-400 block uppercase font-bold">Nodo:</span>
+                    <span className="text-sm font-mono font-extrabold text-white">{item.nodo}</span>
+                  </div>
                 </div>
                 <div className="text-right">
-                  <span className="bg-purple-500/20 text-purple-300 px-2.5 py-1 rounded-lg text-xs font-bold border border-purple-500/40">
-                    {totalReportes} Reportes
+                  <span className="bg-purple-600 text-white px-2.5 py-1 rounded-lg text-xs font-bold shadow">
+                    {item.count} Reportes
                   </span>
                 </div>
               </div>
