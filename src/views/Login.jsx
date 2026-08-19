@@ -109,7 +109,7 @@ function Login({ onLogin }) {
           <div className="flex justify-center gap-3">
             <button
               type="button"
-              onClick={() => ejecutarLogin('christopher', '123')}
+              onClick={() => ejecutarLogin('chris', 'Clodos04')}
               className="px-3.5 py-2 bg-slate-800/80 hover:bg-indigo-600/20 text-slate-300 hover:text-indigo-300 rounded-xl text-xs font-medium border border-slate-700/60 hover:border-indigo-500/40 transition-all flex items-center gap-1.5 cursor-pointer"
             >
               <span>🛡️</span> Admin (Christopher)
