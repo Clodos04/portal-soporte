@@ -76,7 +76,7 @@ app.get(['/api/tickets', '/tickets'], (req, res) => {
   });
 });
 
-// FUNCIÓN AUXILIAR PARA INSERTAR EN LA BD
+// FUNCIÓN AUXILIAR PARA INSERTAR EN LA BD (Tickets normales)
 const continuarInsercionTicket = (ticketData, res) => {
   for (let key in ticketData) {
     if (typeof ticketData[key] === 'object' && ticketData[key] !== null) {
@@ -86,7 +86,14 @@ const continuarInsercionTicket = (ticketData, res) => {
   ticketData.created_at = obtenerFechaMySQL();
   db.query('INSERT INTO tickets SET ?', ticketData, (err, result) => {
     if (err) return res.status(500).json({ error: err.message });
-    res.json({ message: 'Ticket creado exitosamente', id: result.insertId });
+    
+    // Inyectar mensaje inicial estándar en el chat
+    const horaActual = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const textoMensaje = `Folio #${ticketData.folio} registrado con éxito. Se te asignará un técnico en un tiempo máximo de 10 minutos.`;
+    
+    db.query('INSERT INTO mensajes_chat (folio, remitente, texto, hora) VALUES (?, ?, ?, ?)', [ticketData.folio, 'Sistema', textoMensaje, horaActual], () => {
+      res.json({ message: 'Ticket creado exitosamente', id: result.insertId });
+    });
   });
 };
 
@@ -94,27 +101,51 @@ app.post(['/api/tickets', '/tickets'], (req, res) => {
   const ticketData = { ...req.body };
   delete ticketData.archivos;
 
-  // Validación estricta en el Servidor para Centinela (1 reporte por componente por nodo al día)
+  // Validación inteligente para Centinela (Verifica si ya hay reporte previo en el mes en curso)
   if (ticketData.tipo_solicitud === 'CENTINELA' && ticketData.equipo && ticketData.subcategoria) {
-    const fechaHoy = new Date().toISOString().split('T')[0];
-    const queryVerificacion = `
+    const queryMesActual = `
       SELECT * FROM tickets 
       WHERE tipo_solicitud = 'CENTINELA' 
       AND equipo = ? 
       AND subcategoria = ? 
-      AND (DATE(created_at) = ? OR fecha = ?)
+      AND MONTH(fecha) = MONTH(CURRENT_DATE()) 
+      AND YEAR(fecha) = YEAR(CURRENT_DATE())
+      ORDER BY id ASC LIMIT 1
     `;
 
-    db.query(queryVerificacion, [ticketData.equipo, ticketData.subcategoria, fechaHoy, fechaHoy], (err, results) => {
-      if (err) return res.status(500).json({ error: 'Error al verificar duplicidad: ' + err.message });
+    db.query(queryMesActual, [ticketData.equipo, ticketData.subcategoria], (err, results) => {
+      if (err) return res.status(500).json({ error: 'Error al verificar mes: ' + err.message });
       
-      if (results.length > 0) {
-        return res.status(400).json({ 
-          error: `El nodo "${ticketData.equipo}" ya cuenta con un reporte Centinela de "${ticketData.subcategoria}" registrado el día de hoy.` 
-        });
-      }
+      const esSubsecuente = results.length > 0;
+      const folioAnterior = esSubsecuente ? results[0].folio : null;
 
-      continuarInsercionTicket(ticketData, res);
+      // Procesar e insertar el ticket
+      for (let key in ticketData) {
+        if (typeof ticketData[key] === 'object' && ticketData[key] !== null) {
+          ticketData[key] = JSON.stringify(ticketData[key]);
+        }
+      }
+      ticketData.created_at = obtenerFechaMySQL();
+
+      db.query('INSERT INTO tickets SET ?', ticketData, (err, result) => {
+        if (err) return res.status(500).json({ error: err.message });
+
+        const nuevoFolio = ticketData.folio;
+        const horaActual = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        
+        // Determinar el mensaje del chat según si ya se había reportado en el mes
+        let textoMensaje = `Folio #${nuevoFolio} registrado con éxito. Se te asignará un técnico en un tiempo máximo de 10 minutos.`;
+
+        if (esSubsecuente) {
+          textoMensaje = `Gracias por crear tu centinela con el folio #${nuevoFolio}. Validamos que un técnico ya se acercó previamente a realizar pruebas (Folio origen: #${folioAnterior}). Te agradecemos que lo sigas reportando para que tu campaña llegue al 100% y se hagan los cambios solicitados.`;
+        }
+
+        // Guardar el mensaje correspondiente en el chat
+        db.query('INSERT INTO mensajes_chat (folio, remitente, texto, hora) VALUES (?, ?, ?, ?)', [nuevoFolio, 'Sistema', textoMensaje, horaActual], (errChat) => {
+          if (errChat) console.error("Error al registrar mensaje en chat:", errChat);
+          res.json({ message: 'Ticket creado exitosamente', id: result.insertId, esSubsecuente });
+        });
+      });
     });
   } else {
     continuarInsercionTicket(ticketData, res);
@@ -190,7 +221,7 @@ app.get(['/api/usuarios', '/usuarios'], (req, res) => {
   });
 });
 
-// Actualizar Usuario (Ruta PUT añadida para solucionar el error 404)
+// Actualizar Usuario (Ruta PUT)
 app.put(['/api/usuarios/:id', '/usuarios/:id'], (req, res) => {
   const { id } = req.params;
   const { nombre, paterno, materno, campana, username, estatus, nivel, gruposAsignados } = req.body;
