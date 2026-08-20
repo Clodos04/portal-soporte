@@ -219,6 +219,16 @@ app.put(['/api/usuarios/:id', '/usuarios/:id'], (req, res) => {
   });
 });
 
+// NUEVA RUTA DELETE PARA USUARIOS (Soluciona el error 404)
+app.delete(['/api/usuarios/:id', '/usuarios/:id'], (req, res) => {
+  const { id } = req.params;
+  db.query('DELETE FROM usuarios WHERE id = ?', [id], (err, result) => {
+    if (err) return res.status(500).json({ error: err.message });
+    if (result.affectedRows === 0) return res.status(404).json({ error: 'No se encontró el usuario.' });
+    res.json({ message: 'Usuario eliminado correctamente' });
+  });
+});
+
 app.get(['/api/grupos', '/grupos'], (req, res) => {
   db.query('SELECT nombre FROM grupos', (err, results) => {
     if (err) return res.status(500).json({ error: err.message });
