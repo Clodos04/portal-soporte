@@ -76,7 +76,7 @@ app.get(['/api/tickets', '/tickets'], (req, res) => {
   });
 });
 
-// FUNCIÓN AUXILIAR PARA INSERTAR EN LA BD (Tickets normales)
+// FUNCIÓN AUXILIAR PARA INSERTAR TICKETS GENERALES (No Centinela)
 const continuarInsercionTicket = (ticketData, res) => {
   for (let key in ticketData) {
     if (typeof ticketData[key] === 'object' && ticketData[key] !== null) {
@@ -87,7 +87,6 @@ const continuarInsercionTicket = (ticketData, res) => {
   db.query('INSERT INTO tickets SET ?', ticketData, (err, result) => {
     if (err) return res.status(500).json({ error: err.message });
     
-    // Inyectar mensaje inicial estándar en el chat
     const horaActual = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     const textoMensaje = `Folio #${ticketData.folio} registrado con éxito. Se te asignará un técnico en un tiempo máximo de 10 minutos.`;
     
@@ -119,7 +118,6 @@ app.post(['/api/tickets', '/tickets'], (req, res) => {
       const esSubsecuente = results.length > 0;
       const folioAnterior = esSubsecuente ? results[0].folio : null;
 
-      // Procesar e insertar el ticket
       for (let key in ticketData) {
         if (typeof ticketData[key] === 'object' && ticketData[key] !== null) {
           ticketData[key] = JSON.stringify(ticketData[key]);
@@ -133,14 +131,12 @@ app.post(['/api/tickets', '/tickets'], (req, res) => {
         const nuevoFolio = ticketData.folio;
         const horaActual = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
         
-        // Determinar el mensaje del chat según si ya se había reportado en el mes
         let textoMensaje = `Folio #${nuevoFolio} registrado con éxito. Se te asignará un técnico en un tiempo máximo de 10 minutos.`;
 
         if (esSubsecuente) {
           textoMensaje = `Gracias por crear tu centinela con el folio #${nuevoFolio}. Validamos que un técnico ya se acercó previamente a realizar pruebas (Folio origen: #${folioAnterior}). Te agradecemos que lo sigas reportando para que tu campaña llegue al 100% y se hagan los cambios solicitados.`;
         }
 
-        // Guardar el mensaje correspondiente en el chat
         db.query('INSERT INTO mensajes_chat (folio, remitente, texto, hora) VALUES (?, ?, ?, ?)', [nuevoFolio, 'Sistema', textoMensaje, horaActual], (errChat) => {
           if (errChat) console.error("Error al registrar mensaje en chat:", errChat);
           res.json({ message: 'Ticket creado exitosamente', id: result.insertId, esSubsecuente });
