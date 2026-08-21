@@ -33,10 +33,10 @@ function NuevaSolicitudView({ user, usuarios = [], grupos = [], usuariosPorGrupo
   const [nivel, setNivel] = useState('Bajo');
   const [modo, setModo] = useState('WEB');
   const [archivo, setArchivo] = useState(null);
+  const [enviando, setEnviando] = useState(false); // <--- Candado anti-doble clic
 
   const tecnicosDisponibles = usuariosPorGrupo[grupo] || [];
 
-  // Función robusta para cargar/refrescar datos de Campañas e IPs desde el servidor
   const cargarDatosCentinela = async () => {
     try {
       const res = await fetch('/api/centinela/datos');
@@ -52,7 +52,6 @@ function NuevaSolicitudView({ user, usuarios = [], grupos = [], usuariosPorGrupo
     cargarDatosCentinela();
   }, []);
 
-  // Filtrar los nodos (equipos) estrictamente según el ID de la campaña seleccionada
   const listaEquiposActuales = equiposBD
     .filter(eq => String(eq.idcamp) === String(campanaSeleccionadaId))
     .map(eq => eq.equipo);
@@ -73,7 +72,7 @@ function NuevaSolicitudView({ user, usuarios = [], grupos = [], usuariosPorGrupo
     setCampanaSeleccionadaId(idCamp);
     const campObj = campanasBD.find(c => String(c.idcamp) === String(idCamp));
     setAreaCliente(campObj ? campObj.nombre : '');
-    setEquiposSeleccionados([]); // Limpiar selección previa al cambiar de campaña
+    setEquiposSeleccionados([]);
   };
 
   const handleCambioCategoria = (e) => {
@@ -89,6 +88,9 @@ function NuevaSolicitudView({ user, usuarios = [], grupos = [], usuariosPorGrupo
 
   const handleSubmit = (e) => {
     e.preventDefault();
+    if (enviando) return; // Bloquear si ya se está enviando
+    setEnviando(true);
+
     const nuevoFolio = Math.floor(10000 + Math.random() * 90000).toString();
     const fechaHoy = new Date().toISOString().split('T')[0];
 
@@ -379,9 +381,10 @@ function NuevaSolicitudView({ user, usuarios = [], grupos = [], usuariosPorGrupo
             </button>
             <button 
               type="submit" 
-              className="bg-indigo-600 hover:bg-indigo-500 text-white px-6 py-2.5 rounded-xl font-bold text-sm shadow-lg shadow-indigo-600/30 transition-colors cursor-pointer"
+              disabled={enviando}
+              className="bg-indigo-600 hover:bg-indigo-500 text-white px-6 py-2.5 rounded-xl font-bold text-sm shadow-lg shadow-indigo-600/30 transition-colors cursor-pointer disabled:opacity-50"
             >
-              Guardar Solicitud
+              {enviando ? 'Guardando...' : 'Guardar Solicitud'}
             </button>
           </div>
 
