@@ -326,10 +326,10 @@ app.get(['/api/kpis/tiempos', '/kpis/tiempos'], (req, res) => {
   });
 });
 
-// NUEVO BLOQUE: Manejo correcto de estáticos y rutas bajo el subdirectorio /SAV_tiV2
+// Manejo correcto de estáticos y rutas bajo el subdirectorio /SAV_tiV2
 app.use('/SAV_tiV2', express.static(path.join(__dirname, 'dist')));
 
-app.get('/SAV_tiV2/*', (req, res) => {
+app.get(/^\/SAV_tiV2\/?.*/, (req, res) => {
   res.sendFile(path.join(__dirname, 'dist', 'index.html'));
 });
 
