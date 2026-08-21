@@ -4,5 +4,5 @@ import react from '@vitejs/plugin-react'
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react()],
-  base: '/SAV_tiV2', // <--- Añade esta línea
+  base: '/SAV_tiV2/', // <--- Añade esta línea
 })
