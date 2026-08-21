@@ -326,8 +326,16 @@ app.get(['/api/kpis/tiempos', '/kpis/tiempos'], (req, res) => {
   });
 });
 
-app.use(express.static(path.join(__dirname, 'dist')));
-app.get(/(.*)/, (req, res) => res.sendFile(path.join(__dirname, 'dist', 'index.html')));
+// NUEVO BLOQUE: Manejo correcto de estáticos y rutas bajo el subdirectorio /SAV_tiV2
+app.use('/SAV_tiV2', express.static(path.join(__dirname, 'dist')));
+
+app.get('/SAV_tiV2/*', (req, res) => {
+  res.sendFile(path.join(__dirname, 'dist', 'index.html'));
+});
+
+app.get('/', (req, res) => {
+  res.redirect('/SAV_tiV2/');
+});
 
 const PORT = process.env.PORT || 80;
 app.listen(PORT, () => console.log(`Servidor corriendo en el puerto ${PORT}`));
