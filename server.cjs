@@ -1,5 +1,5 @@
 const express = require('express');
-const mysql = require('mysql2');
+const mysql = mysql2 = require('mysql2'); // o require('mysql2')
 const cors = require('cors');
 const path = require('path');
 
@@ -65,14 +65,23 @@ const handleLogin = (req, res) => {
 };
 app.post(['/api/login', '/login'], handleLogin);
 
-// Tickets (CRUD)
+// Tickets (CRUD) - CORREGIDO CON ORDER BY id DESC PARA QUE LO NUEVO SALGA ARRIBA
 app.get(['/api/tickets', '/tickets'], (req, res) => {
-  db.query('SELECT * FROM tickets', (err, results) => {
+  db.query('SELECT * FROM tickets ORDER BY id DESC', (err, results) => {
     if (err) return res.status(500).json({ error: err.message });
     res.json(results.map(t => ({
       ...t,
       notas: typeof t.notas === 'string' ? JSON.parse(t.notas || '[]') : (t.notas || [])
     })));
+  });
+});
+
+// NUEVA RUTA: Conteo exacto solo de los tickets creados HOY
+app.get(['/api/tickets/contar-hoy', '/tickets/contar-hoy'], (req, res) => {
+  const query = "SELECT COUNT(*) as total FROM tickets WHERE DATE(fecha) = CURDATE()";
+  db.query(query, (err, results) => {
+    if (err) return res.status(500).json({ error: err.message });
+    res.json({ totalHoy: results[0].total });
   });
 });
 
