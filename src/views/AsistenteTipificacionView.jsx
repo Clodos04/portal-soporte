@@ -19,6 +19,7 @@ function AsistenteTipificacionView({ categorias = [], campanas = [], equipos = [
   const [modo, setModo] = useState('WEB');
   const [archivo, setArchivo] = useState(null);
   const [errorDuplicado, setErrorDuplicado] = useState('');
+  const [enviando, setEnviando] = useState(false); // <--- Candado anti-doble clic
 
   const opcionesFijas = [
     { id: 1, nombre: "HARDWARE (EQUIPO)" },
@@ -92,7 +93,10 @@ function AsistenteTipificacionView({ categorias = [], campanas = [], equipos = [
   };
 
   const handleFinalizarReporte = async () => {
+    if (enviando) return; // Bloquear si ya hay una petición en curso
+    setEnviando(true);
     setErrorDuplicado('');
+
     const fechaHoy = new Date().toISOString().split('T')[0];
     const campObj = campanas.find(c => String(c.idcamp) === String(campanaSeleccionadaId));
 
@@ -134,10 +138,10 @@ function AsistenteTipificacionView({ categorias = [], campanas = [], equipos = [
 
           const data = await response.json();
 
-          // Si el servidor detecta duplicado (400), detenemos todo y mostramos el error visualmente
           if (!response.ok) {
             setErrorDuplicado(data.error || `El nodo "${nodoUnico}" ya cuenta con un reporte de este componente hoy.`);
-            return; // Frena la ejecución y evita abrir el chat o dar por creado
+            setEnviando(false);
+            return;
           }
 
           if (onGuardarTicket) {
@@ -145,10 +149,12 @@ function AsistenteTipificacionView({ categorias = [], campanas = [], equipos = [
           }
         } catch (err) {
           setErrorDuplicado('Error de red al intentar conectar con el servidor.');
+          setEnviando(false);
           return;
         }
       }
 
+      setEnviando(false);
       if (onCancelar) onCancelar();
       return;
     }
@@ -190,6 +196,8 @@ function AsistenteTipificacionView({ categorias = [], campanas = [], equipos = [
       }
     } catch (e) {
       console.error(e);
+    } finally {
+      setEnviando(false);
     }
   };
 
@@ -617,9 +625,10 @@ function AsistenteTipificacionView({ categorias = [], campanas = [], equipos = [
                   <button 
                     type="button" 
                     onClick={handleFinalizarReporte} 
-                    className="bg-indigo-600 hover:bg-indigo-500 text-white px-5 py-2 rounded-xl font-bold text-xs shadow-lg shadow-indigo-600/30 cursor-pointer"
+                    disabled={enviando}
+                    className="bg-indigo-600 hover:bg-indigo-500 text-white px-5 py-2 rounded-xl font-bold text-xs shadow-lg shadow-indigo-600/30 cursor-pointer disabled:opacity-50"
                   >
-                    Guardar {tipoReporte === 'CENTINELA' ? `(${equiposSeleccionados.length}) Reportes Centinela` : 'Solicitud'}
+                    {enviando ? 'Guardando...' : `Guardar ${tipoReporte === 'CENTINELA' ? `(${equiposSeleccionados.length}) Reportes Centinela` : 'Solicitud'}`}
                   </button>
                 </div>
               </div>
