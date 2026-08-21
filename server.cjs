@@ -96,52 +96,60 @@ app.post(['/api/tickets', '/tickets'], (req, res) => {
   const ticketData = { ...req.body };
   delete ticketData.archivos;
 
-  if (ticketData.tipo_solicitud === 'CENTINELA' && ticketData.equipo && ticketData.subcategoria) {
-    const queryMesActual = `
-      SELECT * FROM tickets 
-      WHERE tipo_solicitud = 'CENTINELA' 
-      AND equipo = ? 
-      AND subcategoria = ? 
-      AND MONTH(fecha) = MONTH(CURRENT_DATE()) 
-      AND YEAR(fecha) = YEAR(CURRENT_DATE())
-      ORDER BY id ASC LIMIT 1
-    `;
+  // CANDADO ANTI-DUPLICADOS: Validar si el folio ya existe en la base de datos
+  db.query('SELECT id FROM tickets WHERE folio = ?', [ticketData.folio], (errCheck, existing) => {
+    if (errCheck) return res.status(500).json({ error: errCheck.message });
+    if (existing && existing.length > 0) {
+      return res.status(400).json({ error: 'Este ticket ya fue registrado previamente.' });
+    }
 
-    db.query(queryMesActual, [ticketData.equipo, ticketData.subcategoria], (err, results) => {
-      if (err) return res.status(500).json({ error: 'Error al verificar mes: ' + err.message });
-      
-      const esSubsecuente = results.length > 0;
-      const folioAnterior = esSubsecuente ? results[0].folio : null;
+    if (ticketData.tipo_solicitud === 'CENTINELA' && ticketData.equipo && ticketData.subcategoria) {
+      const queryMesActual = `
+        SELECT * FROM tickets 
+        WHERE tipo_solicitud = 'CENTINELA' 
+        AND equipo = ? 
+        AND subcategoria = ? 
+        AND MONTH(fecha) = MONTH(CURRENT_DATE()) 
+        AND YEAR(fecha) = YEAR(CURRENT_DATE())
+        ORDER BY id ASC LIMIT 1
+      `;
 
-      for (let key in ticketData) {
-        if (typeof ticketData[key] === 'object' && ticketData[key] !== null) {
-          ticketData[key] = JSON.stringify(ticketData[key]);
-        }
-      }
-      ticketData.created_at = obtenerFechaMySQL();
-
-      db.query('INSERT INTO tickets SET ?', ticketData, (err, result) => {
-        if (err) return res.status(500).json({ error: err.message });
-
-        const nuevoFolio = ticketData.folio;
-        const horaActual = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      db.query(queryMesActual, [ticketData.equipo, ticketData.subcategoria], (err, results) => {
+        if (err) return res.status(500).json({ error: 'Error al verificar mes: ' + err.message });
         
-        let textoMensaje = `Folio #${nuevoFolio} registrado con éxito. Se te asignará un técnico en un tiempo máximo de 10 minutos.`;
+        const esSubsecuente = results.length > 0;
+        const folioAnterior = esSubsecuente ? results[0].folio : null;
 
-        if (esSubsecuente) {
-          textoMensaje = `Gracias por crear tu centinela con el folio #${nuevoFolio}. Validamos que un técnico ya se acercó previamente a realizar pruebas (Folio origen: #${folioAnterior}). Te agradecemos que lo sigas reportando para que tu campaña llegue al 100% y se hagan los cambios solicitados.`;
-          db.query("UPDATE tickets SET estatus = 'Cerrado', colorEstatus = 'bg-green-500' WHERE folio = ?", [nuevoFolio]);
+        for (let key in ticketData) {
+          if (typeof ticketData[key] === 'object' && ticketData[key] !== null) {
+            ticketData[key] = JSON.stringify(ticketData[key]);
+          }
         }
+        ticketData.created_at = obtenerFechaMySQL();
 
-        db.query('INSERT INTO mensajes_chat (folio, remitente, texto, hora) VALUES (?, ?, ?, ?)', [nuevoFolio, 'Sistema', textoMensaje, horaActual], (errChat) => {
-          if (errChat) console.error("Error al registrar mensaje en chat:", errChat);
-          res.json({ message: 'Ticket creado exitosamente', id: result.insertId, esSubsecuente });
+        db.query('INSERT INTO tickets SET ?', ticketData, (err, result) => {
+          if (err) return res.status(500).json({ error: err.message });
+
+          const nuevoFolio = ticketData.folio;
+          const horaActual = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+          
+          let textoMensaje = `Folio #${nuevoFolio} registrado con éxito. Se te asignará un técnico en un tiempo máximo de 10 minutos.`;
+
+          if (esSubsecuente) {
+            textoMensaje = `Gracias por crear tu centinela con el folio #${nuevoFolio}. Validamos que un técnico ya se acercó previamente a realizar pruebas (Folio origen: #${folioAnterior}). Te agradecemos que lo sigas reportando para que tu campaña llegue al 100% y se hagan los cambios solicitados.`;
+            db.query("UPDATE tickets SET estatus = 'Cerrado', colorEstatus = 'bg-green-500' WHERE folio = ?", [nuevoFolio]);
+          }
+
+          db.query('INSERT INTO mensajes_chat (folio, remitente, texto, hora) VALUES (?, ?, ?, ?)', [nuevoFolio, 'Sistema', textoMensaje, horaActual], (errChat) => {
+            if (errChat) console.error("Error al registrar mensaje en chat:", errChat);
+            res.json({ message: 'Ticket creado exitosamente', id: result.insertId, esSubsecuente });
+          });
         });
       });
-    });
-  } else {
-    continuarInsercionTicket(ticketData, res);
-  }
+    } else {
+      continuarInsercionTicket(ticketData, res);
+    }
+  });
 });
 
 app.put(['/api/tickets/:folio', '/tickets/:folio'], (req, res) => {
@@ -219,7 +227,6 @@ app.put(['/api/usuarios/:id', '/usuarios/:id'], (req, res) => {
   });
 });
 
-// NUEVA RUTA DELETE PARA USUARIOS (Soluciona el error 404)
 app.delete(['/api/usuarios/:id', '/usuarios/:id'], (req, res) => {
   const { id } = req.params;
   db.query('DELETE FROM usuarios WHERE id = ?', [id], (err, result) => {
