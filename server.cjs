@@ -146,7 +146,7 @@ app.post(['/api/tickets', '/tickets'], (req, res) => {
 
           if (esSubsecuente) {
             textoMensaje = `Gracias por crear tu centinela con el folio #${nuevoFolio}. Validamos que un técnico ya se acercó previamente a realizar pruebas (Folio origen: #${folioAnterior}). Te agradecemos que lo sigas reportando para que tu campaña llegue al 100% y se hagan los cambios solicitados.`;
-            db.query("UPDATE tickets SET estatus = 'Cerrado', colorEstatus = 'bg-green-500' WHERE folio = ?", [nuevoFolio]);
+            db.query("UPDATE tickets SET estatus = 'Cerrado', colorEstatus = 'bg-red-600' WHERE folio = ?", [nuevoFolio]);
           }
 
           db.query('INSERT INTO mensajes_chat (folio, remitente, texto, hora) VALUES (?, ?, ?, ?)', [nuevoFolio, 'Sistema', textoMensaje, horaActual], (errChat) => {
