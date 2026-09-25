@@ -1,10 +1,26 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 
 function LiveChatView({ folio, user, onFinalizarChat, onAbrirModalEdicion, ticket }) {
   const [mensajes, setMensajes] = useState([]);
   const [nuevoMensaje, setNuevoMensaje] = useState('');
   const [conectado, setConectado] = useState(false);
   const [nombreTecnico, setNombreTecnico] = useState('');
+  
+  // Referencia para rastrear la cantidad previa de mensajes y detectar nuevos
+  const cantidadMensajesPrevios = useRef(0);
+
+  // Función para reproducir el sonido y la notificación cuando llega un mensaje nuevo
+  const reproducirAlertaChat = (remitente, textoMensaje) => {
+    const audio = new Audio('/Sonidos/minecraft_exp.mp3');
+    audio.play().catch(err => console.log("Audio bloqueado por el navegador:", err));
+
+    if ("Notification" in window && Notification.permission === "granted") {
+      new Notification(`Nuevo mensaje de ${remitente}`, {
+        body: textoMensaje,
+        icon: "/favicon.ico"
+      });
+    }
+  };
 
   useEffect(() => {
     if (!folio) return;
@@ -39,6 +55,15 @@ function LiveChatView({ folio, user, onFinalizarChat, onAbrirModalEdicion, ticke
               body: JSON.stringify(mensajeInicial)
             });
           } else {
+            // Detectar si hay mensajes nuevos de otro usuario para activar el sonido
+            if (cantidadMensajesPrevios.current > 0 && data.length > cantidadMensajesPrevios.current) {
+              const ultimoMensaje = data[data.length - 1];
+              // Si el último mensaje NO fue enviado por el usuario actual, suena la alerta
+              if (ultimoMensaje.remitente !== user?.name) {
+                reproducirAlertaChat(ultimoMensaje.remitente, ultimoMensaje.texto);
+              }
+            }
+            cantidadMensajesPrevios.current = data.length;
             setMensajes(data);
           }
         }
@@ -74,7 +99,10 @@ function LiveChatView({ folio, user, onFinalizarChat, onAbrirModalEdicion, ticke
         setNuevoMensaje('');
         const res = await fetch(`/api/chat/${folio}`);
         const data = await res.json();
-        if (Array.isArray(data)) setMensajes(data);
+        if (Array.isArray(data)) {
+          cantidadMensajesPrevios.current = data.length;
+          setMensajes(data);
+        }
       }
     } catch (error) {
       console.error('Error al enviar mensaje:', error);
