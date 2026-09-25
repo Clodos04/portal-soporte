@@ -59,6 +59,20 @@ function App() {
   const [categorias, setCategorias] = useState([]);
   const [estadisticasEncuestas, setEstadisticasEncuestas] = useState([]);
 
+  // Control para evitar que la flecha "Atrás" del navegador saque al usuario de la sesión
+  useEffect(() => {
+    const handlePopState = (event) => {
+      // Si el usuario está en el chat o creando una solicitud y presiona "atrás", lo mandamos a solicitudes de forma segura
+      if (currentView === 'live-chat' || currentView === 'nueva-solicitud') {
+        event.preventDefault();
+        setCurrentView('solicitudes');
+      }
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, [currentView]);
+
   // Función para reproducir sonido, mostrar cuadro visual y lanzar notificación nativa del sistema
   const reproducirAlerta = (mensajeTexto) => {
     const audio = new Audio('/Sonidos/minecraft_exp.mp3');
