@@ -9,7 +9,7 @@ function Header({ user, onLogout }) {
         <img 
           src={logoContactus} 
           alt="Contactus Contact Center" 
-          className="h-10 w-auto object-contain" 
+          className="h-10 w-auto object-contain brightness-0 invert"
         />
       </div>
       <div className="flex items-center gap-4">
