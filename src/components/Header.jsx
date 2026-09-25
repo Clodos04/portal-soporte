@@ -1,12 +1,13 @@
 import React from 'react';
+import logoContactus from '../assets/logo.png'; // Importación directa de la imagen
 
 function Header({ user, onLogout }) {
   return (
     <header className="bg-slate-800 shadow-md px-6 py-3 flex justify-between items-center border-b border-slate-700 relative z-10">
       <div className="flex items-center">
-        {/* Logotipo oficial en lugar del texto */}
+        {/* Logotipo importado directamente */}
         <img 
-          src="/logo.png" 
+          src={logoContactus} 
           alt="Contactus Contact Center" 
           className="h-10 w-auto object-contain" 
         />
