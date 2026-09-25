@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import logoContactus from '../assets/logo.png'; // Asegúrate de que la ruta coincida con la ubicación de tu carpeta assets
 
 function Login({ onLogin }) {
   const [username, setUsername] = useState('');
@@ -44,14 +45,16 @@ function Login({ onLogin }) {
 
       <div className="relative z-10 w-full max-w-md p-8 mx-4 bg-slate-900/80 backdrop-blur-xl rounded-3xl border border-slate-800 shadow-2xl shadow-indigo-950/40">
         
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-indigo-600/20 border border-indigo-500/30 text-indigo-400 text-2xl mb-4 shadow-inner">
-            🎧
+        {/* LOGOTIPO OFICIAL */}
+        <div className="flex flex-col items-center mb-8">
+          <div className="px-4 py-3 rounded-2xl bg-indigo-600/10 border border-indigo-500/20 mb-3 shadow-inner flex items-center justify-center">
+            <img 
+              src={logoContactus} 
+              alt="Contactus Contact Center" 
+              className="h-10 w-auto object-contain brightness-0 invert" 
+            />
           </div>
-          <h1 className="text-3xl font-black text-white tracking-wider uppercase bg-gradient-to-r from-white via-indigo-200 to-indigo-400 bg-clip-text text-transparent">
-            CONTACTUS
-          </h1>
-          <p className="text-xs font-semibold text-slate-400 tracking-widest uppercase mt-1">
+          <p className="text-[11px] font-semibold text-slate-400 tracking-widest uppercase mt-1">
             Centro de Soporte Técnico
           </p>
         </div>
