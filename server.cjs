@@ -1,5 +1,5 @@
 const express = require('express');
-const mysql = mysql2 = require('mysql2'); // o require('mysql2')
+const mysql = require('mysql2');
 const cors = require('cors');
 const path = require('path');
 
@@ -334,6 +334,11 @@ app.get(['/api/kpis/tiempos', '/kpis/tiempos'], (req, res) => {
     res.json(results.map(t => ({ id: t.id, folio: t.folio, minutos_resolucion: Math.round(((t.estatus === 'Cerrado' ? new Date(t.updated_at) : new Date()) - new Date(t.created_at)) / (1000 * 60)) || 5 })));
   });
 });
+
+// ==========================================
+// ARCHIVOS PÚBLICOS (Para audios, imágenes, etc.)
+// ==========================================
+app.use(express.static(path.join(__dirname, 'public')));
 
 // Manejo correcto de estáticos y rutas bajo el subdirectorio /SAV_tiV2
 app.use('/SAV_tiV2', express.static(path.join(__dirname, 'dist')));
