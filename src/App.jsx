@@ -41,7 +41,7 @@ function App() {
 
   const [categoriaParaSubcategorias, setCategoriaParaSubcategorias] = useState(null);
 
-  // Estado para la notificación flotante visual (toast)
+  // Estado para la notificación flotante visual interna (toast)
   const [alertaVisual, setAlertaVisual] = useState(null);
 
   const columnLabels = {
@@ -59,18 +59,32 @@ function App() {
   const [categorias, setCategorias] = useState([]);
   const [estadisticasEncuestas, setEstadisticasEncuestas] = useState([]);
 
-  // Función para reproducir el sonido y mostrar el aviso visual
+  // Función para reproducir sonido, mostrar notificación interna y la notificación nativa del sistema (en segundo plano)
   const reproducirAlerta = (mensajeTexto) => {
     const audio = new Audio('/Sonidos/minecraft_exp.mp3');
     audio.play().catch(err => console.log("Audio bloqueado por el navegador:", err));
 
+    // Cuadro visual dentro de la app
     setAlertaVisual(mensajeTexto);
     setTimeout(() => {
       setAlertaVisual(null);
     }, 4000);
+
+    // Notificación nativa flotante del sistema operativo (funciona aunque estés en otra pestaña o ventana)
+    if ("Notification" in window && Notification.permission === "granted") {
+      new Notification("Contactus - Actualización", {
+        body: mensajeTexto,
+        icon: "/favicon.ico"
+      });
+    }
   };
 
   useEffect(() => {
+    // Solicitar permiso de notificaciones nativas del navegador al cargar
+    if ("Notification" in window && Notification.permission !== "granted") {
+      Notification.requestPermission();
+    }
+
     const cargarDatosIniciales = async () => {
       try {
         // 1. Cargar y verificar cambios en tickets
@@ -98,7 +112,7 @@ function App() {
         // 2. Revisar mensajes del chat activo si está abierto
         if (folioChatActivo) {
           const resChat = await fetch(`/api/chat/${folioChatActivo}`);
-          // Puedes agregar validación de mensajes aquí si tu API lo requiere
+          // Validación manejada dentro de LiveChatView
         }
 
       } catch (err) {
