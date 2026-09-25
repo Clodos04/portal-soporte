@@ -41,6 +41,9 @@ function App() {
 
   const [categoriaParaSubcategorias, setCategoriaParaSubcategorias] = useState(null);
 
+  // Estado para la notificación flotante visual (toast)
+  const [alertaVisual, setAlertaVisual] = useState(null);
+
   const columnLabels = {
     tecnico: 'Técnico', creador: 'Creado por', asunto: 'Asunto', descripcion: 'Descripción',
     campana: 'Campaña', fecha: 'Fecha', grupo: 'Grupo', categoria: 'Categoría', subcategoria: 'Subcategoría'
@@ -56,50 +59,51 @@ function App() {
   const [categorias, setCategorias] = useState([]);
   const [estadisticasEncuestas, setEstadisticasEncuestas] = useState([]);
 
-  // Función para reproducir la alerta sonora y notificación
-  const reproducirAlerta = () => {
+  // Función para reproducir el sonido y mostrar el aviso visual
+  const reproducirAlerta = (mensajeTexto) => {
     const audio = new Audio('/Sonidos/minecraft_exp.mp3');
     audio.play().catch(err => console.log("Audio bloqueado por el navegador:", err));
 
-    if (Notification.permission === "granted") {
-      new Notification("Actualización en el Ticket", {
-        body: "Hay cambios en tu ticket, asignación o estatus.",
-        icon: "/favicon.ico"
-      });
-    }
+    setAlertaVisual(mensajeTexto);
+    setTimeout(() => {
+      setAlertaVisual(null);
+    }, 4000);
   };
 
   useEffect(() => {
-    // Solicitar permiso de notificaciones del navegador
-    if (Notification.permission !== "granted") {
-      Notification.requestPermission();
-    }
-
-    const cargarDatosIniciales = () => {
-      fetch('/api/tickets')
-        .then(res => res.json())
-        .then(data => { 
-          if (Array.isArray(data)) {
-            // Comparamos con los tickets anteriores para detectar cambios (técnico, estatus)
-            setTickets(prevTickets => {
-              if (prevTickets.length > 0) {
-                data.forEach(ticketNuevo => {
-                  const anterior = prevTickets.find(t => t.folio === ticketNuevo.folio);
-                  if (anterior) {
-                    if (
-                      anterior.estatus !== ticketNuevo.estatus || 
-                      anterior.tecnico !== ticketNuevo.tecnico
-                    ) {
-                      reproducirAlerta();
-                    }
+    const cargarDatosIniciales = async () => {
+      try {
+        // 1. Cargar y verificar cambios en tickets
+        const resTickets = await fetch('/api/tickets');
+        const dataTickets = await resTickets.json();
+        
+        if (Array.isArray(dataTickets)) {
+          setTickets(prevTickets => {
+            if (prevTickets.length > 0) {
+              dataTickets.forEach(ticketNuevo => {
+                const anterior = prevTickets.find(t => t.folio === ticketNuevo.folio);
+                if (anterior) {
+                  if (anterior.estatus !== ticketNuevo.estatus) {
+                    reproducirAlerta(`Ticket #${ticketNuevo.folio} cambió a: ${ticketNuevo.estatus}`);
+                  } else if (anterior.tecnico !== ticketNuevo.tecnico) {
+                    reproducirAlerta(`Ticket #${ticketNuevo.folio} asignado a: ${ticketNuevo.tecnico}`);
                   }
-                });
-              }
-              return data;
-            });
-          } 
-        })
-        .catch(err => console.error("Error al actualizar tickets:", err));
+                }
+              });
+            }
+            return dataTickets;
+          });
+        }
+
+        // 2. Revisar mensajes del chat activo si está abierto
+        if (folioChatActivo) {
+          const resChat = await fetch(`/api/chat/${folioChatActivo}`);
+          // Puedes agregar validación de mensajes aquí si tu API lo requiere
+        }
+
+      } catch (err) {
+        console.error("Error al actualizar datos:", err);
+      }
     };
 
     cargarDatosIniciales();
@@ -131,9 +135,9 @@ function App() {
       })
       .catch(err => console.error("Error al cargar encuestas:", err));
 
-    const intervaloRefresco = setInterval(cargarDatosIniciales, 10000);
+    const intervaloRefresco = setInterval(cargarDatosIniciales, 5000);
     return () => clearInterval(intervaloRefresco);
-  }, []);
+  }, [folioChatActivo]);
 
   const handleSetCategorias = (nuevasCategorias) => {
     setCategorias(nuevasCategorias);
@@ -250,6 +254,17 @@ function App() {
 
   return (
     <div className="min-h-screen bg-slate-900 font-sans pb-10 text-slate-200 relative">
+      {/* CUADRO DE NOTIFICACIÓN FLOTANTE VISUAL (TOAST) */}
+      {alertaVisual && (
+        <div className="fixed bottom-6 right-6 z-50 bg-slate-800 border border-indigo-500/50 text-white px-5 py-4 rounded-2xl shadow-2xl flex items-center space-x-3 animate-bounce">
+          <span className="text-xl">🔔</span>
+          <div>
+            <p className="text-xs font-bold text-indigo-400 uppercase tracking-wider">Actualización Portal</p>
+            <p className="text-sm font-medium">{alertaVisual}</p>
+          </div>
+        </div>
+      )}
+
       {isColumnCustomizerOpen && (
         <ColumnCustomizerModal 
           activeColumns={activeColumns}
