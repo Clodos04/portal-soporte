@@ -3,9 +3,13 @@ import React from 'react';
 function Header({ user, onLogout }) {
   return (
     <header className="bg-slate-800 shadow-md px-6 py-3 flex justify-between items-center border-b border-slate-700 relative z-10">
-      <div className="flex flex-col">
-        <span className="text-2xl font-bold text-indigo-400 tracking-tight">CONTACTUS</span>
-        <span className="text-[10px] text-slate-400 uppercase tracking-widest -mt-1">Contact Center</span>
+      <div className="flex items-center">
+        {/* Logotipo oficial en lugar del texto */}
+        <img 
+          src="/logo.png" 
+          alt="Contactus Contact Center" 
+          className="h-10 w-auto object-contain" 
+        />
       </div>
       <div className="flex items-center gap-4">
         <div className="text-right hidden sm:block">
