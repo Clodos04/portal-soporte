@@ -56,11 +56,49 @@ function App() {
   const [categorias, setCategorias] = useState([]);
   const [estadisticasEncuestas, setEstadisticasEncuestas] = useState([]);
 
+  // Función para reproducir la alerta sonora y notificación
+  const reproducirAlerta = () => {
+    const audio = new Audio('/Sonidos/minecraft_exp.mp3');
+    audio.play().catch(err => console.log("Audio bloqueado por el navegador:", err));
+
+    if (Notification.permission === "granted") {
+      new Notification("Actualización en el Ticket", {
+        body: "Hay cambios en tu ticket, asignación o estatus.",
+        icon: "/favicon.ico"
+      });
+    }
+  };
+
   useEffect(() => {
+    // Solicitar permiso de notificaciones del navegador
+    if (Notification.permission !== "granted") {
+      Notification.requestPermission();
+    }
+
     const cargarDatosIniciales = () => {
       fetch('/api/tickets')
         .then(res => res.json())
-        .then(data => { if (Array.isArray(data)) setTickets(data); })
+        .then(data => { 
+          if (Array.isArray(data)) {
+            // Comparamos con los tickets anteriores para detectar cambios (técnico, estatus)
+            setTickets(prevTickets => {
+              if (prevTickets.length > 0) {
+                data.forEach(ticketNuevo => {
+                  const anterior = prevTickets.find(t => t.folio === ticketNuevo.folio);
+                  if (anterior) {
+                    if (
+                      anterior.estatus !== ticketNuevo.estatus || 
+                      anterior.tecnico !== ticketNuevo.tecnico
+                    ) {
+                      reproducirAlerta();
+                    }
+                  }
+                });
+              }
+              return data;
+            });
+          } 
+        })
         .catch(err => console.error("Error al actualizar tickets:", err));
     };
 
