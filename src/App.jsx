@@ -59,28 +59,39 @@ function App() {
   const [categorias, setCategorias] = useState([]);
   const [estadisticasEncuestas, setEstadisticasEncuestas] = useState([]);
 
-  // Función para reproducir sonido, mostrar notificación interna y la notificación nativa del sistema (en segundo plano)
+  // Función para reproducir sonido, mostrar cuadro visual y lanzar notificación nativa del sistema
   const reproducirAlerta = (mensajeTexto) => {
     const audio = new Audio('/Sonidos/minecraft_exp.mp3');
     audio.play().catch(err => console.log("Audio bloqueado por el navegador:", err));
 
-    // Cuadro visual dentro de la app
+    // 1. Cuadro visual dentro de la app (toast)
     setAlertaVisual(mensajeTexto);
     setTimeout(() => {
       setAlertaVisual(null);
     }, 4000);
 
-    // Notificación nativa flotante del sistema operativo (funciona aunque estés en otra pestaña o ventana)
-    if ("Notification" in window && Notification.permission === "granted") {
-      new Notification("Contactus - Actualización", {
-        body: mensajeTexto,
-        icon: "/favicon.ico"
-      });
+    // 2. Notificación nativa flotante del sistema operativo (funciona en segundo plano o en otra ventana)
+    if ("Notification" in window) {
+      if (Notification.permission === "granted") {
+        new Notification("Contactus - Actualización", {
+          body: mensajeTexto,
+          icon: "/favicon.ico"
+        });
+      } else if (Notification.permission !== "denied") {
+        Notification.requestPermission().then(permission => {
+          if (permission === "granted") {
+            new Notification("Contactus - Actualización", {
+              body: mensajeTexto,
+              icon: "/favicon.ico"
+            });
+          }
+        });
+      }
     }
   };
 
   useEffect(() => {
-    // Solicitar permiso de notificaciones nativas del navegador al cargar
+    // Solicitar permiso de notificaciones nativas al cargar la app
     if ("Notification" in window && Notification.permission !== "granted") {
       Notification.requestPermission();
     }
