@@ -33,10 +33,11 @@ function AdminCategoriasView({ categorias = [], setCategorias, user, onVerSubcat
 
     if (!categoriaActual) {
       const nueva = {
-        id: Math.floor(100 + Math.random() * 900),
+        id: categorias.length > 0 ? Math.max(...categorias.map(c => Number(c.id) || 0)) + 1 : 1,
         nombre: formNombre.trim().toUpperCase(),
         estatus: formEstatus,
         fecAlta: fechaActual,
+        fec_alta: fechaActual,
         usuario: usuarioNombre,
         subcategorias: []
       };
@@ -108,7 +109,7 @@ function AdminCategoriasView({ categorias = [], setCategorias, user, onVerSubcat
                           {cat.estatus || 'ACTIVO'}
                         </span>
                       </td>
-                      <td className="px-4 py-3 text-slate-400 text-xs">{cat.fecAlta || 'N/D'}</td>
+                      <td className="px-4 py-3 text-slate-400 text-xs">{cat.fecAlta || cat.fec_alta || 'N/D'}</td>
                       <td className="px-4 py-3 text-slate-300">{cat.usuario || 'SISTEMA'}</td>
                       <td className="px-4 py-3 text-center flex justify-center gap-2">
                         <button onClick={() => abrirEdicion(cat)} className="p-1.5 bg-blue-600/20 text-blue-400 hover:bg-blue-600 hover:text-white rounded transition-colors" title="Editar">
@@ -146,7 +147,7 @@ function AdminCategoriasView({ categorias = [], setCategorias, user, onVerSubcat
               required
               value={formNombre} 
               onChange={(e) => setFormNombre(e.target.value)} 
-              placeholder="Ej. APLICACIONES INHOUSE"
+              placeholder="Ej. DISPOSITIVOS"
               className="w-full px-4 py-2.5 rounded bg-slate-900 border border-slate-700 text-white outline-none uppercase text-sm" 
             />
           </div>
