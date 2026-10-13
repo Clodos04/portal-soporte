@@ -1,5 +1,5 @@
 const express = require('express');
-const mysql = require('mysql2');
+const mysql = mysql2 = require('mysql2');
 const cors = require('cors');
 const path = require('path');
 
@@ -65,7 +65,7 @@ const handleLogin = (req, res) => {
 };
 app.post(['/api/login', '/login'], handleLogin);
 
-// Tickets (CRUD) - CORREGIDO CON ORDER BY id DESC PARA QUE LO NUEVO SALGA ARRIBA
+// Tickets (CRUD)
 app.get(['/api/tickets', '/tickets'], (req, res) => {
   db.query('SELECT * FROM tickets ORDER BY id DESC', (err, results) => {
     if (err) return res.status(500).json({ error: err.message });
@@ -76,7 +76,7 @@ app.get(['/api/tickets', '/tickets'], (req, res) => {
   });
 });
 
-// NUEVA RUTA: Conteo exacto solo de los tickets creados HOY
+// Conteo exacto solo de los tickets creados HOY
 app.get(['/api/tickets/contar-hoy', '/tickets/contar-hoy'], (req, res) => {
   const query = "SELECT COUNT(*) as total FROM tickets WHERE DATE(fecha) = CURDATE()";
   db.query(query, (err, results) => {
@@ -105,7 +105,6 @@ app.post(['/api/tickets', '/tickets'], (req, res) => {
   const ticketData = { ...req.body };
   delete ticketData.archivos;
 
-  // CANDADO ANTI-DUPLICADOS: Validar si el folio ya existe en la base de datos
   db.query('SELECT id FROM tickets WHERE folio = ?', [ticketData.folio], (errCheck, existing) => {
     if (errCheck) return res.status(500).json({ error: errCheck.message });
     if (existing && existing.length > 0) {
@@ -146,7 +145,7 @@ app.post(['/api/tickets', '/tickets'], (req, res) => {
 
           if (esSubsecuente) {
             textoMensaje = `Gracias por crear tu centinela con el folio #${nuevoFolio}. Validamos que un técnico ya se acercó previamente a realizar pruebas (Folio origen: #${folioAnterior}). Te agradecemos que lo sigas reportando para que tu campaña llegue al 100% y se hagan los cambios solicitados.`;
-            db.query("UPDATE tickets SET estatus = 'Cerrado', colorEstatus = 'bg-red-500' WHERE folio = ?", [nuevoFolio]);
+            db.query("UPDATE tickets SET estatus = 'Cerrado', colorEstatus = 'bg-red-600' WHERE folio = ?", [nuevoFolio]);
           }
 
           db.query('INSERT INTO mensajes_chat (folio, remitente, texto, hora) VALUES (?, ?, ?, ?)', [nuevoFolio, 'Sistema', textoMensaje, horaActual], (errChat) => {
@@ -266,15 +265,83 @@ app.delete(['/api/grupos/:nombre', '/grupos/:nombre'], (req, res) => {
   });
 });
 
+// ==========================================
+// CATEGORÍAS Y SUBCATEGORÍAS (SINCRONIZACIÓN REAL CON MYSQL)
+// ==========================================
 app.get(['/api/categorias', '/categorias'], (req, res) => {
-  db.query('SELECT * FROM categorias', (err, results) => {
+  db.query('SELECT * FROM categorias ORDER BY id ASC', (err, results) => {
     if (err) return res.status(500).json({ error: err.message });
-    res.json(results.map(cat => ({ ...cat, subcategorias: typeof cat.subcategorias === 'string' ? JSON.parse(cat.subcategorias || '[]') : (cat.subcategorias || []) })));
+    
+    const categoriasFormateadas = results.map(cat => {
+      let subcats = [];
+      if (typeof cat.subcategorias === 'string') {
+        try { subcats = JSON.parse(cat.subcategorias || '[]'); } catch (e) { subcats = []; }
+      } else if (Array.isArray(cat.subcategorias)) {
+        subcats = cat.subcategorias;
+      }
+
+      // Aseguramos que cada subcategoría tenga tanto fecAlta como fec_alta
+      subcats = subcats.map(sub => {
+        if (typeof sub === 'object' && sub !== null) {
+          const fechaSub = sub.fecAlta || sub.fec_alta || cat.fec_alta || '13/10/2026';
+          return { ...sub, fecAlta: fechaSub, fec_alta: fechaSub };
+        }
+        return sub;
+      });
+
+      const fechaCat = cat.fec_alta || cat.fecAlta || '13/10/2026';
+      return {
+        ...cat,
+        fecAlta: fechaCat,
+        fec_alta: fechaCat,
+        subcategorias: subcats
+      };
+    });
+
+    res.json(categoriasFormateadas);
   });
 });
 
 app.post(['/api/categorias/sincronizar', '/categorias/sincronizar'], (req, res) => {
-  res.json({ success: true, message: 'Sincronizado' });
+  const categorias = req.body;
+  if (!Array.isArray(categorias)) {
+    return res.status(400).json({ error: 'Formato inválido, se esperaba un arreglo' });
+  }
+
+  // Limpiamos e insertamos el estado actual para reflejar altas, ediciones y bajas
+  db.query('DELETE FROM categorias', (errDel) => {
+    if (errDel) {
+      console.error('Error al limpiar categorías:', errDel);
+      return res.status(500).json({ error: errDel.message });
+    }
+
+    if (categorias.length === 0) {
+      return res.json({ success: true, message: 'Todas las categorías fueron eliminadas' });
+    }
+
+    const values = categorias.map(cat => {
+      const fecha = cat.fecAlta || cat.fec_alta || new Date().toLocaleDateString('es-MX');
+      const subcatsStr = JSON.stringify(cat.subcategorias || []);
+      return [
+        cat.id || null,
+        cat.nombre,
+        cat.sla || 24,
+        cat.estatus || 'ACTIVO',
+        fecha,
+        cat.usuario || 'ADMINISTRADOR',
+        subcatsStr
+      ];
+    });
+
+    const sql = 'INSERT INTO categorias (id, nombre, sla, estatus, fec_alta, usuario, subcategorias) VALUES ?';
+    db.query(sql, [values], (errIns) => {
+      if (errIns) {
+        console.error('Error al guardar categorías en MySQL:', errIns);
+        return res.status(500).json({ error: errIns.message });
+      }
+      res.json({ success: true, message: 'Categorías y subcategorías guardadas en MySQL correctamente' });
+    });
+  });
 });
 
 app.get(['/api/subcategorias', '/subcategorias'], (req, res) => {
@@ -334,11 +401,6 @@ app.get(['/api/kpis/tiempos', '/kpis/tiempos'], (req, res) => {
     res.json(results.map(t => ({ id: t.id, folio: t.folio, minutos_resolucion: Math.round(((t.estatus === 'Cerrado' ? new Date(t.updated_at) : new Date()) - new Date(t.created_at)) / (1000 * 60)) || 5 })));
   });
 });
-
-// ==========================================
-// ARCHIVOS PÚBLICOS (Para audios, imágenes, etc.)
-// ==========================================
-app.use(express.static(path.join(__dirname, 'public')));
 
 // Manejo correcto de estáticos y rutas bajo el subdirectorio /SAV_tiV2
 app.use('/SAV_tiV2', express.static(path.join(__dirname, 'dist')));
