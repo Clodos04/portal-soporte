@@ -50,18 +50,23 @@ function AdminSubcategoriasView({ categoria, categorias, setCategorias, user, on
     if (!formNombre.trim()) return;
 
     const usuarioNombre = user?.name || 'ADMINISTRADOR';
+    const fechaHoy = fechaActualFormateada();
 
     const nuevasCategorias = categorias.map(c => {
       if (c.id === catActual.id) {
-        let subsActualizadas = [...c.subcategorias];
+        let subsActualizadas = [...(c.subcategorias || [])];
         
         if (!subcatActual) {
           // Crear
+          const nuevoId = subsActualizadas.length > 0 
+            ? Math.max(...subsActualizadas.map(s => Number(s.id) || 0)) + 1 
+            : 1;
           subsActualizadas.push({
-            id: Math.floor(100 + Math.random() * 900),
+            id: nuevoId,
             nombre: formNombre.trim().toUpperCase(),
             estatus: formEstatus,
-            fecAlta: fechaActualFormateada(),
+            fecAlta: fechaHoy,
+            fec_alta: fechaHoy,
             usuario: usuarioNombre,
             elementos: []
           });
@@ -86,7 +91,7 @@ function AdminSubcategoriasView({ categoria, categorias, setCategorias, user, on
     if (window.confirm('¿Estás seguro de eliminar esta subcategoría y todos sus elementos?')) {
       const nuevasCategorias = categorias.map(c => {
         if (c.id === catActual.id) {
-          return { ...c, subcategorias: c.subcategorias.filter(sub => sub.id !== id) };
+          return { ...c, subcategorias: (c.subcategorias || []).filter(sub => sub.id !== id) };
         }
         return c;
       });
@@ -122,20 +127,25 @@ function AdminSubcategoriasView({ categoria, categorias, setCategorias, user, on
     if (!nombreElemento.trim() || !subcatActiva) return;
 
     const usuarioNombre = user?.name || 'ADMINISTRADOR';
+    const fechaHoy = fechaActualFormateada();
 
     const nuevasCategorias = categorias.map(c => {
       if (c.id === catActual.id) {
-        const subsActualizadas = c.subcategorias.map(sub => {
+        const subsActualizadas = (c.subcategorias || []).map(sub => {
           if (sub.id === subcatActiva.id) {
             let elemsActualizados = [...(sub.elementos || [])];
             
             if (!elementoActual) {
               // Crear
+              const nuevoElemId = elemsActualizados.length > 0 
+                ? Math.max(...elemsActualizados.map(el => Number(el.id) || 0)) + 1 
+                : 1;
               elemsActualizados.push({
-                id: Math.floor(100 + Math.random() * 900),
+                id: nuevoElemId,
                 nombre: nombreElemento.trim().toUpperCase(),
                 estatus: elemEstatus,
-                fecAlta: fechaActualFormateada(),
+                fecAlta: fechaHoy,
+                fec_alta: fechaHoy,
                 usuario: usuarioNombre,
                 prioridad: prioridad,
                 impacto: impacto,
@@ -170,9 +180,9 @@ function AdminSubcategoriasView({ categoria, categorias, setCategorias, user, on
     if (window.confirm('¿Estás seguro de eliminar este elemento?')) {
       const nuevasCategorias = categorias.map(c => {
         if (c.id === catActual.id) {
-          const subsActualizadas = c.subcategorias.map(sub => {
+          const subsActualizadas = (c.subcategorias || []).map(sub => {
             if (sub.id === subcatActiva.id) {
-              return { ...sub, elementos: sub.elementos.filter(el => el.id !== elemId) };
+              return { ...sub, elementos: (sub.elementos || []).filter(el => el.id !== elemId) };
             }
             return sub;
           });
@@ -299,13 +309,12 @@ function AdminSubcategoriasView({ categoria, categorias, setCategorias, user, on
                         <span>{elem.nombre}</span>
                       </td>
                       <td className="px-4 py-3">
-                        {/* Corrección para asegurar que si viene vacío, marque verde */}
                         <span className={`px-2 py-0.5 rounded text-xs font-bold ${(elem.estatus || 'ACTIVO') === 'ACTIVO' ? 'bg-green-600/30 text-green-400' : 'bg-red-600/30 text-red-400'}`}>
                           {elem.estatus || 'ACTIVO'}
                         </span>
                       </td>
-                      <td className="px-4 py-3 text-slate-400 text-xs">{elem.fecAlta}</td>
-                      <td className="px-4 py-3 text-slate-300">{elem.usuario}</td>
+                      <td className="px-4 py-3 text-slate-400 text-xs">{elem.fecAlta || elem.fec_alta || 'N/D'}</td>
+                      <td className="px-4 py-3 text-slate-300">{elem.usuario || 'SISTEMA'}</td>
                       <td className="px-4 py-3 font-medium text-indigo-300">{elem.prioridad}</td>
                       <td className="px-4 py-3 text-slate-300">{elem.impacto}</td>
                       <td className="px-4 py-3 font-mono text-green-400 font-bold">{elem.sla}</td>
@@ -343,7 +352,7 @@ function AdminSubcategoriasView({ categoria, categorias, setCategorias, user, on
           <div className="space-y-4">
             <div>
               <label className="block text-sm font-bold text-slate-300 mb-2">Nombre de la Subcategoría:</label>
-              <input type="text" required value={formNombre} onChange={(e) => setFormNombre(e.target.value)} placeholder="Ej. RELEXPA" className="w-full px-4 py-2.5 rounded bg-slate-900 border border-slate-700 text-white outline-none uppercase text-sm" />
+              <input type="text" required value={formNombre} onChange={(e) => setFormNombre(e.target.value)} placeholder="Ej. DIADEMA" className="w-full px-4 py-2.5 rounded bg-slate-900 border border-slate-700 text-white outline-none uppercase text-sm" />
             </div>
             <div className="flex items-center gap-6 bg-slate-900/50 p-4 rounded-lg border border-slate-700">
               <span className="text-sm font-bold">Estatus:</span>
@@ -430,13 +439,12 @@ function AdminSubcategoriasView({ categoria, categorias, setCategorias, user, on
                       <span>{sub.nombre}</span>
                     </td>
                     <td className="px-4 py-3">
-                      {/* Corrección para asegurar que si viene vacío, marque verde */}
                       <span className={`px-2 py-0.5 rounded text-xs font-bold ${(sub.estatus || 'ACTIVO') === 'ACTIVO' ? 'bg-green-600/30 text-green-400' : 'bg-red-600/30 text-red-400'}`}>
                         {sub.estatus || 'ACTIVO'}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-slate-400 text-xs">{sub.fecAlta}</td>
-                    <td className="px-4 py-3 text-slate-300">{sub.usuario}</td>
+                    <td className="px-4 py-3 text-slate-400 text-xs">{sub.fecAlta || sub.fec_alta || 'N/D'}</td>
+                    <td className="px-4 py-3 text-slate-300">{sub.usuario || 'SISTEMA'}</td>
                     <td className="px-4 py-3 text-center flex justify-center gap-2">
                       <button onClick={() => abrirEdicionSubcat(sub)} className="p-1.5 bg-blue-600/20 text-blue-400 hover:bg-blue-600 hover:text-white rounded transition-colors" title="Editar">
                         ✏️
