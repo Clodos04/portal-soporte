@@ -1,5 +1,14 @@
 // Archivo: respuestasChat.cjs
 
+// 1. GENERADOR DE MENSAJES PARA CENTINELA (Primer reporte vs Subsecuente en el mes)
+const obtenerMensajeCentinela = (nuevoFolio, esSubsecuente, folioAnterior) => {
+  if (esSubsecuente) {
+    return `Gracias por crear tu centinela con el folio #${nuevoFolio}. Validamos que un técnico ya se acercó previamente a realizar pruebas (Folio origen: #${folioAnterior}). Te agradecemos que lo sigas reportando para que tu campaña llegue al 100% y se hagan los cambios solicitados.`;
+  }
+  return `Folio #${nuevoFolio} registrado con éxito. Se te asignará un técnico en un tiempo máximo de 10 minutos.`;
+};
+
+// 2. FLUJO SECUENCIAL DE PREGUNTAS AUTOMÁTICAS EN EL CHAT (PASO 1 -> PASO 2 -> PASO 3)
 const obtenerFlujoPreguntas = (ticket) => {
   const folio = ticket.folio;
   const nodo = ticket.equipo && ticket.equipo !== 'Ninguno' ? ticket.equipo : 'tu equipo';
@@ -8,7 +17,7 @@ const obtenerFlujoPreguntas = (ticket) => {
   const sub = (ticket.subcategoria || '').toUpperCase();
   const elem = (ticket.elemento || '').toUpperCase();
 
-  // --- CATEGORÍA 1: TOUCHPOINT ---
+  // --- CATEGORÍA: TOUCHPOINT ---
   if (cat.includes('TOUCHPOINT')) {
     if (sub.includes('AUDIO')) {
       return [
@@ -41,7 +50,7 @@ const obtenerFlujoPreguntas = (ticket) => {
     }
   }
 
-  // --- CATEGORÍA 2: DISPOSITIVOS ---
+  // --- CATEGORÍA: DISPOSITIVOS ---
   if (cat.includes('DISPOSITIVO') || cat.includes('HARDWARE')) {
     if (sub.includes('DIADEMA')) {
       return [
@@ -93,12 +102,51 @@ const obtenerFlujoPreguntas = (ticket) => {
     }
   }
 
-  // --- AQUÍ PUEDES AGREGAR TODAS LAS FUTURAS CATEGORÍAS ---
+  // --- AQUÍ PUEDES AGREGAR MÁS CATEGORÍAS EN EL FUTURO ---
 
-  // Respuesta por defecto si no cae en ninguna de las anteriores
+  // Flujo por defecto
   return [
     `Folio #${folio} registrado con éxito para ${nodo} (${campana}). Se te asignará un técnico en un tiempo máximo de 10 minutos.`
   ];
 };
 
-module.exports = { obtenerFlujoPreguntas };
+// 3. EVALUADOR DE SEGUIMIENTO SUBSECUENTE EN EL CHAT
+const evaluarSiguienteRespuestaChat = (ticket, remitente, textoUsuario, mensajesDelSistema) => {
+  // No responder automáticamente si es Centinela o si ya no es el usuario/sin técnico
+  const esCreador = ticket.creador && remitente.toLowerCase().trim() === ticket.creador.toLowerCase().trim();
+  const sinTecnicoAun = !ticket.tecnico || ticket.tecnico === 'Sin Asignar';
+
+  if (ticket.tipo_solicitud === 'CENTINELA' || (!esCreador && !sinTecnicoAun)) {
+    return null;
+  }
+
+  const flujoPreguntas = obtenerFlujoPreguntas(ticket);
+  if (flujoPreguntas.length <= 1) {
+    return null;
+  }
+
+  const textoLower = (textoUsuario || '').toLowerCase();
+  const yaSeSoluciono = textoLower.includes('ya quedo') || 
+                        textoLower.includes('ya quedó') || 
+                        textoLower.includes('ya funciono') || 
+                        textoLower.includes('ya funcionó') || 
+                        textoLower.includes('solucionado');
+
+  // Si el usuario avisa que ya quedó resuelto antes de terminar las preguntas
+  if (yaSeSoluciono && mensajesDelSistema < flujoPreguntas.length) {
+    return `🎉 ¡Excelente! Qué gusto que ya haya quedado funcionando correctamente con esa validación. Un técnico revisará el folio #${ticket.folio} para confirmar el cierre.`;
+  }
+
+  // Si aún faltan preguntas del flujo por enviar, devolvemos la que toca
+  if (mensajesDelSistema < flujoPreguntas.length) {
+    return flujoPreguntas[mensajesDelSistema];
+  }
+
+  return null;
+};
+
+module.exports = {
+  obtenerMensajeCentinela,
+  obtenerFlujoPreguntas,
+  evaluarSiguienteRespuestaChat
+};
