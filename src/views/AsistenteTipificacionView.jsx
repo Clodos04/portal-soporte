@@ -21,21 +21,18 @@ function AsistenteTipificacionView({ categorias = [], campanas = [], equipos = [
   const [errorDuplicado, setErrorDuplicado] = useState('');
   const [enviando, setEnviando] = useState(false); // <--- Candado anti-doble clic
 
-  const opcionesFijas = [
-    { id: 1, nombre: "HARDWARE (EQUIPO)" },
-    { id: 2, nombre: "SOFTWARE" },
-    { id: 3, nombre: "APLICACIONES INHOUSE" },
-    { id: 4, nombre: "MANTENIMIENTO" }
-  ];
+  // Filtramos dinámicamente las categorías ACTIVAS desde la Base de Datos
+  const categoriasActivas = (categorias || []).filter(
+    cat => (cat.estatus || 'ACTIVO').toUpperCase() === 'ACTIVO'
+  );
 
-  const opcionesBase = tipoReporte === 'CENTINELA' 
-    ? opcionesFijas.filter(op => op.nombre.includes("HARDWARE")) 
-    : opcionesFijas;
-
-  const opcionesMostradas = opcionesBase.map(opcion => {
-    const encontradaEnBD = categorias.find(cat => cat.nombre.toUpperCase().includes(opcion.nombre.split(' ')[0]));
-    return encontradaEnBD ? encontradaEnBD : { id: opcion.id, nombre: opcion.nombre, subcategorias: [] };
-  });
+  // Si es CENTINELA, buscamos DISPOSITIVOS o HARDWARE; si es REPORTE normal, mostramos todas las de la BD
+  const opcionesMostradas = tipoReporte === 'CENTINELA'
+    ? categoriasActivas.filter(cat => 
+        cat.nombre.toUpperCase().includes('DISPOSITIVO') || 
+        cat.nombre.toUpperCase().includes('HARDWARE')
+      )
+    : categoriasActivas;
 
   const listaEquiposActuales = equipos
     .filter(eq => String(eq.idcamp) === String(campanaSeleccionadaId))
@@ -59,7 +56,10 @@ function AsistenteTipificacionView({ categorias = [], campanas = [], equipos = [
     setCategoriaSeleccionada(cat);
     setSubcatSeleccionada(null);
     setElementoSeleccionado(null);
-    if (cat.subcategorias && cat.subcategorias.length > 0) {
+    const subcatsActivas = (cat.subcategorias || []).filter(
+      s => (s.estatus || 'ACTIVO').toUpperCase() === 'ACTIVO'
+    );
+    if (subcatsActivas.length > 0) {
       setPaso(2);
     } else {
       setPaso(4);
@@ -70,7 +70,7 @@ function AsistenteTipificacionView({ categorias = [], campanas = [], equipos = [
     setSubcatSeleccionada(sub);
     setElementoSeleccionado(null);
 
-    const nombreSub = sub.nombre.toUpperCase();
+    const nombreSub = (sub.nombre || '').toUpperCase();
     if (tipoReporte === 'CENTINELA' && (nombreSub.includes('TECLADO') || nombreSub.includes('MOUSE') || nombreSub.includes('DIADEMA') || nombreSub.includes('MONITOR'))) {
       if (nombreSub.includes('TECLADO')) setPerifericoCentinela('TECLADO');
       else if (nombreSub.includes('MOUSE')) setPerifericoCentinela('MOUSE');
@@ -79,7 +79,10 @@ function AsistenteTipificacionView({ categorias = [], campanas = [], equipos = [
       
       setPaso(2.5);
     } else {
-      if (sub.elementos && sub.elementos.length > 0) {
+      const elementosActivos = (sub.elementos || []).filter(
+        el => (el.estatus || 'ACTIVO').toUpperCase() === 'ACTIVO'
+      );
+      if (elementosActivos.length > 0) {
         setPaso(3);
       } else {
         setPaso(4);
@@ -103,7 +106,8 @@ function AsistenteTipificacionView({ categorias = [], campanas = [], equipos = [
     if (tipoReporte === 'CENTINELA' && equiposSeleccionados.length > 0) {
       for (const [index, nodoUnico] of equiposSeleccionados.entries()) {
         const nuevoFolio = Math.floor(10000 + Math.random() * 90000).toString() + '-' + (index + 1);
-        const detalleFalla = subFallaCentinela ? subFallaCentinela : 'Falla general de periférico';
+        const compNombre = perifericoCentinela || subcatSeleccionada?.nombre || 'DISPOSITIVO';
+        const detalleFalla = subFallaCentinela || elementoSeleccionado?.nombre || 'Falla general de dispositivo';
         
         const ticketIndependiente = {
           folio: nuevoFolio,
@@ -112,17 +116,17 @@ function AsistenteTipificacionView({ categorias = [], campanas = [], equipos = [
           colorEstatus: 'bg-purple-500',
           tecnico: 'Sin Asignar',
           creador: user?.name || 'VALERIA GOMEZ',
-          asunto: `[CENTINELA] ${perifericoCentinela || 'HARDWARE'}: ${detalleFalla}`,
-          descripcion: `Reporte automático de componente dañado. Componente: ${perifericoCentinela}, Falla: ${detalleFalla}, Nodo: ${nodoUnico}.`,
+          asunto: `[CENTINELA] ${compNombre}: ${detalleFalla}`,
+          descripcion: `Reporte automático de componente dañado. Componente: ${compNombre}, Falla: ${detalleFalla}, Nodo: ${nodoUnico}.`,
           campana: campObj ? campObj.nombre : 'General',
           equipo: nodoUnico,
           nivel: 'Medio',
           modo: modo,
           fecha: fechaHoy,
           grupo: 'CENTINELA',
-          categoria: 'CENTINELA (PERIFÉRICO)',
-          subcategoria: perifericoCentinela || '',
-          elemento: subFallaCentinela || '',
+          categoria: categoriaSeleccionada?.nombre || 'DISPOSITIVOS',
+          subcategoria: compNombre,
+          elemento: detalleFalla,
           resolucion: '',
           archivoNombre: archivo ? archivo.name : null,
           archivoUrl: archivo ? URL.createObjectURL(archivo) : null,
@@ -238,14 +242,19 @@ function AsistenteTipificacionView({ categorias = [], campanas = [], equipos = [
                 type="button"
                 onClick={() => {
                   setTipoReporte('CENTINELA');
-                  const catHardware = categorias.find(c => c.nombre.toUpperCase().includes('HARDWARE')) || { id: 1, nombre: "HARDWARE (EQUIPO)", subcategorias: [] };
-                  setCategoriaSeleccionada(catHardware);
+                  const catDispositivos = categoriasActivas.find(
+                    c => c.nombre.toUpperCase().includes('DISPOSITIVO') || c.nombre.toUpperCase().includes('HARDWARE')
+                  ) || categoriasActivas[0] || { id: 1, nombre: "DISPOSITIVOS", subcategorias: [] };
+                  setCategoriaSeleccionada(catDispositivos);
+                  if (catDispositivos.subcategorias && catDispositivos.subcategorias.length > 0) {
+                    setPaso(2);
+                  }
                 }}
                 className="p-5 rounded-2xl bg-purple-950/40 border-2 border-purple-800/60 hover:border-purple-500 text-left transition-all group cursor-pointer shadow-lg space-y-2"
               >
                 <div className="text-2xl">🛡️</div>
                 <div className="font-bold text-purple-300 text-sm uppercase">Reporte Centinela</div>
-                <div className="text-xs text-slate-400">Árbol rápido para periféricos y monitores dañados.</div>
+                <div className="text-xs text-slate-400">Árbol rápido para periféricos y dispositivos dañados.</div>
               </button>
             </div>
           </div>
@@ -265,19 +274,25 @@ function AsistenteTipificacionView({ categorias = [], campanas = [], equipos = [
             {paso === 1 && (
               <div className="space-y-4 animate-fade-in">
                 <h3 className="text-base font-bold text-white text-center">¿Qué área o servicio te está presentando problemas?</h3>
-                <div className="grid grid-cols-1 gap-3 max-w-xl mx-auto">
-                  {opcionesMostradas.map((cat, idx) => (
-                    <button
-                      key={cat.id || idx}
-                      type="button"
-                      onClick={() => seleccionarCat(cat)}
-                      className="p-4 rounded-xl bg-slate-800/80 border border-slate-700 hover:border-indigo-500 transition-all text-left flex items-center justify-between group cursor-pointer shadow-md"
-                    >
-                      <span className="font-bold text-white text-sm uppercase tracking-wide">{cat.nombre}</span>
-                      <span className="text-indigo-400 group-hover:translate-x-1.5 transition-transform font-bold">→</span>
-                    </button>
-                  ))}
-                </div>
+                {opcionesMostradas.length === 0 ? (
+                  <p className="text-center text-slate-400 text-xs italic py-4">
+                    No hay categorías activas registradas en el sistema.
+                  </p>
+                ) : (
+                  <div className="grid grid-cols-1 gap-3 max-w-xl mx-auto">
+                    {opcionesMostradas.map((cat, idx) => (
+                      <button
+                        key={cat.id || idx}
+                        type="button"
+                        onClick={() => seleccionarCat(cat)}
+                        className="p-4 rounded-xl bg-slate-800/80 border border-slate-700 hover:border-indigo-500 transition-all text-left flex items-center justify-between group cursor-pointer shadow-md"
+                      >
+                        <span className="font-bold text-white text-sm uppercase tracking-wide">{cat.nombre}</span>
+                        <span className="text-indigo-400 group-hover:translate-x-1.5 transition-transform font-bold">→</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
 
@@ -287,25 +302,27 @@ function AsistenteTipificacionView({ categorias = [], campanas = [], equipos = [
                   <span className="text-xs text-slate-300">Área: <strong className="text-indigo-400 uppercase">{categoriaSeleccionada.nombre}</strong></span>
                   <button type="button" onClick={() => setPaso(1)} className="text-xs font-bold text-indigo-400 hover:underline cursor-pointer">« Cambiar área</button>
                 </div>
-                <h4 className="text-sm font-bold text-white text-center">¿En qué módulo ocurre el problema?</h4>
-                {(!categoriaSeleccionada.subcategorias || categoriaSeleccionada.subcategorias.length === 0) ? (
+                <h4 className="text-sm font-bold text-white text-center">¿En qué módulo o dispositivo ocurre el problema?</h4>
+                {(!categoriaSeleccionada.subcategorias || categoriaSeleccionada.subcategorias.filter(s => (s.estatus || 'ACTIVO').toUpperCase() === 'ACTIVO').length === 0) ? (
                   <div className="text-center py-4">
-                    <p className="text-slate-400 italic text-xs mb-3">No hay módulos registrados en esta área.</p>
-                    <button type="button" onClick={() => setPaso(4)} className="bg-indigo-600 text-white px-4 py-2 rounded-xl text-xs font-bold cursor-pointer">Continuar sin módulo →</button>
+                    <p className="text-slate-400 italic text-xs mb-3">No hay subcategorías activas registradas en esta área.</p>
+                    <button type="button" onClick={() => setPaso(4)} className="bg-indigo-600 text-white px-4 py-2 rounded-xl text-xs font-bold cursor-pointer">Continuar sin subcategoría →</button>
                   </div>
                 ) : (
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    {categoriaSeleccionada.subcategorias.map((sub) => (
-                      <button
-                        key={sub.id || sub.nombre}
-                        type="button"
-                        onClick={() => seleccionarSubcat(sub)}
-                        className="p-3.5 rounded-xl bg-slate-800/80 border border-slate-700 hover:border-indigo-500 text-left flex items-center justify-between group cursor-pointer"
-                      >
-                        <span className="font-semibold text-white text-xs uppercase">{sub.nombre}</span>
-                        <span className="text-indigo-400 group-hover:translate-x-1 transition-transform">→</span>
-                      </button>
-                    ))}
+                    {categoriaSeleccionada.subcategorias
+                      .filter(sub => (sub.estatus || 'ACTIVO').toUpperCase() === 'ACTIVO')
+                      .map((sub) => (
+                        <button
+                          key={sub.id || sub.nombre}
+                          type="button"
+                          onClick={() => seleccionarSubcat(sub)}
+                          className="p-3.5 rounded-xl bg-slate-800/80 border border-slate-700 hover:border-indigo-500 text-left flex items-center justify-between group cursor-pointer"
+                        >
+                          <span className="font-semibold text-white text-xs uppercase">{sub.nombre}</span>
+                          <span className="text-indigo-400 group-hover:translate-x-1 transition-transform">→</span>
+                        </button>
+                      ))}
                   </div>
                 )}
               </div>
@@ -441,24 +458,26 @@ function AsistenteTipificacionView({ categorias = [], campanas = [], equipos = [
                   <button type="button" onClick={() => setPaso(2)} className="text-xs font-bold text-indigo-400 hover:underline cursor-pointer">« Cambiar módulo</button>
                 </div>
                 <h4 className="text-sm font-bold text-white text-center">Selecciona la falla específica:</h4>
-                {(!subcatSeleccionada.elementos || subcatSeleccionada.elementos.length === 0) ? (
+                {(!subcatSeleccionada.elementos || subcatSeleccionada.elementos.filter(el => (el.estatus || 'ACTIVO').toUpperCase() === 'ACTIVO').length === 0) ? (
                   <div className="text-center py-4">
                     <p className="text-slate-400 italic text-xs mb-3">No hay elementos específicos en este módulo.</p>
-                    <button type="button" onClick={() => setPaso(5)} className="bg-indigo-600 text-white px-4 py-2 rounded-xl text-xs font-bold cursor-pointer">Continuar sin módulo →</button>
+                    <button type="button" onClick={() => setPaso(5)} className="bg-indigo-600 text-white px-4 py-2 rounded-xl text-xs font-bold cursor-pointer">Continuar sin elemento →</button>
                   </div>
                 ) : (
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    {subcatSeleccionada.elementos.map((elem) => (
-                      <button
-                        key={elem.id || elem.nombre}
-                        type="button"
-                        onClick={() => seleccionarElemento(elem)}
-                        className="p-3.5 rounded-xl bg-slate-800/80 border border-slate-700 hover:border-indigo-500 text-left flex items-center justify-between group cursor-pointer"
-                      >
-                        <span className="font-semibold text-white text-xs uppercase">{elem.nombre}</span>
-                        <span className="text-indigo-400 group-hover:translate-x-1 transition-transform">→</span>
-                      </button>
-                    ))}
+                    {subcatSeleccionada.elementos
+                      .filter(elem => (elem.estatus || 'ACTIVO').toUpperCase() === 'ACTIVO')
+                      .map((elem) => (
+                        <button
+                          key={elem.id || elem.nombre}
+                          type="button"
+                          onClick={() => seleccionarElemento(elem)}
+                          className="p-3.5 rounded-xl bg-slate-800/80 border border-slate-700 hover:border-indigo-500 text-left flex items-center justify-between group cursor-pointer"
+                        >
+                          <span className="font-semibold text-white text-xs uppercase">{elem.nombre}</span>
+                          <span className="text-indigo-400 group-hover:translate-x-1 transition-transform">→</span>
+                        </button>
+                      ))}
                   </div>
                 )}
               </div>
@@ -554,7 +573,7 @@ function AsistenteTipificacionView({ categorias = [], campanas = [], equipos = [
                 ) : (
                   <div className="bg-purple-950/30 border border-purple-500/30 p-3.5 rounded-xl text-xs space-y-1">
                     <div className="text-purple-300 font-bold uppercase">🛡️ Resumen automático Centinela:</div>
-                    <div className="text-slate-300">Asunto: <strong className="text-white font-mono">[CENTINELA] {perifericoCentinela}: {subFallaCentinela}</strong></div>
+                    <div className="text-slate-300">Asunto: <strong className="text-white font-mono">[CENTINELA] {perifericoCentinela || subcatSeleccionada?.nombre}: {subFallaCentinela || elementoSeleccionado?.nombre || 'Falla reportada'}</strong></div>
                   </div>
                 )}
 
