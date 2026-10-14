@@ -1,24 +1,24 @@
 import React, { useState, useEffect } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
-function Dashboard({ user, tickets = [], categorias = [], onIrANuevaSolicitud, onIrAEncuesta, estadisticasEncuestas = [] }) {
+function Dashboard({ user, tickets = [], grupos = [], onIrANuevaSolicitud, onIrAEncuesta, estadisticasEncuestas = [] }) {
   const safeTickets = Array.isArray(tickets) ? tickets : [];
-  const [categoriasBD, setCategoriasBD] = useState(Array.isArray(categorias) ? categorias : []);
-  const [soloHoyGrafica, setSoloHoyGrafica] = useState(true); // Por defecto muestra las categorías de HOY
+  const [gruposBD, setGruposBD] = useState(Array.isArray(grupos) ? grupos : []);
+  const [soloHoyGrafica, setSoloHoyGrafica] = useState(false); // Inicia en 'Total' para ver el acumulado de inmediato, o cámbialo a 'true' si prefieres que inicie en 'Hoy'
 
-  // Si App.jsx no pasa 'categorias', las consultamos directamente de la BD
+  // Si App.jsx no le pasa la lista de grupos, la consultamos directamente de /api/grupos
   useEffect(() => {
-    if (Array.isArray(categorias) && categorias.length > 0) {
-      setCategoriasBD(categorias);
+    if (Array.isArray(grupos) && grupos.length > 0) {
+      setGruposBD(grupos);
     } else {
-      fetch('/api/categorias')
+      fetch('/api/grupos')
         .then(r => r.json())
         .then(data => {
-          if (Array.isArray(data)) setCategoriasBD(data);
+          if (Array.isArray(data)) setGruposBD(data);
         })
-        .catch(err => console.error('Error al cargar categorías en Dashboard:', err));
+        .catch(err => console.error('Error al cargar grupos en Dashboard:', err));
     }
-  }, [categorias]);
+  }, [grupos]);
 
   // Obtener la fecha real de HOY en zona horaria de México (YYYY-MM-DD)
   const obtenerFechaHoyMexico = () => {
@@ -31,8 +31,7 @@ function Dashboard({ user, tickets = [], categorias = [], onIrANuevaSolicitud, o
 
   const fechaHoyMX = obtenerFechaHoyMexico();
 
-  // Función que valida si un ticket REALMENTE se hizo hoy en hora de México
-  // (Corrige aquellos tickets hechos ayer después de las 6pm que guardaron fecha UTC adelantada)
+  // Valida si un ticket realmente se creó hoy en hora de México
   const esTicketDeHoy = (t) => {
     if (t.created_at) {
       const fechaCreacion = new Date(t.created_at);
@@ -45,6 +44,16 @@ function Dashboard({ user, tickets = [], categorias = [], onIrANuevaSolicitud, o
       }
     }
     return String(t.fecha || '').slice(0, 10) === fechaHoyMX;
+  };
+
+  // Normaliza textos quitando acentos y pasando a mayúsculas para comparar grupos sin fallos
+  // Ej: "Soporte Técnico" === "SOPORTE TECNICO"
+  const normalizarTexto = (str) => {
+    return String(str || '')
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toUpperCase()
+      .trim();
   };
 
   const rolUsuario = (user?.role || user?.nivel || '').toLowerCase();
@@ -60,7 +69,7 @@ function Dashboard({ user, tickets = [], categorias = [], onIrANuevaSolicitud, o
     
     const ultimoTicketCerradoPendiente = ticketsCerradosCliente.slice().reverse().find(t => {
       return !estadisticasEncuestas.some(e => 
-        (t.folio && e.folio && String(e.folio).trim() === String(ticket?.folio || t.folio).trim()) || 
+        (t.folio && e.folio && String(e.folio).trim() === String(t.folio).trim()) || 
         (t.id && e.ticket_id && Number(e.ticket_id) === Number(t.id))
       );
     });
@@ -202,33 +211,37 @@ function Dashboard({ user, tickets = [], categorias = [], onIrANuevaSolicitud, o
   // Tickets creados REALMENTE el día de hoy en hora de México
   const ticketsDeHoy = safeTickets.filter(esTicketDeHoy);
 
-  // Construimos las barras de la gráfica basadas en las CATEGORÍAS activas de la BD
-  const categoriasActivas = categoriasBD
-    .filter(c => (c.estatus || 'ACTIVO').toUpperCase() === 'ACTIVO')
-    .map(c => c.nombre.toUpperCase());
-
-  // Si no han cargado aún de la BD, aseguramos mostrar DISPOSITIVOS y TOUCHPOINT
-  const listaNombresCategorias = categoriasActivas.length > 0 
-    ? [...categoriasActivas] 
-    : ['DISPOSITIVOS', 'TOUCHPOINT'];
-
-  if (!listaNombresCategorias.includes('CENTINELA')) {
-    listaNombresCategorias.push('CENTINELA');
-  }
+  // Lista de grupos reales desde la BD (o respaldo con los grupos de tu sistema)
+  const listaNombresGrupos = gruposBD.length > 0 
+    ? gruposBD 
+    : [
+        'BASES E INFORMES',
+        'CENTINELA',
+        'CLAVES',
+        'CONTROL ESTADISTICO',
+        'DESARROLLO DE SOFTWARE',
+        'FOLIOS BIT',
+        'MANTENIMIENTO',
+        'SOPORTE TECNICO',
+        'TELEFONIA, COMUNICACIONES Y REDES',
+        'TI'
+      ];
 
   const baseTicketsGrafica = soloHoyGrafica ? ticketsDeHoy : safeTickets;
 
-  const datosCategorias = listaNombresCategorias.map(nombreCat => {
+  const datosGrupos = listaNombresGrupos.map(nombreGrupo => {
+    const grupoNorm = normalizarTexto(nombreGrupo);
+
     const cantidad = baseTicketsGrafica.filter(t => {
-      const catTicket = (t.categoria || '').toUpperCase();
-      if (nombreCat === 'CENTINELA') {
-        return t.tipo_solicitud === 'CENTINELA' || catTicket.includes('CENTINELA');
+      const ticketGrupoNorm = normalizarTexto(t.grupo);
+      if (grupoNorm === 'CENTINELA') {
+        return t.tipo_solicitud === 'CENTINELA' || ticketGrupoNorm === 'CENTINELA';
       }
-      return catTicket === nombreCat && t.tipo_solicitud !== 'CENTINELA';
+      return ticketGrupoNorm === grupoNorm;
     }).length;
 
     return {
-      nombre: nombreCat,
+      nombre: nombreGrupo,
       tickets: cantidad
     };
   });
@@ -307,46 +320,64 @@ function Dashboard({ user, tickets = [], categorias = [], onIrANuevaSolicitud, o
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="bg-slate-800 rounded-2xl shadow-lg p-6 border border-slate-700">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-6">
-            <h2 className="text-lg font-bold text-slate-300 uppercase tracking-wide">
-              Distribución por Categoría
-            </h2>
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-4">
+            <div>
+              <h2 className="text-lg font-bold text-slate-300 uppercase tracking-wide">
+                Distribución por Grupo
+              </h2>
+              <p className="text-xs text-slate-400">
+                {soloHoyGrafica ? `Mostrando tickets creados hoy (${fechaHoyMX})` : `Mostrando histórico total (${safeTickets.length} tickets)`}
+              </p>
+            </div>
             <div className="flex items-center gap-1.5 bg-slate-900 p-1 rounded-xl border border-slate-700">
               <button
                 type="button"
                 onClick={() => setSoloHoyGrafica(true)}
                 className={`px-3 py-1 rounded-lg text-xs font-bold transition-colors cursor-pointer ${soloHoyGrafica ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white'}`}
               >
-                Hoy
+                Hoy ({ticketsDeHoy.length})
               </button>
               <button
                 type="button"
                 onClick={() => setSoloHoyGrafica(false)}
                 className={`px-3 py-1 rounded-lg text-xs font-bold transition-colors cursor-pointer ${!soloHoyGrafica ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white'}`}
               >
-                Total
+                Total ({safeTickets.length})
               </button>
             </div>
           </div>
 
-          <div className="h-72 w-full">
+          <div className="h-80 w-full">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={datosCategorias} margin={{ top: 20, right: 30, left: 0, bottom: 5 }}>
+              <BarChart data={datosGrupos} margin={{ top: 15, right: 20, left: -10, bottom: 55 }}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#334155" />
-                <XAxis dataKey="nombre" axisLine={false} tickLine={false} tick={{fill: '#94a3b8', fontSize: 12}} />
-                <YAxis allowDecimals={false} axisLine={false} tickLine={false} tick={{fill: '#94a3b8', fontSize: 12}} />
-                <Tooltip cursor={{fill: '#1e293b'}} contentStyle={{backgroundColor: '#0f172a', borderRadius: '8px', border: '1px solid #334155', color: '#f8fafc'}} />
-                <Bar dataKey="tickets" fill="#3b82f6" radius={[4, 4, 0, 0]} barSize={45} />
+                <XAxis 
+                  dataKey="nombre" 
+                  axisLine={false} 
+                  tickLine={false} 
+                  interval={0}
+                  angle={-30}
+                  textAnchor="end"
+                  tick={{ fill: '#94a3b8', fontSize: 10 }} 
+                />
+                <YAxis allowDecimals={false} axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 12 }} />
+                <Tooltip 
+                  cursor={{ fill: '#1e293b' }} 
+                  contentStyle={{ backgroundColor: '#0f172a', borderRadius: '8px', border: '1px solid #334155', color: '#f8fafc' }} 
+                />
+                <Bar dataKey="tickets" fill="#3b82f6" radius={[4, 4, 0, 0]} barSize={28} />
               </BarChart>
             </ResponsiveContainer>
           </div>
         </div>
         
         <div className="bg-slate-800 rounded-2xl shadow-lg p-6 border border-slate-700 flex flex-col justify-between">
-          <h2 className="text-lg font-bold text-slate-300 uppercase tracking-wide">Indicador de Satisfacción por Asesor</h2>
-          <p className="text-xs text-slate-400 mb-4">Promedio de encuestas obtenidas individualmente.</p>
+          <div>
+            <h2 className="text-lg font-bold text-slate-300 uppercase tracking-wide">Indicador de Satisfacción por Asesor</h2>
+            <p className="text-xs text-slate-400 mb-4">Promedio de encuestas obtenidas individualmente.</p>
+          </div>
           
-          <div className="space-y-4 overflow-y-auto max-h-60 pr-2">
+          <div className="space-y-4 overflow-y-auto max-h-64 pr-2 my-auto">
             {listaTecnicosRendimiento.length === 0 ? (
               <p className="text-slate-500 italic text-center py-10">Aún no hay encuestas registradas para ningún asesor.</p>
             ) : (
