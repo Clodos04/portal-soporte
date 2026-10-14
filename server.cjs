@@ -42,10 +42,25 @@ dbCentinela.connect((err) => {
   else console.log('Conectado a Servidor Centinela (Base de datos: Centinela)'); 
 });
 
-const obtenerFechaMySQL = () => {
-  const d = new Date();
-  return d.toISOString().slice(0, 19).replace('T', ' ');
+// ============================================================================
+// FUNCIONES DE FECHA Y HORA EXACTA DE MÉXICO (Evita desfase UTC de las 6:00 PM)
+// ============================================================================
+const obtenerFechaHoraMexico = () => {
+  const ahora = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Mexico_City' }));
+  const yyyy = ahora.getFullYear();
+  const mm = String(ahora.getMonth() + 1).padStart(2, '0');
+  const dd = String(ahora.getDate()).padStart(2, '0');
+  const hh = String(ahora.getHours()).padStart(2, '0');
+  const min = String(ahora.getMinutes()).padStart(2, '0');
+  const ss = String(ahora.getSeconds()).padStart(2, '0');
+  return {
+    fechaSolo: `${yyyy}-${mm}-${dd}`,
+    fechaHora: `${yyyy}-${mm}-${dd} ${hh}:${min}:${ss}`,
+    horaCorta: `${hh}:${min}`
+  };
 };
+
+const obtenerFechaMySQL = () => obtenerFechaHoraMexico().fechaHora;
 
 // Login
 const handleLogin = (req, res) => {
@@ -83,12 +98,13 @@ app.get(['/api/tickets', '/tickets'], (req, res) => {
   });
 });
 
-// Conteo exacto solo de los tickets creados HOY
+// Conteo exacto solo de los tickets creados HOY (Según fecha real de México)
 app.get(['/api/tickets/contar-hoy', '/tickets/contar-hoy'], (req, res) => {
-  const query = "SELECT COUNT(*) as total FROM tickets WHERE DATE(fecha) = CURDATE()";
-  db.query(query, (err, results) => {
+  const hoyMexico = obtenerFechaHoraMexico().fechaSolo;
+  const query = "SELECT COUNT(*) as total FROM tickets WHERE DATE(fecha) = ?";
+  db.query(query, [hoyMexico], (err, results) => {
     if (err) return res.status(500).json({ error: err.message });
-    res.json({ totalHoy: results[0].total });
+    res.json({ totalHoy: results[0].total, fechaHoy: hoyMexico });
   });
 });
 
@@ -96,18 +112,21 @@ app.get(['/api/tickets/contar-hoy', '/tickets/contar-hoy'], (req, res) => {
 const continuarInsercionTicket = (ticketData, res) => {
   const flujo = obtenerFlujoPreguntas(ticketData);
   const primerMensaje = flujo[0];
+  const { fechaSolo, fechaHora, horaCorta } = obtenerFechaHoraMexico();
 
   for (let key in ticketData) {
     if (typeof ticketData[key] === 'object' && ticketData[key] !== null) {
       ticketData[key] = JSON.stringify(ticketData[key]);
     }
   }
-  ticketData.created_at = obtenerFechaMySQL();
+  // Forzamos la fecha y hora real de México al guardar
+  ticketData.fecha = fechaSolo;
+  ticketData.created_at = fechaHora;
+
   db.query('INSERT INTO tickets SET ?', ticketData, (err, result) => {
     if (err) return res.status(500).json({ error: err.message });
-    const horaActual = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    db.query('INSERT INTO mensajes_chat (folio, remitente, texto, hora) VALUES (?, ?, ?, ?)', [ticketData.folio, 'Sistema', primerMensaje, horaActual], () => {
-      res.json({ message: 'Ticket creado exitosamente', id: result.insertId });
+    db.query('INSERT INTO mensajes_chat (folio, remitente, texto, hora) VALUES (?, ?, ?, ?)', [ticketData.folio, 'Sistema', primerMensaje, horaCorta], () => {
+      res.json({ message: 'Ticket creado exitosamente', id: result.insertId, fecha: fechaSolo });
     });
   });
 };
@@ -123,17 +142,19 @@ app.post(['/api/tickets', '/tickets'], (req, res) => {
     }
 
     if (ticketData.tipo_solicitud === 'CENTINELA' && ticketData.equipo && ticketData.subcategoria) {
+      const { fechaSolo, fechaHora, horaCorta } = obtenerFechaHoraMexico();
+      const anioMesActual = fechaSolo.slice(0, 7); // 'YYYY-MM'
+
       const queryMesActual = `
         SELECT * FROM tickets 
         WHERE tipo_solicitud = 'CENTINELA' 
         AND equipo = ? 
         AND subcategoria = ? 
-        AND MONTH(fecha) = MONTH(CURRENT_DATE()) 
-        AND YEAR(fecha) = YEAR(CURRENT_DATE())
+        AND fecha LIKE ?
         ORDER BY id ASC LIMIT 1
       `;
 
-      db.query(queryMesActual, [ticketData.equipo, ticketData.subcategoria], (err, results) => {
+      db.query(queryMesActual, [ticketData.equipo, ticketData.subcategoria, `${anioMesActual}%`], (err, results) => {
         if (err) return res.status(500).json({ error: 'Error al verificar mes: ' + err.message });
         
         const esSubsecuente = results.length > 0;
@@ -144,24 +165,23 @@ app.post(['/api/tickets', '/tickets'], (req, res) => {
             ticketData[key] = JSON.stringify(ticketData[key]);
           }
         }
-        ticketData.created_at = obtenerFechaMySQL();
+        // Forzamos la fecha y hora real de México
+        ticketData.fecha = fechaSolo;
+        ticketData.created_at = fechaHora;
 
         db.query('INSERT INTO tickets SET ?', ticketData, (err, result) => {
           if (err) return res.status(500).json({ error: err.message });
 
           const nuevoFolio = ticketData.folio;
-          const horaActual = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-          
-          // Obtenemos el mensaje de Centinela desde respuestasChat.cjs
           const textoMensaje = obtenerMensajeCentinela(nuevoFolio, esSubsecuente, folioAnterior);
 
           if (esSubsecuente) {
             db.query("UPDATE tickets SET estatus = 'Cerrado', colorEstatus = 'bg-red-600' WHERE folio = ?", [nuevoFolio]);
           }
 
-          db.query('INSERT INTO mensajes_chat (folio, remitente, texto, hora) VALUES (?, ?, ?, ?)', [nuevoFolio, 'Sistema', textoMensaje, horaActual], (errChat) => {
+          db.query('INSERT INTO mensajes_chat (folio, remitente, texto, hora) VALUES (?, ?, ?, ?)', [nuevoFolio, 'Sistema', textoMensaje, horaCorta], (errChat) => {
             if (errChat) console.error("Error al registrar mensaje en chat:", errChat);
-            res.json({ message: 'Ticket creado exitosamente', id: result.insertId, esSubsecuente });
+            res.json({ message: 'Ticket creado exitosamente', id: result.insertId, esSubsecuente, fecha: fechaSolo });
           });
         });
       });
@@ -214,7 +234,7 @@ app.get(['/api/chat/:folio', '/chat/:folio'], (req, res) => {
 
 app.post(['/api/chat', '/chat'], (req, res) => {
   const { folio, remitente, texto, hora } = req.body;
-  const horaActual = hora || new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  const horaActual = hora || obtenerFechaHoraMexico().horaCorta;
 
   db.query('INSERT INTO mensajes_chat (folio, remitente, texto, hora) VALUES (?, ?, ?, ?)', [folio, remitente, texto, horaActual], (err, result) => {
     if (err) return res.status(500).json({ error: 'Error al guardar mensaje' });
@@ -269,7 +289,7 @@ app.put(['/api/usuarios/:id', '/usuarios/:id'], (req, res) => {
   const { nombre, paterno, materno, campana, username, estatus, nivel, gruposAsignados } = req.body;
   const gruposStr = Array.isArray(gruposAsignados) ? JSON.stringify(gruposAsignados) : (gruposAsignados || '[]');
   db.query('UPDATE usuarios SET nombre = ?, paterno = ?, materno = ?, campana = ?, username = ?, estatus = ?, nivel = ?, gruposAsignados = ? WHERE id = ?', 
-    [nombre, paterno, materno, campana, username, estatus, nivel, gruposAsignadosStr = gruposStr, id], (err, result) => {
+    [nombre, paterno, materno, campana, username, estatus, nivel, gruposStr, id], (err, result) => {
     if (err) return res.status(500).json({ error: err.message });
     if (result.affectedRows === 0) return res.status(404).json({ error: 'No se encontró el usuario.' });
     res.json({ message: 'Usuario actualizado correctamente' });
