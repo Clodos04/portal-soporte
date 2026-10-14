@@ -43,7 +43,7 @@ dbCentinela.connect((err) => {
 });
 
 // ============================================================================
-// FUNCIONES DE FECHA Y HORA EXACTA DE MÉXICO (Evita desfase UTC de las 6:00 PM)
+// FUNCIONES DE FECHA Y HORA EXACTA DE MÉXICO
 // ============================================================================
 const obtenerFechaHoraMexico = () => {
   const ahora = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Mexico_City' }));
@@ -108,27 +108,49 @@ app.get(['/api/tickets/contar-hoy', '/tickets/contar-hoy'], (req, res) => {
   });
 });
 
-// Inserción de tickets normales con la Pregunta 1 automática desde respuestasChat.cjs
+// Inserción de tickets normales (Verifica si en DISPOSITIVOS es primera vez o repetido en el mes)
 const continuarInsercionTicket = (ticketData, res) => {
-  const flujo = obtenerFlujoPreguntas(ticketData);
-  const primerMensaje = flujo[0];
   const { fechaSolo, fechaHora, horaCorta } = obtenerFechaHoraMexico();
+  const anioMesActual = fechaSolo.slice(0, 7); // 'YYYY-MM'
+  const catUpper = (ticketData.categoria || '').toUpperCase();
+  const esDispositivo = catUpper.includes('DISPOSITIVO') || catUpper.includes('HARDWARE');
 
-  for (let key in ticketData) {
-    if (typeof ticketData[key] === 'object' && ticketData[key] !== null) {
-      ticketData[key] = JSON.stringify(ticketData[key]);
+  const guardarTicketYPrimerMensaje = (folioPrevio = null) => {
+    const flujo = obtenerFlujoPreguntas(ticketData, folioPrevio);
+    const primerMensaje = flujo[0];
+
+    for (let key in ticketData) {
+      if (typeof ticketData[key] === 'object' && ticketData[key] !== null) {
+        ticketData[key] = JSON.stringify(ticketData[key]);
+      }
     }
-  }
-  // Forzamos la fecha y hora real de México al guardar
-  ticketData.fecha = fechaSolo;
-  ticketData.created_at = fechaHora;
+    ticketData.fecha = fechaSolo;
+    ticketData.created_at = fechaHora;
 
-  db.query('INSERT INTO tickets SET ?', ticketData, (err, result) => {
-    if (err) return res.status(500).json({ error: err.message });
-    db.query('INSERT INTO mensajes_chat (folio, remitente, texto, hora) VALUES (?, ?, ?, ?)', [ticketData.folio, 'Sistema', primerMensaje, horaCorta], () => {
-      res.json({ message: 'Ticket creado exitosamente', id: result.insertId, fecha: fechaSolo });
+    db.query('INSERT INTO tickets SET ?', ticketData, (err, result) => {
+      if (err) return res.status(500).json({ error: err.message });
+      db.query('INSERT INTO mensajes_chat (folio, remitente, texto, hora) VALUES (?, ?, ?, ?)', [ticketData.folio, 'Sistema', primerMensaje, horaCorta], () => {
+        res.json({ message: 'Ticket creado exitosamente', id: result.insertId, fecha: fechaSolo, folioPrevio });
+      });
     });
-  });
+  };
+
+  // Si es de DISPOSITIVOS y tiene nodo y subcategoría, revisamos si ya hubo uno este mes
+  if (esDispositivo && ticketData.equipo && ticketData.equipo !== 'Ninguno' && ticketData.subcategoria) {
+    const queryPrevio = `
+      SELECT folio FROM tickets 
+      WHERE equipo = ? 
+      AND subcategoria = ? 
+      AND fecha LIKE ? 
+      ORDER BY id ASC LIMIT 1
+    `;
+    db.query(queryPrevio, [ticketData.equipo, ticketData.subcategoria, `${anioMesActual}%`], (errPrev, resPrev) => {
+      const folioAnterior = (!errPrev && resPrev && resPrev.length > 0) ? resPrev[0].folio : null;
+      guardarTicketYPrimerMensaje(folioAnterior);
+    });
+  } else {
+    guardarTicketYPrimerMensaje(null);
+  }
 };
 
 app.post(['/api/tickets', '/tickets'], (req, res) => {
@@ -143,12 +165,11 @@ app.post(['/api/tickets', '/tickets'], (req, res) => {
 
     if (ticketData.tipo_solicitud === 'CENTINELA' && ticketData.equipo && ticketData.subcategoria) {
       const { fechaSolo, fechaHora, horaCorta } = obtenerFechaHoraMexico();
-      const anioMesActual = fechaSolo.slice(0, 7); // 'YYYY-MM'
+      const anioMesActual = fechaSolo.slice(0, 7);
 
       const queryMesActual = `
         SELECT * FROM tickets 
-        WHERE tipo_solicitud = 'CENTINELA' 
-        AND equipo = ? 
+        WHERE equipo = ? 
         AND subcategoria = ? 
         AND fecha LIKE ?
         ORDER BY id ASC LIMIT 1
@@ -165,7 +186,6 @@ app.post(['/api/tickets', '/tickets'], (req, res) => {
             ticketData[key] = JSON.stringify(ticketData[key]);
           }
         }
-        // Forzamos la fecha y hora real de México
         ticketData.fecha = fechaSolo;
         ticketData.created_at = fechaHora;
 
@@ -234,7 +254,9 @@ app.get(['/api/chat/:folio', '/chat/:folio'], (req, res) => {
 
 app.post(['/api/chat', '/chat'], (req, res) => {
   const { folio, remitente, texto, hora } = req.body;
-  const horaActual = hora || obtenerFechaHoraMexico().horaCorta;
+  const { fechaSolo, horaCorta } = obtenerFechaHoraMexico();
+  const horaActual = hora || horaCorta;
+  const anioMesActual = fechaSolo.slice(0, 7);
 
   db.query('INSERT INTO mensajes_chat (folio, remitente, texto, hora) VALUES (?, ?, ?, ?)', [folio, remitente, texto, horaActual], (err, result) => {
     if (err) return res.status(500).json({ error: 'Error al guardar mensaje' });
@@ -256,15 +278,33 @@ app.post(['/api/chat', '/chat'], (req, res) => {
         }
 
         const mensajesDelSistema = countRes[0].totalSistema;
-        const respuestaAutomatica = evaluarSiguienteRespuestaChat(ticket, remitente, texto, mensajesDelSistema);
 
-        if (respuestaAutomatica) {
-          db.query('INSERT INTO mensajes_chat (folio, remitente, texto, hora) VALUES (?, ?, ?, ?)', [folio, 'Sistema', respuestaAutomatica, horaActual], () => {
+        // Verificamos si existe un ticket anterior en el mes (con id menor al actual) para este mismo nodo y subcategoría
+        const queryPrevio = `
+          SELECT folio FROM tickets 
+          WHERE equipo = ? 
+          AND subcategoria = ? 
+          AND fecha LIKE ? 
+          AND id < ? 
+          ORDER BY id ASC LIMIT 1
+        `;
+
+        db.query(queryPrevio, [ticket.equipo, ticket.subcategoria, `${anioMesActual}%`, ticket.id], (errPrev, resPrev) => {
+          const folioAnteriorMes = (!errPrev && resPrev && resPrev.length > 0) ? resPrev[0].folio : null;
+
+          const evaluacion = evaluarSiguienteRespuestaChat(ticket, remitente, texto, mensajesDelSistema, folioAnteriorMes);
+
+          if (evaluacion && evaluacion.textoRespuesta) {
+            if (evaluacion.cerrarTicket) {
+              db.query("UPDATE tickets SET estatus = 'Cerrado', colorEstatus = 'bg-red-600' WHERE folio = ?", [folio]);
+            }
+            db.query('INSERT INTO mensajes_chat (folio, remitente, texto, hora) VALUES (?, ?, ?, ?)', [folio, 'Sistema', evaluacion.textoRespuesta, horaActual], () => {
+              return res.json({ success: true, id: result.insertId, cerradoAutomatico: evaluacion.cerrarTicket });
+            });
+          } else {
             return res.json({ success: true, id: result.insertId });
-          });
-        } else {
-          return res.json({ success: true, id: result.insertId });
-        }
+          }
+        });
       });
     });
   });
@@ -305,7 +345,7 @@ app.delete(['/api/usuarios/:id', '/usuarios/:id'], (req, res) => {
   });
 });
 
-app.get(['/api/grupos', '/grupos'], (req, res) => {
+app.get(['/api/grupos', '/grupos'], (err, res) => {
   db.query('SELECT nombre FROM grupos', (err, results) => {
     if (err) return res.status(500).json({ error: err.message });
     res.json(results.map(g => g.nombre));
