@@ -1,11 +1,14 @@
 import React, { useState } from 'react';
 
-function EditarSolicitudModal({ ticket, user, usuarios = [], grupos = [], usuariosPorGrupo = {}, categorias = [], onClose, onActualizar, onAbrirChat }) {
+function EditarSolicitudModal({ ticket = {}, user, usuarios = [], grupos = [], usuariosPorGrupo = {}, categorias = [], onClose, onActualizar, onAbrirChat }) {
   const esCentinela = ticket.tipo_solicitud === 'CENTINELA' || (ticket.categoria || '').toUpperCase().includes('CENTINELA') || (ticket.asunto || '').toUpperCase().includes('CENTINELA');
+
+  const listaGrupos = Array.isArray(grupos) ? grupos : [];
+  const listaCategorias = Array.isArray(categorias) ? categorias : [];
 
   const [estatus, setEstatus] = useState(ticket.estatus || 'Abierto');
   // Si es Centinela, forzamos que el grupo por defecto sea "CENTINELA"
-  const [grupo, setGrupo] = useState(esCentinela ? 'CENTINELA' : (ticket.grupo || grupos[0] || ''));
+  const [grupo, setGrupo] = useState(esCentinela ? 'CENTINELA' : (ticket.grupo || listaGrupos[0] || ''));
   const [tecnico, setTecnico] = useState(ticket.tecnico || 'Sin Asignar');
   const [categoria, setCategoria] = useState(ticket.categoria || (esCentinela ? 'CENTINELA (PERIFÉRICO)' : ''));
   const [subcategoria, setSubcategoria] = useState(ticket.subcategoria || '');
@@ -16,12 +19,24 @@ function EditarSolicitudModal({ ticket, user, usuarios = [], grupos = [], usuari
   const [nuevoArchivo, setNuevoArchivo] = useState(null);
 
   const esCliente = user?.role === 'client';
-  const tecnicosDisponibles = usuariosPorGrupo[grupo] || [];
+  const tecnicosDisponibles = (usuariosPorGrupo && Array.isArray(usuariosPorGrupo[grupo])) ? usuariosPorGrupo[grupo] : [];
 
-  const categoriaObj = categorias.find(c => c.nombre === categoria);
-  const subcategoriasDisponibles = categoriaObj ? categoriaObj.subcategorias.filter(s => s.estatus === 'ACTIVO') : [];
-  const subcategoriaObj = subcategoriasDisponibles.find(s => s.nombre === subcategoria);
-  const elementosDisponibles = subcategoriaObj ? subcategoriaObj.elementos : [];
+  // Búsqueda segura sin importar mayúsculas/minúsculas y blindada contra undefined
+  const categoriaObj = listaCategorias.find(
+    c => (c?.nombre || '').toUpperCase() === (categoria || '').toUpperCase()
+  );
+
+  const subcategoriasDisponibles = Array.isArray(categoriaObj?.subcategorias)
+    ? categoriaObj.subcategorias.filter(s => (s?.estatus || 'ACTIVO').toUpperCase() === 'ACTIVO')
+    : [];
+
+  const subcategoriaObj = subcategoriasDisponibles.find(
+    s => (s?.nombre || '').toUpperCase() === (subcategoria || '').toUpperCase()
+  );
+
+  const elementosDisponibles = Array.isArray(subcategoriaObj?.elementos)
+    ? subcategoriaObj.elementos.filter(el => (el?.estatus || 'ACTIVO').toUpperCase() === 'ACTIVO')
+    : [];
 
   const handleCambioTecnico = (e) => {
     if (esCliente) return;
@@ -139,7 +154,7 @@ function EditarSolicitudModal({ ticket, user, usuarios = [], grupos = [], usuari
               className="w-full px-3 py-2 rounded-lg bg-slate-900 border border-slate-700 text-white text-sm outline-none focus:border-green-500 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
             >
               <option value="">Seleccione Grupo</option>
-              {grupos.map((g, idx) => (
+              {listaGrupos.map((g, idx) => (
                 <option key={idx} value={g}>{g}</option>
               ))}
             </select>
@@ -179,9 +194,11 @@ function EditarSolicitudModal({ ticket, user, usuarios = [], grupos = [], usuari
                   className="w-full px-3 py-2 rounded-lg bg-slate-900 border border-slate-700 text-white text-sm outline-none focus:border-green-500 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
                 >
                   <option value="">Seleccione Categoría</option>
-                  {categorias.filter(c => c.estatus === 'ACTIVO').map((cat, idx) => (
-                    <option key={idx} value={cat.nombre}>{cat.nombre}</option>
-                  ))}
+                  {listaCategorias
+                    .filter(c => (c?.estatus || 'ACTIVO').toUpperCase() === 'ACTIVO')
+                    .map((cat, idx) => (
+                      <option key={cat.id || idx} value={cat.nombre}>{cat.nombre}</option>
+                    ))}
                 </select>
               </div>
 
@@ -195,7 +212,7 @@ function EditarSolicitudModal({ ticket, user, usuarios = [], grupos = [], usuari
                 >
                   <option value="">Seleccione Sub-Categoría</option>
                   {subcategoriasDisponibles.map((sub, idx) => (
-                    <option key={idx} value={sub.nombre}>{sub.nombre}</option>
+                    <option key={sub.id || idx} value={sub.nombre}>{sub.nombre}</option>
                   ))}
                 </select>
               </div>
@@ -210,7 +227,7 @@ function EditarSolicitudModal({ ticket, user, usuarios = [], grupos = [], usuari
                 >
                   <option value="">Seleccione Elemento</option>
                   {elementosDisponibles.map((elem, idx) => (
-                    <option key={idx} value={elem.nombre}>{elem.nombre}</option>
+                    <option key={elem.id || idx} value={elem.nombre}>{elem.nombre}</option>
                   ))}
                 </select>
               </div>
