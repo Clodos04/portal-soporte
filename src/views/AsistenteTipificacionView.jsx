@@ -271,6 +271,7 @@ function AsistenteTipificacionView({ categorias = [], campanas = [], equipos = [
               </div>
             )}
 
+            {/* PASO 1: CATEGORÍAS */}
             {paso === 1 && (
               <div className="space-y-4 animate-fade-in">
                 <h3 className="text-base font-bold text-white text-center">¿Qué área o servicio te está presentando problemas?</h3>
@@ -287,8 +288,13 @@ function AsistenteTipificacionView({ categorias = [], campanas = [], equipos = [
                         onClick={() => seleccionarCat(cat)}
                         className="p-4 rounded-xl bg-slate-800/80 border border-slate-700 hover:border-indigo-500 transition-all text-left flex items-center justify-between group cursor-pointer shadow-md"
                       >
-                        <span className="font-bold text-white text-sm uppercase tracking-wide">{cat.nombre}</span>
-                        <span className="text-indigo-400 group-hover:translate-x-1.5 transition-transform font-bold">→</span>
+                        <div className="pr-3">
+                          <div className="font-bold text-white text-sm uppercase tracking-wide">{cat.nombre}</div>
+                          {cat.descripcion && (
+                            <div className="text-[11px] text-slate-400 mt-1 leading-snug">{cat.descripcion}</div>
+                          )}
+                        </div>
+                        <span className="text-indigo-400 group-hover:translate-x-1.5 transition-transform font-bold shrink-0">→</span>
                       </button>
                     ))}
                   </div>
@@ -296,6 +302,7 @@ function AsistenteTipificacionView({ categorias = [], campanas = [], equipos = [
               </div>
             )}
 
+            {/* PASO 2: SUBCATEGORÍAS (CON BREVE DESCRIPCIÓN) */}
             {paso === 2 && categoriaSeleccionada && (
               <div className="space-y-4 animate-fade-in">
                 <div className="flex justify-between items-center bg-slate-800/50 p-3 rounded-xl border border-slate-700">
@@ -317,10 +324,17 @@ function AsistenteTipificacionView({ categorias = [], campanas = [], equipos = [
                           key={sub.id || sub.nombre}
                           type="button"
                           onClick={() => seleccionarSubcat(sub)}
-                          className="p-3.5 rounded-xl bg-slate-800/80 border border-slate-700 hover:border-indigo-500 text-left flex items-center justify-between group cursor-pointer"
+                          className="p-4 rounded-xl bg-slate-800/80 border border-slate-700 hover:border-indigo-500 text-left flex items-center justify-between group cursor-pointer transition-all shadow-sm"
                         >
-                          <span className="font-semibold text-white text-xs uppercase">{sub.nombre}</span>
-                          <span className="text-indigo-400 group-hover:translate-x-1 transition-transform">→</span>
+                          <div className="pr-3">
+                            <div className="font-bold text-white text-xs uppercase tracking-wide">{sub.nombre}</div>
+                            {sub.descripcion && (
+                              <div className="text-[11px] text-slate-400 mt-1 leading-relaxed font-normal">
+                                {sub.descripcion}
+                              </div>
+                            )}
+                          </div>
+                          <span className="text-indigo-400 group-hover:translate-x-1 transition-transform shrink-0 font-bold">→</span>
                         </button>
                       ))}
                   </div>
@@ -328,6 +342,7 @@ function AsistenteTipificacionView({ categorias = [], campanas = [], equipos = [
               </div>
             )}
 
+            {/* PASO 2.5: ÁRBOL ESPECIAL CENTINELA */}
             {paso === 2.5 && perifericoCentinela && (
               <div className="space-y-4 animate-fade-in max-w-xl mx-auto">
                 <div className="flex justify-between items-center bg-slate-800/50 p-3 rounded-xl border border-slate-700">
@@ -451,13 +466,14 @@ function AsistenteTipificacionView({ categorias = [], campanas = [], equipos = [
               </div>
             )}
 
+            {/* PASO 3: ELEMENTOS (CON BREVE DESCRIPCIÓN) */}
             {paso === 3 && subcatSeleccionada && (
               <div className="space-y-4 animate-fade-in">
                 <div className="flex justify-between items-center bg-slate-800/50 p-3 rounded-xl border border-slate-700">
                   <span className="text-xs text-slate-300">Módulo: <strong className="text-indigo-400 uppercase">{subcatSeleccionada.nombre}</strong></span>
                   <button type="button" onClick={() => setPaso(2)} className="text-xs font-bold text-indigo-400 hover:underline cursor-pointer">« Cambiar módulo</button>
                 </div>
-                <h4 className="text-sm font-bold text-white text-center">Selecciona la falla específica:</h4>
+                <h4 className="text-sm font-bold text-white text-center">Selecciona la falla o requerimiento específico:</h4>
                 {(!subcatSeleccionada.elementos || subcatSeleccionada.elementos.filter(el => (el.estatus || 'ACTIVO').toUpperCase() === 'ACTIVO').length === 0) ? (
                   <div className="text-center py-4">
                     <p className="text-slate-400 italic text-xs mb-3">No hay elementos específicos en este módulo.</p>
@@ -472,10 +488,17 @@ function AsistenteTipificacionView({ categorias = [], campanas = [], equipos = [
                           key={elem.id || elem.nombre}
                           type="button"
                           onClick={() => seleccionarElemento(elem)}
-                          className="p-3.5 rounded-xl bg-slate-800/80 border border-slate-700 hover:border-indigo-500 text-left flex items-center justify-between group cursor-pointer"
+                          className="p-4 rounded-xl bg-slate-800/80 border border-slate-700 hover:border-indigo-500 text-left flex items-center justify-between group cursor-pointer transition-all shadow-sm"
                         >
-                          <span className="font-semibold text-white text-xs uppercase">{elem.nombre}</span>
-                          <span className="text-indigo-400 group-hover:translate-x-1 transition-transform">→</span>
+                          <div className="pr-3">
+                            <div className="font-bold text-white text-xs uppercase tracking-wide">{elem.nombre}</div>
+                            {elem.descripcion && (
+                              <div className="text-[11px] text-slate-400 mt-1 leading-relaxed font-normal">
+                                {elem.descripcion}
+                              </div>
+                            )}
+                          </div>
+                          <span className="text-indigo-400 group-hover:translate-x-1 transition-transform shrink-0 font-bold">→</span>
                         </button>
                       ))}
                   </div>
@@ -483,6 +506,7 @@ function AsistenteTipificacionView({ categorias = [], campanas = [], equipos = [
               </div>
             )}
 
+            {/* PASO 4: CONFIRMACIÓN */}
             {paso === 4 && (
               <div className="space-y-4 animate-fade-in text-center py-2">
                 <div className="w-12 h-12 bg-emerald-500/20 text-emerald-400 rounded-xl flex items-center justify-center mx-auto text-xl border border-emerald-500/30">
@@ -490,7 +514,7 @@ function AsistenteTipificacionView({ categorias = [], campanas = [], equipos = [
                 </div>
                 <h3 className="text-base font-black text-white uppercase">Tipificación Detectada</h3>
                 
-                <div className="bg-slate-800/90 p-3.5 rounded-xl border border-slate-700 max-w-md mx-auto text-left space-y-1 text-xs">
+                <div className="bg-slate-800/90 p-3.5 rounded-xl border border-slate-700 max-w-md mx-auto text-left space-y-1.5 text-xs">
                   <div>Tipo: <strong className={tipoReporte === 'CENTINELA' ? 'text-purple-400' : 'text-indigo-400'}>{tipoReporte}</strong></div>
                   <div>Área: <strong className="text-white uppercase">{categoriaSeleccionada?.nombre}</strong></div>
                   {perifericoCentinela ? (
@@ -500,8 +524,22 @@ function AsistenteTipificacionView({ categorias = [], campanas = [], equipos = [
                     </>
                   ) : (
                     <>
-                      {subcatSeleccionada && <div>Módulo: <strong className="text-white uppercase">{subcatSeleccionada?.nombre}</strong></div>}
-                      {elementoSeleccionado && <div>Falla: <strong className="text-indigo-400 uppercase">{elementoSeleccionado?.nombre}</strong></div>}
+                      {subcatSeleccionada && (
+                        <div>
+                          Módulo: <strong className="text-white uppercase">{subcatSeleccionada?.nombre}</strong>
+                          {subcatSeleccionada?.descripcion && (
+                            <p className="text-[11px] text-slate-400 mt-0.5 italic">{subcatSeleccionada.descripcion}</p>
+                          )}
+                        </div>
+                      )}
+                      {elementoSeleccionado && (
+                        <div>
+                          Falla: <strong className="text-indigo-400 uppercase">{elementoSeleccionado?.nombre}</strong>
+                          {elementoSeleccionado?.descripcion && (
+                            <p className="text-[11px] text-slate-400 mt-0.5 italic">{elementoSeleccionado.descripcion}</p>
+                          )}
+                        </div>
+                      )}
                     </>
                   )}
                 </div>
@@ -517,6 +555,7 @@ function AsistenteTipificacionView({ categorias = [], campanas = [], equipos = [
               </div>
             )}
 
+            {/* PASO 5: FORMULARIO FINAL */}
             {paso === 5 && (
               <div className="space-y-4 animate-fade-in pb-2">
                 <div className="flex justify-between items-center bg-slate-800/60 p-2.5 rounded-xl border border-slate-700">
