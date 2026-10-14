@@ -3,6 +3,13 @@ const mysql = mysql2 = require('mysql2');
 const cors = require('cors');
 const path = require('path');
 
+// Importamos las respuestas automáticas y lógica de Centinela / Chat
+const {
+  obtenerMensajeCentinela,
+  obtenerFlujoPreguntas,
+  evaluarSiguienteRespuestaChat
+} = require('./respuestasChat.cjs');
+
 const app = express();
 app.use(express.json());
 app.use(cors());
@@ -85,7 +92,11 @@ app.get(['/api/tickets/contar-hoy', '/tickets/contar-hoy'], (req, res) => {
   });
 });
 
+// Inserción de tickets normales con la Pregunta 1 automática desde respuestasChat.cjs
 const continuarInsercionTicket = (ticketData, res) => {
+  const flujo = obtenerFlujoPreguntas(ticketData);
+  const primerMensaje = flujo[0];
+
   for (let key in ticketData) {
     if (typeof ticketData[key] === 'object' && ticketData[key] !== null) {
       ticketData[key] = JSON.stringify(ticketData[key]);
@@ -95,7 +106,7 @@ const continuarInsercionTicket = (ticketData, res) => {
   db.query('INSERT INTO tickets SET ?', ticketData, (err, result) => {
     if (err) return res.status(500).json({ error: err.message });
     const horaActual = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    db.query('INSERT INTO mensajes_chat (folio, remitente, texto, hora) VALUES (?, ?, ?, ?)', [ticketData.folio, 'Sistema', `Folio #${ticketData.folio} registrado con éxito. Se te asignará un técnico en un tiempo máximo de 10 minutos.`, horaActual], () => {
+    db.query('INSERT INTO mensajes_chat (folio, remitente, texto, hora) VALUES (?, ?, ?, ?)', [ticketData.folio, 'Sistema', primerMensaje, horaActual], () => {
       res.json({ message: 'Ticket creado exitosamente', id: result.insertId });
     });
   });
@@ -141,10 +152,10 @@ app.post(['/api/tickets', '/tickets'], (req, res) => {
           const nuevoFolio = ticketData.folio;
           const horaActual = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
           
-          let textoMensaje = `Folio #${nuevoFolio} registrado con éxito. Se te asignará un técnico en un tiempo máximo de 10 minutos.`;
+          // Obtenemos el mensaje de Centinela desde respuestasChat.cjs
+          const textoMensaje = obtenerMensajeCentinela(nuevoFolio, esSubsecuente, folioAnterior);
 
           if (esSubsecuente) {
-            textoMensaje = `Gracias por crear tu centinela con el folio #${nuevoFolio}. Validamos que un técnico ya se acercó previamente a realizar pruebas (Folio origen: #${folioAnterior}). Te agradecemos que lo sigas reportando para que tu campaña llegue al 100% y se hagan los cambios solicitados.`;
             db.query("UPDATE tickets SET estatus = 'Cerrado', colorEstatus = 'bg-red-600' WHERE folio = ?", [nuevoFolio]);
           }
 
@@ -203,9 +214,39 @@ app.get(['/api/chat/:folio', '/chat/:folio'], (req, res) => {
 
 app.post(['/api/chat', '/chat'], (req, res) => {
   const { folio, remitente, texto, hora } = req.body;
-  db.query('INSERT INTO mensajes_chat (folio, remitente, texto, hora) VALUES (?, ?, ?, ?)', [folio, remitente, texto, hora], (err, result) => {
+  const horaActual = hora || new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+  db.query('INSERT INTO mensajes_chat (folio, remitente, texto, hora) VALUES (?, ?, ?, ?)', [folio, remitente, texto, horaActual], (err, result) => {
     if (err) return res.status(500).json({ error: 'Error al guardar mensaje' });
-    res.json({ success: true, id: result.insertId });
+
+    if (!remitente || remitente.toUpperCase() === 'SISTEMA') {
+      return res.json({ success: true, id: result.insertId });
+    }
+
+    db.query('SELECT * FROM tickets WHERE folio = ? LIMIT 1', [folio], (errTicket, ticketsRes) => {
+      if (errTicket || !ticketsRes || ticketsRes.length === 0) {
+        return res.json({ success: true, id: result.insertId });
+      }
+
+      const ticket = ticketsRes[0];
+
+      db.query('SELECT COUNT(*) AS totalSistema FROM mensajes_chat WHERE folio = ? AND remitente = "Sistema"', [folio], (errCount, countRes) => {
+        if (errCount || !countRes) {
+          return res.json({ success: true, id: result.insertId });
+        }
+
+        const mensajesDelSistema = countRes[0].totalSistema;
+        const respuestaAutomatica = evaluarSiguienteRespuestaChat(ticket, remitente, texto, mensajesDelSistema);
+
+        if (respuestaAutomatica) {
+          db.query('INSERT INTO mensajes_chat (folio, remitente, texto, hora) VALUES (?, ?, ?, ?)', [folio, 'Sistema', respuestaAutomatica, horaActual], () => {
+            return res.json({ success: true, id: result.insertId });
+          });
+        } else {
+          return res.json({ success: true, id: result.insertId });
+        }
+      });
+    });
   });
 });
 
@@ -228,7 +269,7 @@ app.put(['/api/usuarios/:id', '/usuarios/:id'], (req, res) => {
   const { nombre, paterno, materno, campana, username, estatus, nivel, gruposAsignados } = req.body;
   const gruposStr = Array.isArray(gruposAsignados) ? JSON.stringify(gruposAsignados) : (gruposAsignados || '[]');
   db.query('UPDATE usuarios SET nombre = ?, paterno = ?, materno = ?, campana = ?, username = ?, estatus = ?, nivel = ?, gruposAsignados = ? WHERE id = ?', 
-    [nombre, paterno, materno, campana, username, estatus, nivel, gruposStr, id], (err, result) => {
+    [nombre, paterno, materno, campana, username, estatus, nivel, gruposAsignadosStr = gruposStr, id], (err, result) => {
     if (err) return res.status(500).json({ error: err.message });
     if (result.affectedRows === 0) return res.status(404).json({ error: 'No se encontró el usuario.' });
     res.json({ message: 'Usuario actualizado correctamente' });
@@ -280,11 +321,10 @@ app.get(['/api/categorias', '/categorias'], (req, res) => {
         subcats = cat.subcategorias;
       }
 
-      // Aseguramos que cada subcategoría tenga tanto fecAlta como fec_alta
       subcats = subcats.map(sub => {
         if (typeof sub === 'object' && sub !== null) {
           const fechaSub = sub.fecAlta || sub.fec_alta || cat.fec_alta || '13/10/2026';
-          return { ...sub, fecAlta: fechaSub, fec_alta: fechaSub };
+          return { ...sub, fecAlta: fechaSub, fec_alta: fechaSub, elementos: Array.isArray(sub.elementos) ? sub.elementos : [] };
         }
         return sub;
       });
@@ -308,7 +348,6 @@ app.post(['/api/categorias/sincronizar', '/categorias/sincronizar'], (req, res) 
     return res.status(400).json({ error: 'Formato inválido, se esperaba un arreglo' });
   }
 
-  // Limpiamos e insertamos el estado actual para reflejar altas, ediciones y bajas
   db.query('DELETE FROM categorias', (errDel) => {
     if (errDel) {
       console.error('Error al limpiar categorías:', errDel);
