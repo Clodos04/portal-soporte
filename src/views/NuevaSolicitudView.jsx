@@ -6,15 +6,22 @@ function NuevaSolicitudView({ user, usuarios = [], grupos = [], usuariosPorGrupo
   const [grupo, setGrupo] = useState('');
   const [usuarioAsignado, setUsuarioAsignado] = useState('Sin Asignar');
   
-  const categoriasActivas = categorias.filter(c => c.estatus === 'ACTIVO');
+  // 1. Filtrado seguro de Categorías, Subcategorías y Elementos activos
+  const categoriasActivas = (categorias || []).filter(
+    c => (c.estatus || 'ACTIVO').toUpperCase() === 'ACTIVO'
+  );
   const [categoria, setCategoria] = useState('');
   
   const categoriaObj = categoriasActivas.find(c => c.nombre === categoria);
-  const subcategoriasDisponibles = categoriaObj ? (categoriaObj?.subcategorias || []).filter(s => s.estatus === 'ACTIVO') : [];
+  const subcategoriasDisponibles = categoriaObj 
+    ? (categoriaObj.subcategorias || []).filter(s => (s.estatus || 'ACTIVO').toUpperCase() === 'ACTIVO') 
+    : [];
   const [subCategoria, setSubCategoria] = useState('');
 
   const subcategoriaObj = subcategoriasDisponibles.find(s => s.nombre === subCategoria);
-  const elementosDisponibles = subcategoriaObj ? (subcategoriaObj?.elementos || []) : [];
+  const elementosDisponibles = subcategoriaObj 
+    ? (subcategoriaObj.elementos || []).filter(el => (el.estatus || 'ACTIVO').toUpperCase() === 'ACTIVO') 
+    : [];
   const [elemento, setElemento] = useState('');
 
   const [isAsistenteOpen, setIsAsistenteOpen] = useState(true);
@@ -57,10 +64,12 @@ function NuevaSolicitudView({ user, usuarios = [], grupos = [], usuariosPorGrupo
     .map(eq => eq.equipo);
 
   useEffect(() => {
-    if (user && user.name && campanasBD.length > 0) {
-      const usuarioEnBD = usuarios.find(u => `${u.nombre} ${u.paterno}`.toLowerCase() === user.name.toLowerCase() || u.username === user.username);
+    if (user && user.name) {
+      const usuarioEnBD = usuarios.find(
+        u => `${u.nombre || ''} ${u.paterno || ''}`.trim().toLowerCase() === user.name.toLowerCase() || u.username === user.username
+      );
       if (usuarioEnBD) {
-        setNombreCliente(`${usuarioEnBD.nombre} ${usuarioEnBD.paterno}`);
+        setNombreCliente(`${usuarioEnBD.nombre || ''} ${usuarioEnBD.paterno || ''}`.trim());
       } else {
         setNombreCliente(user.name);
       }
@@ -109,18 +118,19 @@ function NuevaSolicitudView({ user, usuarios = [], grupos = [], usuariosPorGrupo
       creador: nombreCliente || user?.name || 'VALERIA GOMEZ',
       asunto: asunto,
       descripcion: descripcion,
-      campana: campObj ? campObj.nombre : 'General',
+      campana: campObj ? campObj.nombre : (areaCliente || 'General'),
       equipo: equiposSeleccionados.length > 0 ? equiposSeleccionados.join(', ') : 'Ninguno',
       nivel: nivel,
       modo: modo,
       fecha: fechaHoy,
       grupo: grupo || 'Soporte Técnico',
       categoria: categoria || 'GENERAL',
-      subcategoria: subCategoria,
-      elemento: elemento,
+      subcategoria: subCategoria || '',
+      elemento: elemento || '',
       resolucion: '',
       archivoNombre: archivo ? archivo.name : null,
-      archivoUrl: archivo ? URL.createObjectURL(archivo) : null
+      archivoUrl: archivo ? URL.createObjectURL(archivo) : null,
+      tipo_solicitud: 'REPORTE'
     };
 
     onGuardar(ticketNuevo);
@@ -168,7 +178,6 @@ function NuevaSolicitudView({ user, usuarios = [], grupos = [], usuariosPorGrupo
               }}
               onCancelar={() => {
                 setIsAsistenteOpen(false);
-                onVolver();
               }}
             />
           </div>
@@ -227,7 +236,7 @@ function NuevaSolicitudView({ user, usuarios = [], grupos = [], usuariosPorGrupo
                 <select value={categoria} onChange={handleCambioCategoria} className="w-full px-3 py-2.5 rounded-lg bg-slate-900 border border-slate-700 text-white text-sm outline-none focus:border-indigo-500 transition-colors">
                   <option value="">Seleccione Categoría</option>
                   {categoriasActivas.map((cat, idx) => (
-                    <option key={idx} value={cat.nombre}>{cat.nombre}</option>
+                    <option key={cat.id || idx} value={cat.nombre}>{cat.nombre}</option>
                   ))}
                 </select>
               </div>
@@ -237,7 +246,7 @@ function NuevaSolicitudView({ user, usuarios = [], grupos = [], usuariosPorGrupo
                 <select value={subCategoria} onChange={handleCambioSubcategoria} className="w-full px-3 py-2.5 rounded-lg bg-slate-900 border border-slate-700 text-white text-sm outline-none focus:border-indigo-500 transition-colors">
                   <option value="">Seleccione Sub-Categoría</option>
                   {subcategoriasDisponibles.map((sub, idx) => (
-                    <option key={idx} value={sub.nombre}>{sub.nombre}</option>
+                    <option key={sub.id || idx} value={sub.nombre}>{sub.nombre}</option>
                   ))}
                 </select>
               </div>
@@ -247,7 +256,7 @@ function NuevaSolicitudView({ user, usuarios = [], grupos = [], usuariosPorGrupo
                 <select value={elemento} onChange={(e) => setElemento(e.target.value)} className="w-full px-3 py-2.5 rounded-lg bg-slate-900 border border-slate-700 text-white text-sm outline-none focus:border-indigo-500 transition-colors">
                   <option value="">Seleccione Elemento</option>
                   {elementosDisponibles.map((elem, idx) => (
-                    <option key={idx} value={elem.nombre}>{elem.nombre}</option>
+                    <option key={elem.id || idx} value={elem.nombre}>{elem.nombre}</option>
                   ))}
                 </select>
               </div>
