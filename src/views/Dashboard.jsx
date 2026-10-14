@@ -1,8 +1,51 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
-function Dashboard({ user, tickets = [], onIrANuevaSolicitud, onIrAEncuesta, estadisticasEncuestas = [] }) {
-  const safeTickets = tickets || [];
+function Dashboard({ user, tickets = [], categorias = [], onIrANuevaSolicitud, onIrAEncuesta, estadisticasEncuestas = [] }) {
+  const safeTickets = Array.isArray(tickets) ? tickets : [];
+  const [categoriasBD, setCategoriasBD] = useState(Array.isArray(categorias) ? categorias : []);
+  const [soloHoyGrafica, setSoloHoyGrafica] = useState(true); // Por defecto muestra las categorías de HOY
+
+  // Si App.jsx no pasa 'categorias', las consultamos directamente de la BD
+  useEffect(() => {
+    if (Array.isArray(categorias) && categorias.length > 0) {
+      setCategoriasBD(categorias);
+    } else {
+      fetch('/api/categorias')
+        .then(r => r.json())
+        .then(data => {
+          if (Array.isArray(data)) setCategoriasBD(data);
+        })
+        .catch(err => console.error('Error al cargar categorías en Dashboard:', err));
+    }
+  }, [categorias]);
+
+  // Obtener la fecha real de HOY en zona horaria de México (YYYY-MM-DD)
+  const obtenerFechaHoyMexico = () => {
+    const ahora = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Mexico_City' }));
+    const yyyy = ahora.getFullYear();
+    const mm = String(ahora.getMonth() + 1).padStart(2, '0');
+    const dd = String(ahora.getDate()).padStart(2, '0');
+    return `${yyyy}-${mm}-${dd}`;
+  };
+
+  const fechaHoyMX = obtenerFechaHoyMexico();
+
+  // Función que valida si un ticket REALMENTE se hizo hoy en hora de México
+  // (Corrige aquellos tickets hechos ayer después de las 6pm que guardaron fecha UTC adelantada)
+  const esTicketDeHoy = (t) => {
+    if (t.created_at) {
+      const fechaCreacion = new Date(t.created_at);
+      if (!isNaN(fechaCreacion.getTime())) {
+        const mxDate = new Date(fechaCreacion.toLocaleString('en-US', { timeZone: 'America/Mexico_City' }));
+        const yyyy = mxDate.getFullYear();
+        const mm = String(mxDate.getMonth() + 1).padStart(2, '0');
+        const dd = String(mxDate.getDate()).padStart(2, '0');
+        return `${yyyy}-${mm}-${dd}` === fechaHoyMX;
+      }
+    }
+    return String(t.fecha || '').slice(0, 10) === fechaHoyMX;
+  };
 
   const rolUsuario = (user?.role || user?.nivel || '').toLowerCase();
   const esCliente = rolUsuario === 'client' || rolUsuario === 'cliente';
@@ -13,19 +56,18 @@ function Dashboard({ user, tickets = [], onIrANuevaSolicitud, onIrAEncuesta, est
     );
 
     const misTicketsAbiertos = misTickets.filter(t => t.estatus !== 'Cerrado' && t.estatus !== 'CERRADO');
-    
     const ticketsCerradosCliente = misTickets.filter(t => t.estatus === 'Cerrado' || t.estatus === 'CERRADO');
     
     const ultimoTicketCerradoPendiente = ticketsCerradosCliente.slice().reverse().find(t => {
       return !estadisticasEncuestas.some(e => 
-        (t.folio && e.folio && String(e.folio).trim() === String(t.folio).trim()) || 
+        (t.folio && e.folio && String(e.folio).trim() === String(ticket?.folio || t.folio).trim()) || 
         (t.id && e.ticket_id && Number(e.ticket_id) === Number(t.id))
       );
     });
 
-    const ultimoTicketGeneral = misTickets.length > 0 ? misTickets[misTickets.length - 1] : (safeTickets.length > 0 ? safeTickets[safeTickets.length - 1] : null);
+    const ultimoTicketGeneral = misTickets.length > 0 ? misTickets[0] : null;
     
-    const ultimaNota = ultimoTicketGeneral && ultimoTicketGeneral.notas && ultimoTicketGeneral.notas.length > 0  
+    const ultimaNota = ultimoTicketGeneral && Array.isArray(ultimoTicketGeneral.notas) && ultimoTicketGeneral.notas.length > 0  
       ? ultimoTicketGeneral.notas[ultimoTicketGeneral.notas.length - 1]  
       : null;
 
@@ -151,23 +193,47 @@ function Dashboard({ user, tickets = [], onIrANuevaSolicitud, onIrAEncuesta, est
     );
   }
 
-  // --- VISTA DE SOPORTE / ADMINISTRADORES ---
+  // ========================================================================
+  // VISTA DE SOPORTE / ADMINISTRADORES
+  // ========================================================================
   const totalAbiertas = safeTickets.filter(t => t.estatus === 'Abierto' || t.estatus === 'ABIERTO').length;
   const totalEnProceso = safeTickets.filter(t => t.estatus === 'En Proceso' || t.estatus === 'EN PROCESO').length;
+  
+  // Tickets creados REALMENTE el día de hoy en hora de México
+  const ticketsDeHoy = safeTickets.filter(esTicketDeHoy);
 
-  const countSoporte = safeTickets.filter(t => t.grupo?.toLowerCase().includes('soporte')).length;
-  const countDesarrollo = safeTickets.filter(t => t.grupo?.toLowerCase().includes('desarrollo')).length;
-  const countCalidad = safeTickets.filter(t => t.grupo?.toLowerCase().includes('calidad') || t.grupo?.toLowerCase().includes('estadistico')).length;
-  const countAtencion = safeTickets.filter(t => t.grupo?.toLowerCase().includes('atencion') || t.grupo?.toLowerCase().includes('telefonia')).length;
+  // Construimos las barras de la gráfica basadas en las CATEGORÍAS activas de la BD
+  const categoriasActivas = categoriasBD
+    .filter(c => (c.estatus || 'ACTIVO').toUpperCase() === 'ACTIVO')
+    .map(c => c.nombre.toUpperCase());
 
-  const datosGrupos = [
-    { nombre: 'Soporte Técnico', tickets: countSoporte },
-    { nombre: 'Desarrollo', tickets: countDesarrollo },
-    { nombre: 'Calidad', tickets: countCalidad },
-    { nombre: 'Atención a Clientes', tickets: countAtencion },
-  ];
+  // Si no han cargado aún de la BD, aseguramos mostrar DISPOSITIVOS y TOUCHPOINT
+  const listaNombresCategorias = categoriasActivas.length > 0 
+    ? [...categoriasActivas] 
+    : ['DISPOSITIVOS', 'TOUCHPOINT'];
 
-  // FILTRO: Excluimos los tickets Centinela del cálculo del SLA para no inflar las métricas
+  if (!listaNombresCategorias.includes('CENTINELA')) {
+    listaNombresCategorias.push('CENTINELA');
+  }
+
+  const baseTicketsGrafica = soloHoyGrafica ? ticketsDeHoy : safeTickets;
+
+  const datosCategorias = listaNombresCategorias.map(nombreCat => {
+    const cantidad = baseTicketsGrafica.filter(t => {
+      const catTicket = (t.categoria || '').toUpperCase();
+      if (nombreCat === 'CENTINELA') {
+        return t.tipo_solicitud === 'CENTINELA' || catTicket.includes('CENTINELA');
+      }
+      return catTicket === nombreCat && t.tipo_solicitud !== 'CENTINELA';
+    }).length;
+
+    return {
+      nombre: nombreCat,
+      tickets: cantidad
+    };
+  });
+
+  // FILTRO SLA: Excluimos los tickets Centinela del cálculo del SLA
   const ticketsEstandar = safeTickets.filter(t => 
     t.tipo_solicitud !== 'CENTINELA' && 
     !(t.categoria || '').toUpperCase().includes('CENTINELA') &&
@@ -223,13 +289,13 @@ function Dashboard({ user, tickets = [], onIrANuevaSolicitud, onIrAEncuesta, est
         </div>
 
         <div className="bg-slate-800 rounded-2xl shadow-lg p-5 border border-slate-700 flex flex-col justify-between">
-          <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wide mb-4 text-center">Tickets Hoy</h3>
+          <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wide mb-4 text-center">Tickets Hoy ({fechaHoyMX})</h3>
           <div className="flex justify-center items-center mb-4 px-2">
             <span className="text-5xl font-black text-white">
-              {safeTickets.filter(t => t.fecha === new Date().toISOString().split('T')[0]).length}
+              {ticketsDeHoy.length}
             </span>
           </div>
-          <div className="w-full bg-slate-700 rounded-full h-2"><div className="bg-blue-500 h-2 rounded-full" style={{ width: '50%' }}></div></div>
+          <div className="w-full bg-slate-700 rounded-full h-2"><div className="bg-blue-500 h-2 rounded-full" style={{ width: `${Math.min(ticketsDeHoy.length * 10, 100)}%` }}></div></div>
         </div>
 
         <div className="bg-slate-800 rounded-2xl shadow-lg p-5 border border-slate-700 flex flex-col justify-between">
@@ -241,15 +307,36 @@ function Dashboard({ user, tickets = [], onIrANuevaSolicitud, onIrAEncuesta, est
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="bg-slate-800 rounded-2xl shadow-lg p-6 border border-slate-700">
-          <h2 className="text-lg font-bold text-slate-300 mb-6 uppercase tracking-wide">Distribución por Grupo</h2>
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-6">
+            <h2 className="text-lg font-bold text-slate-300 uppercase tracking-wide">
+              Distribución por Categoría
+            </h2>
+            <div className="flex items-center gap-1.5 bg-slate-900 p-1 rounded-xl border border-slate-700">
+              <button
+                type="button"
+                onClick={() => setSoloHoyGrafica(true)}
+                className={`px-3 py-1 rounded-lg text-xs font-bold transition-colors cursor-pointer ${soloHoyGrafica ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white'}`}
+              >
+                Hoy
+              </button>
+              <button
+                type="button"
+                onClick={() => setSoloHoyGrafica(false)}
+                className={`px-3 py-1 rounded-lg text-xs font-bold transition-colors cursor-pointer ${!soloHoyGrafica ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white'}`}
+              >
+                Total
+              </button>
+            </div>
+          </div>
+
           <div className="h-72 w-full">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={datosGrupos} margin={{ top: 20, right: 30, left: 0, bottom: 5 }}>
+              <BarChart data={datosCategorias} margin={{ top: 20, right: 30, left: 0, bottom: 5 }}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#334155" />
                 <XAxis dataKey="nombre" axisLine={false} tickLine={false} tick={{fill: '#94a3b8', fontSize: 12}} />
-                <YAxis axisLine={false} tickLine={false} tick={{fill: '#94a3b8', fontSize: 12}} />
+                <YAxis allowDecimals={false} axisLine={false} tickLine={false} tick={{fill: '#94a3b8', fontSize: 12}} />
                 <Tooltip cursor={{fill: '#1e293b'}} contentStyle={{backgroundColor: '#0f172a', borderRadius: '8px', border: '1px solid #334155', color: '#f8fafc'}} />
-                <Bar dataKey="tickets" fill="#3b82f6" radius={[4, 4, 0, 0]} barSize={40} />
+                <Bar dataKey="tickets" fill="#3b82f6" radius={[4, 4, 0, 0]} barSize={45} />
               </BarChart>
             </ResponsiveContainer>
           </div>
