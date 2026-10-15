@@ -11,13 +11,15 @@
     "start": "node server.cjs"
   },
   "dependencies": {
+    "@tailwindcss/postcss": "^4.3.3",
     "cors": "^2.8.6",
     "express": "^5.2.1",
     "mysql2": "^3.23.2",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
     "react-is": "^19.0.0",
-    "recharts": "^3.10.1"
+    "recharts": "^3.10.1",
+    "tailwindcss": "^4.3.3"
   },
   "devDependencies": {
     "@eslint/js": "^9.0.0",
@@ -29,7 +31,6 @@
     "eslint-plugin-react-hooks": "^5.0.0",
     "eslint-plugin-react-refresh": "^0.4.0",
     "postcss": "^8.5.23",
-    "tailwindcss": "^3.4.1",
     "vite": "^5.4.14"
   }
 }
