@@ -11,6 +11,7 @@
     "start": "node server.cjs"
   },
   "dependencies": {
+    "@rolldown/binding-linux-x64-gnu": "^1.1.5",
     "cors": "^2.8.6",
     "express": "^5.2.1",
     "mysql2": "^3.23.2",
@@ -31,6 +32,6 @@
     "globals": "^17.7.0",
     "postcss": "^8.5.23",
     "tailwindcss": "^4.3.3",
-    "vite": "^8.1.1"
+    "vite": "^8.1.5"
   }
 }
