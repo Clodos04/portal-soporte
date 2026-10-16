@@ -19,6 +19,8 @@
     "react-dom": "^19.2.7",
     "react-is": "^19.0.0",
     "recharts": "^3.10.1",
+    "socket.io": "^4.7.5",
+    "socket.io-client": "^4.7.5",
     "tailwindcss": "^4.3.3"
   },
   "devDependencies": {
