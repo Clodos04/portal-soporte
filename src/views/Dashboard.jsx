@@ -6,14 +6,10 @@ function Dashboard({ user, tickets = [], grupos = [], onIrANuevaSolicitud, onIrA
   const [gruposBD, setGruposBD] = useState(Array.isArray(grupos) ? grupos : []);
   const [soloHoyGrafica, setSoloHoyGrafica] = useState(false);
 
+  // CORREGIDO: Evita bucles infinitos de red al comparar o inicializar grupos
   useEffect(() => {
     if (Array.isArray(grupos) && grupos.length > 0) {
       setGruposBD(grupos);
-    } else {
-      fetch('/api/grupos')
-        .then(r => r.json())
-        .then(data => { if (Array.isArray(data)) setGruposBD(data); })
-        .catch(err => console.error('Error al cargar grupos en Dashboard:', err));
     }
   }, [grupos]);
 
@@ -171,7 +167,6 @@ function Dashboard({ user, tickets = [], grupos = [], onIrANuevaSolicitud, onIrA
   const totalEnProceso = safeTickets.filter(t => t.estatus === 'En Proceso' || t.estatus === 'EN PROCESO').length;
   const ticketsDeHoy = safeTickets.filter(esTicketDeHoy);
 
-  // Tickets sin asignar o abiertos para la nueva bandeja rápida de técnicos
   const ticketsSinAsignar = safeTickets.filter(t => 
     (t.estatus !== 'Cerrado' && t.estatus !== 'CERRADO') && 
     (!t.tecnico || t.tecnico === 'Sin Asignar')
@@ -256,7 +251,6 @@ function Dashboard({ user, tickets = [], grupos = [], onIrANuevaSolicitud, onIrA
         </div>
       </div>
 
-      {/* BANDEJA RÁPIDA DE TICKETS SIN ASIGNAR / NUEVOS PARA SOPORTE */}
       <div className="bg-slate-800 rounded-2xl shadow-xl p-6 border border-slate-700">
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-base font-bold text-white uppercase tracking-wider flex items-center gap-2">
@@ -353,7 +347,7 @@ function Dashboard({ user, tickets = [], grupos = [], onIrANuevaSolicitud, onIrA
                   </div>
                   <div className="text-right">
                     <span className="text-2xl font-black text-green-400">{tec.promedio}</span>
-                    <span className="yellow-400 text-lg ml-1">⭐</span>
+                    <span className="text-yellow-400 text-lg ml-1">⭐</span>
                   </div>
                 </div>
               ))
