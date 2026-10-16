@@ -91,11 +91,11 @@ function App() {
 
     if ("Notification" in window) {
       if (Notification.permission === "granted") {
-        new Notification("Contactus - Actualización", { body: mensajeTexto, icon: "/favicon.ico" });
+        new Notification("CTI - Actualización", { body: mensajeTexto, icon: "/favicon.svg" });
       } else if (Notification.permission !== "denied") {
         Notification.requestPermission().then(permission => {
           if (permission === "granted") {
-            new Notification("Contactus - Actualización", { body: mensajeTexto, icon: "/favicon.ico" });
+            new Notification("CTI - Actualización", { body: mensajeTexto, icon: "/favicon.svg" });
           }
         });
       }
@@ -300,7 +300,7 @@ function App() {
 
       const nivel = (usuarioEncontrado.nivel || '').toUpperCase();
       const esSoporte = nivel === 'ADMINISTRADOR' || nivel === 'TECNICO SUPERVISOR' || nivel === 'TECNICO';
-      
+       
       setUser({
         name: `${usuarioEncontrado.nombre || ''} ${usuarioEncontrado.paterno || ''}`.trim() || usuarioEncontrado.username,
         role: esSoporte ? 'support' : 'client',
@@ -308,7 +308,7 @@ function App() {
         username: usuarioEncontrado.username,
         campana: usuarioEncontrado.campana || '*111'
       });
-      
+       
       setIsLoggedIn(true);
       setCurrentView('inicio');
       return true;
@@ -330,9 +330,9 @@ function App() {
     <div className={`${!isDarkMode ? 'light-mode' : ''} min-h-screen bg-slate-900 font-sans pb-10 text-slate-200 relative`}>
       {alertaVisual && (
         <div className="fixed bottom-6 right-6 z-50 bg-slate-800 border border-indigo-500/50 text-slate-100 px-5 py-4 rounded-2xl shadow-2xl flex items-center space-x-3 animate-bounce">
-          <span className="text-xl">🔔</span>
+          <span className="text-xl">⚡</span>
           <div>
-            <p className="text-xs font-bold text-indigo-400 uppercase tracking-wider">Actualización Portal</p>
+            <p className="text-xs font-bold text-indigo-400 uppercase tracking-wider">Clodos TI Assist (CTI)</p>
             <p className="text-sm font-medium">{alertaVisual}</p>
           </div>
         </div>
@@ -416,6 +416,7 @@ function App() {
         {currentView === 'solicitudes' && (
           <SolicitudesView 
             tickets={tickets}
+            categorias={categorias}
             activeColumns={activeColumns}
             columnLabels={columnLabels}
             user={user}
