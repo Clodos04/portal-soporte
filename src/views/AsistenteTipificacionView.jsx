@@ -15,8 +15,9 @@ function AsistenteTipificacionView({ categorias = [], campanas = [], equipos = [
   const [descripcion, setDescripcion] = useState('');
   const [campanaSeleccionadaId, setCampanaSeleccionadaId] = useState('');
   const [equiposSeleccionados, setEquiposSeleccionados] = useState([]);
-  const [nivel, setNivel] = useState('Bajo');
-  const [modo, setModo] = useState('WEB');
+  // Valores internos por defecto para MySQL (sin mostrar selectores en pantalla)
+  const [nivel] = useState('Bajo');
+  const [modo] = useState('WEB');
   const [archivo, setArchivo] = useState(null);
   const [errorDuplicado, setErrorDuplicado] = useState('');
   const [enviando, setEnviando] = useState(false); // <--- Candado anti-doble clic
@@ -616,55 +617,32 @@ function AsistenteTipificacionView({ categorias = [], campanas = [], equipos = [
                   </div>
                 )}
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-[11px] font-bold text-slate-300 uppercase mb-1">Equipo / Nodo (Seleccione uno o más):</label>
-                    <div className="w-full h-24 overflow-y-auto px-3 py-2 rounded-xl bg-slate-950 border border-slate-700 text-xs space-y-1">
-                      {listaEquiposActuales.length === 0 ? (
-                        <span className="text-slate-500 italic">Seleccione una campaña</span>
-                      ) : (
-                        listaEquiposActuales.map((eq, idx) => (
-                          <label key={idx} className="flex items-center gap-2 cursor-pointer hover:bg-slate-900 p-1 rounded">
-                            <input 
-                              type="checkbox"
-                              checked={equiposSeleccionados.includes(eq)}
-                              onChange={(e) => {
-                                if (e.target.checked) {
-                                  setEquiposSeleccionados([...equiposSeleccionados, eq]);
-                                } else {
-                                  setEquiposSeleccionados(equiposSeleccionados.filter(item => item !== eq));
-                                }
-                              }}
-                              className="rounded bg-slate-900 border-slate-700 text-indigo-600 w-3 h-3 cursor-pointer"
-                            />
-                            <span className="text-slate-200 font-mono text-[11px]">{eq}</span>
-                          </label>
-                        ))
-                      )}
-                    </div>
-                    <p className="text-[10px] text-indigo-400 mt-1">Seleccionados ({equiposSeleccionados.length}): {equiposSeleccionados.length > 0 ? equiposSeleccionados.join(', ') : 'Ninguno'}</p>
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-300 uppercase mb-1">Equipo / Nodo (Seleccione uno o más):</label>
+                  <div className="w-full h-28 overflow-y-auto px-3 py-2 rounded-xl bg-slate-950 border border-slate-700 text-xs space-y-1">
+                    {listaEquiposActuales.length === 0 ? (
+                      <span className="text-slate-500 italic">Seleccione una campaña</span>
+                    ) : (
+                      listaEquiposActuales.map((eq, idx) => (
+                        <label key={idx} className="flex items-center gap-2 cursor-pointer hover:bg-slate-900 p-1 rounded">
+                          <input 
+                            type="checkbox"
+                            checked={equiposSeleccionados.includes(eq)}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setEquiposSeleccionados([...equiposSeleccionados, eq]);
+                              } else {
+                                setEquiposSeleccionados(equiposSeleccionados.filter(item => item !== eq));
+                              }
+                            }}
+                            className="rounded bg-slate-900 border-slate-700 text-indigo-600 w-3 h-3 cursor-pointer"
+                          />
+                          <span className="text-slate-200 font-mono text-[11px]">{eq}</span>
+                        </label>
+                      ))
+                    )}
                   </div>
-
-                  <div className="space-y-2.5">
-                    <div>
-                      <label className="block text-[11px] font-bold text-slate-300 uppercase mb-1">Nivel:</label>
-                      <select value={nivel} onChange={(e) => setNivel(e.target.value)} className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-700 text-white text-xs outline-none">
-                        <option value="Bajo">Bajo</option>
-                        <option value="Medio">Medio</option>
-                        <option value="Experto">Experto</option>
-                      </select>
-                    </div>
-
-                    <div>
-                      <label className="block text-[11px] font-bold text-slate-300 uppercase mb-1">Modo:</label>
-                      <select value={modo} onChange={(e) => setModo(e.target.value)} className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-700 text-white text-xs outline-none">
-                        <option value="WEB">WEB</option>
-                        <option value="CORREO">CORREO</option>
-                        <option value="TELEFONO">TELEFONO</option>
-                        <option value="VERBAL">VERBAL</option>
-                      </select>
-                    </div>
-                  </div>
+                  <p className="text-[10px] text-indigo-400 mt-1">Seleccionados ({equiposSeleccionados.length}): {equiposSeleccionados.length > 0 ? equiposSeleccionados.join(', ') : 'Ninguno'}</p>
                 </div>
 
                 <div>
