@@ -40,8 +40,6 @@ function App() {
   const [ticketParaEncuesta, setTicketParaEncuesta] = useState(null);
 
   const [categoriaParaSubcategorias, setCategoriaParaSubcategorias] = useState(null);
-
-  // Estado para la notificación flotante visual interna (toast)
   const [alertaVisual, setAlertaVisual] = useState(null);
 
   const columnLabels = {
@@ -59,45 +57,30 @@ function App() {
   const [categorias, setCategorias] = useState([]);
   const [estadisticasEncuestas, setEstadisticasEncuestas] = useState([]);
 
-  // Control para evitar que la flecha "Atrás" del navegador saque al usuario de la sesión
   useEffect(() => {
     const handlePopState = (event) => {
-      // Si el usuario está en el chat o creando una solicitud y presiona "atrás", lo mandamos a solicitudes de forma segura
       if (currentView === 'live-chat' || currentView === 'nueva-solicitud') {
         event.preventDefault();
         setCurrentView('solicitudes');
       }
     };
-
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
   }, [currentView]);
 
-  // Función para reproducir sonido, mostrar cuadro visual y lanzar notificación nativa del sistema
   const reproducirAlerta = (mensajeTexto) => {
     const audio = new Audio('/Sonidos/minecraft_exp.mp3');
     audio.play().catch(err => console.log("Audio bloqueado por el navegador:", err));
-
-    // 1. Cuadro visual dentro de la app (toast)
     setAlertaVisual(mensajeTexto);
-    setTimeout(() => {
-      setAlertaVisual(null);
-    }, 4000);
+    setTimeout(() => { setAlertaVisual(null); }, 4000);
 
-    // 2. Notificación nativa flotante del sistema operativo (funciona en segundo plano o en otra ventana)
     if ("Notification" in window) {
       if (Notification.permission === "granted") {
-        new Notification("Contactus - Actualización", {
-          body: mensajeTexto,
-          icon: "/favicon.ico"
-        });
+        new Notification("Contactus - Actualización", { body: mensajeTexto, icon: "/favicon.ico" });
       } else if (Notification.permission !== "denied") {
         Notification.requestPermission().then(permission => {
           if (permission === "granted") {
-            new Notification("Contactus - Actualización", {
-              body: mensajeTexto,
-              icon: "/favicon.ico"
-            });
+            new Notification("Contactus - Actualización", { body: mensajeTexto, icon: "/favicon.ico" });
           }
         });
       }
@@ -105,14 +88,12 @@ function App() {
   };
 
   useEffect(() => {
-    // Solicitar permiso de notificaciones nativas al cargar la app
     if ("Notification" in window && Notification.permission !== "granted") {
       Notification.requestPermission();
     }
 
     const cargarDatosIniciales = async () => {
       try {
-        // 1. Cargar y verificar cambios en tickets
         const resTickets = await fetch('/api/tickets');
         const dataTickets = await resTickets.json();
         
@@ -133,13 +114,6 @@ function App() {
             return dataTickets;
           });
         }
-
-        // 2. Revisar mensajes del chat activo si está abierto
-        if (folioChatActivo) {
-          const resChat = await fetch(`/api/chat/${folioChatActivo}`);
-          // Validación manejada dentro de LiveChatView
-        }
-
       } catch (err) {
         console.error("Error al actualizar datos:", err);
       }
@@ -147,36 +121,57 @@ function App() {
 
     cargarDatosIniciales();
 
-    fetch('/api/usuarios')
-      .then(res => res.json())
-      .then(data => { if (Array.isArray(data)) setUsuarios(data); })
-      .catch(err => console.error("Error al cargar usuarios:", err));
-
-    fetch('/api/grupos')
-      .then(res => res.json())
-      .then(data => { if (Array.isArray(data)) setGrupos(data); })
-      .catch(err => console.error("Error al cargar grupos:", err));
-
-    fetch('/api/campanas')
-      .then(res => res.json())
-      .then(data => { if (Array.isArray(data)) setCampanas(data); })
-      .catch(err => console.error("Error al cargar campañas:", err));
-
-    fetch('/api/categorias')
-      .then(res => res.json())
-      .then(data => { if (Array.isArray(data)) setCategorias(data); })
-      .catch(err => console.error("Error al cargar categorías:", err));
-
-    fetch('/api/encuestas/reporte')
-      .then(res => res.json())
-      .then(data => { 
-        if (data && data.historial) setEstadisticasEncuestas(data.historial); 
-      })
-      .catch(err => console.error("Error al cargar encuestas:", err));
+    fetch('/api/usuarios').then(res => res.json()).then(data => { if (Array.isArray(data)) setUsuarios(data); });
+    fetch('/api/grupos').then(res => res.json()).then(data => { if (Array.isArray(data)) setGrupos(data); });
+    fetch('/api/campanas').then(res => res.json()).then(data => { if (Array.isArray(data)) setCampanas(data); });
+    fetch('/api/categorias').then(res => res.json()).then(data => { if (Array.isArray(data)) setCategorias(data); });
+    fetch('/api/encuestas/reporte').then(res => res.json()).then(data => { if (data && data.historial) setEstadisticasEncuestas(data.historial); });
 
     const intervaloRefresco = setInterval(cargarDatosIniciales, 5000);
     return () => clearInterval(intervaloRefresco);
   }, [folioChatActivo]);
+
+  // FUNCIÓN PARA TOMAR TICKET DIRECTAMENTE (Dashboard y Chat)
+  const handleTomarTicket = async (folio) => {
+    const nombreTecnico = user?.name || 'Soporte Técnico';
+    const ticketActual = tickets.find(t => String(t.folio) === String(folio));
+    if (!ticketActual) return;
+
+    const ticketActualizado = {
+      ...ticketActual,
+      tecnico: nombreTecnico,
+      estatus: 'En Proceso',
+      colorEstatus: 'bg-orange-500'
+    };
+
+    try {
+      // 1. Actualizar el ticket en el backend
+      await fetch(`/api/tickets/${folio}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(ticketActualizado)
+      });
+
+      // 2. Enviar mensaje automático al chat
+      const horaActual = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          folio: folio,
+          remitente: 'Sistema',
+          texto: `👨‍💻 El técnico ${nombreTecnico} ha tomado tu solicitud y se encuentra en camino a tu posición.`,
+          hora: horaActual
+        })
+      });
+
+      // 3. Actualizar estado local
+      setTickets(tickets.map(t => String(t.folio) === String(folio) ? ticketActualizado : t));
+      reproducirAlerta(`Has tomado el ticket #${folio}`);
+    } catch (error) {
+      console.error('Error al tomar ticket:', error);
+    }
+  };
 
   const handleSetCategorias = (nuevasCategorias) => {
     setCategorias(nuevasCategorias);
@@ -200,15 +195,12 @@ function App() {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ nombre: nuevoGrupo })
-    })
-    .then(() => setGrupos([...grupos, nuevoGrupo]))
-    .catch(err => console.error('Error al guardar grupo:', err));
+    }).then(() => setGrupos([...grupos, nuevoGrupo]));
   };
 
   const handleEliminarGrupo = (grupoAEliminar) => {
     fetch(`/api/grupos/${encodeURIComponent(grupoAEliminar)}`, { method: 'DELETE' })
-    .then(() => setGrupos(grupos.filter(g => g !== grupoAEliminar)))
-    .catch(err => console.error('Error al eliminar grupo:', err));
+    .then(() => setGrupos(grupos.filter(g => g !== grupoAEliminar)));
   };
 
   const guardarNuevaNota = (folio, textoNota) => {
@@ -228,8 +220,7 @@ function App() {
       setTickets([nuevoTicket, ...tickets]);
       setFolioChatActivo(nuevoTicket.folio);
       setCurrentView('live-chat'); 
-    })
-    .catch(err => console.error('Error al guardar ticket:', err));
+    });
   };
 
   const handleActualizarTicket = (ticketActualizado) => {
@@ -247,8 +238,7 @@ function App() {
     .then(res => res.json())
     .then(() => {
       setEstadisticasEncuestas(prev => [...prev, nuevaEncuesta]);
-    })
-    .catch(err => console.error('Error al guardar encuesta:', err));
+    });
   };
 
   const handleLogin = async (username, password) => {
@@ -262,17 +252,14 @@ function App() {
       const data = await response.json();
       const usuarioEncontrado = data.user || (data.success ? data : null);
 
-      if (!response.ok || !usuarioEncontrado) {
-        return false;
-      }
+      if (!response.ok || !usuarioEncontrado) return false;
 
       const nivel = (usuarioEncontrado.nivel || '').toUpperCase();
       const esSoporte = nivel === 'ADMINISTRADOR' || nivel === 'TECNICO SUPERVISOR' || nivel === 'TECNICO';
-      const role = esSoporte ? 'support' : 'client';
       
       setUser({
         name: `${usuarioEncontrado.nombre || ''} ${usuarioEncontrado.paterno || ''}`.trim() || usuarioEncontrado.username,
-        role: role,
+        role: esSoporte ? 'support' : 'client',
         nivel: usuarioEncontrado.nivel,
         username: usuarioEncontrado.username,
         campana: usuarioEncontrado.campana || '*111'
@@ -293,7 +280,6 @@ function App() {
 
   return (
     <div className="min-h-screen bg-slate-900 font-sans pb-10 text-slate-200 relative">
-      {/* CUADRO DE NOTIFICACIÓN FLOTANTE VISUAL (TOAST) */}
       {alertaVisual && (
         <div className="fixed bottom-6 right-6 z-50 bg-slate-800 border border-indigo-500/50 text-white px-5 py-4 rounded-2xl shadow-2xl flex items-center space-x-3 animate-bounce">
           <span className="text-xl">🔔</span>
@@ -353,6 +339,11 @@ function App() {
             user={user} 
             tickets={tickets} 
             estadisticasEncuestas={estadisticasEncuestas}
+            onTomarTicket={handleTomarTicket}
+            onAbrirChat={(folio) => {
+              setFolioChatActivo(folio);
+              setCurrentView('live-chat');
+            }}
             onIrANuevaSolicitud={() => setCurrentView('nueva-solicitud')} 
             onIrAEncuesta={() => { setTicketParaEncuesta(null); setCurrentView('encuesta-ti'); }}
           />
@@ -408,6 +399,7 @@ function App() {
             folio={folioChatActivo} 
             user={user} 
             ticket={tickets.find(t => String(t.folio) === String(folioChatActivo))}
+            onTomarTicket={handleTomarTicket}
             onFinalizarChat={() => setCurrentView('solicitudes')} 
             onAbrirModalEdicion={(ticket) => {
               setTicketEnEdicion(ticket);
@@ -417,26 +409,15 @@ function App() {
         )}
 
         {currentView === 'admin-grupos' && (
-          <AdminGruposView 
-            grupos={grupos} 
-            onAgregarGrupo={handleAgregarGrupo} 
-            onEliminarGrupo={handleEliminarGrupo} 
-          />
+          <AdminGruposView grupos={grupos} onAgregarGrupo={handleAgregarGrupo} onEliminarGrupo={handleEliminarGrupo} />
         )}
 
         {currentView === 'admin-usuarios' && (
-          <AdminUsuariosView 
-            grupos={grupos} 
-            usuarios={usuarios}
-            setUsuarios={setUsuarios}
-          />
+          <AdminUsuariosView grupos={grupos} usuarios={usuarios} setUsuarios={setUsuarios} />
         )}
 
         {currentView === 'admin-campanas' && (
-          <AdminCampanasView 
-            campanas={campanas}
-            setCampanas={setCampanas}
-          />
+          <AdminCampanasView campanas={campanas} setCampanas={setCampanas} />
         )}
 
         {currentView === 'admin-categorias' && (
@@ -463,19 +444,11 @@ function App() {
         )}
 
         {currentView === 'admin-supervisor-panel' && (
-          <SupervisorPanel 
-            user={user} 
-            tickets={tickets}
-            onVerDetallesCentinela={() => setCurrentView('centinela-detalles')}
-          />
+          <SupervisorPanel user={user} tickets={tickets} onVerDetallesCentinela={() => setCurrentView('centinela-detalles')} />
         )}
 
         {currentView === 'centinela-detalles' && (
-          <CentinelaDetallesView 
-            tickets={tickets}
-            onVolver={() => setCurrentView('admin-supervisor-panel')}
-            onEditarTicket={(ticket) => { setTicketEnEdicion(ticket); setIsEditModalOpen(true); }}
-          />
+          <CentinelaDetallesView tickets={tickets} onVolver={() => setCurrentView('admin-supervisor-panel')} onEditarTicket={(ticket) => { setTicketEnEdicion(ticket); setIsEditModalOpen(true); }} />
         )}
 
         {currentView === 'tareas' && <Tareas />}
