@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { io } from 'socket.io-client'; // ⚡ Importar el cliente de Socket.io
 
 import Header from './components/Header';
 import Menu from './components/Menu';
@@ -127,11 +128,25 @@ function App() {
     fetch('/api/categorias').then(res => res.json()).then(data => { if (Array.isArray(data)) setCategorias(data); });
     fetch('/api/encuestas/reporte').then(res => res.json()).then(data => { if (data && data.historial) setEstadisticasEncuestas(data.historial); });
 
-    const intervaloRefresco = setInterval(cargarDatosIniciales, 5000);
-    return () => clearInterval(intervaloRefresco);
+    // ⚡ CONEXIÓN EN TIEMPO REAL CON SOCKET.IO (Sustituye al setInterval de 5s)
+    const socket = io();
+
+    socket.on('ticketActualizado', (data) => {
+      console.log("⚡ Actualización en tiempo real recibida:", data);
+      cargarDatosIniciales(); // Recarga los datos al instante cuando el servidor avisa un cambio
+    });
+
+    socket.on('nuevoMensajeChat', (data) => {
+      console.log("💬 Nuevo mensaje de chat en tiempo real:", data);
+      cargarDatosIniciales();
+    });
+
+    return () => {
+      socket.disconnect();
+    };
   }, [folioChatActivo]);
 
-  // FUNCIÓN CORREGIDA PARA TOMAR TICKET (Limpia fechas para MySQL)
+  // FUNCIÓN PARA TOMAR TICKET (Limpia fechas para MySQL)
   const handleTomarTicket = async (folio) => {
     const nombreTecnico = user?.name || 'Soporte Técnico';
     const ticketActual = tickets.find(t => String(t.folio) === String(folio));
