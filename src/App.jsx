@@ -131,13 +131,13 @@ function App() {
     return () => clearInterval(intervaloRefresco);
   }, [folioChatActivo]);
 
-  // FUNCIÓN PARA TOMAR TICKET DIRECTAMENTE (Dashboard y Chat)
+  // FUNCIÓN PARA TOMAR TICKET CORREGIDA (Evita error 500 y bucles)
   const handleTomarTicket = async (folio) => {
     const nombreTecnico = user?.name || 'Soporte Técnico';
     const ticketActual = tickets.find(t => String(t.folio) === String(folio));
     if (!ticketActual) return;
 
-    const ticketActualizado = {
+    const datosActualizados = {
       ...ticketActual,
       tecnico: nombreTecnico,
       estatus: 'En Proceso',
@@ -145,14 +145,17 @@ function App() {
     };
 
     try {
-      // 1. Actualizar el ticket en el backend
-      await fetch(`/api/tickets/${folio}`, {
+      const resPut = await fetch(`/api/tickets/${folio}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(ticketActualizado)
+        body: JSON.stringify(datosActualizados)
       });
 
-      // 2. Enviar mensaje automático al chat
+      if (!resPut.ok) {
+        console.error('Error al actualizar el ticket en el servidor');
+        return;
+      }
+
       const horaActual = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
       await fetch('/api/chat', {
         method: 'POST',
@@ -165,8 +168,7 @@ function App() {
         })
       });
 
-      // 3. Actualizar estado local
-      setTickets(tickets.map(t => String(t.folio) === String(folio) ? ticketActualizado : t));
+      setTickets(tickets.map(t => String(t.folio) === String(folio) ? datosActualizados : t));
       reproducirAlerta(`Has tomado el ticket #${folio}`);
     } catch (error) {
       console.error('Error al tomar ticket:', error);
@@ -338,6 +340,7 @@ function App() {
           <Dashboard 
             user={user} 
             tickets={tickets} 
+            grupos={grupos}
             estadisticasEncuestas={estadisticasEncuestas}
             onTomarTicket={handleTomarTicket}
             onAbrirChat={(folio) => {
