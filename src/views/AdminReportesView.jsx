@@ -3,42 +3,65 @@ import React, { useState } from 'react';
 export default function AdminReportesView({ tickets = [], campanas = [], estadisticasEncuestas = [] }) {
   const [filtroCampana, setFiltroCampana] = useState('Todas');
   const [filtroEstatus, setFiltroEstatus] = useState('Todos');
+  
+  // Estados para la consulta de Historial de Nodos en Reportes
+  const [busquedaNodoReporte, setBusquedaNodoReporte] = useState('');
+  const [nodoSeleccionadoHistorial, setNodoSeleccionadoHistorial] = useState(null);
 
   // Filtrar tickets según los selectores superiores
   const ticketsFiltrados = tickets.filter(t => {
-    const matchCampana = filtroCampana === 'Todas' || t.campana === filtroCampana;
-    const matchEstatus = filtroEstatus === 'Todos' || t.estatus === filtroEstatus;
+    const matchCampana = filtroCampana === 'Todas' || (t.campana || '').trim().toUpperCase() === filtroCampana.trim().toUpperCase();
+    const matchEstatus = filtroEstatus === 'Todos' || (t.estatus || '').trim().toUpperCase() === filtroEstatus.trim().toUpperCase();
     return matchCampana && matchEstatus;
   });
 
   // Métricas generales
   const totalTickets = ticketsFiltrados.length;
-  const abiertos = ticketsFiltrados.filter(t => t.estatus === 'Abierto' || t.estatus === 'ABIERTO').length;
-  const enProceso = ticketsFiltrados.filter(t => t.estatus === 'En Proceso' || t.estatus === 'EN PROCESO').length;
-  const cerrados = ticketsFiltrados.filter(t => t.estatus === 'Cerrado' || t.estatus === 'CERRADO' || t.estatus === 'Resuelto').length;
+  const abiertos = ticketsFiltrados.filter(t => (t.estatus || '').toUpperCase() === 'ABIERTO').length;
+  const enProceso = ticketsFiltrados.filter(t => (t.estatus || '').toUpperCase() === 'EN PROCESO').length;
+  const cerrados = ticketsFiltrados.filter(t => {
+    const est = (t.estatus || '').toUpperCase();
+    return est === 'CERRADO' || est === 'RESUELTO';
+  }).length;
 
-  // 1. PRODUCTIVIDAD POR TÉCNICO
+  // 1. PRODUCTIVIDAD POR TÉCNICO (Normalizado)
   const productividadTecnicos = ticketsFiltrados.reduce((acc, t) => {
-    const tecnico = t.tecnico || 'Sin asignar';
-    acc[tecnico] = (acc[tecnico] || 0) + 1;
+    const tecnicoCrudo = (t.tecnico || 'Sin asignar').trim();
+    const tecnicoKey = tecnicoCrudo.toUpperCase() === 'SIN ASIGNAR' ? 'Sin Asignar' : tecnicoCrudo.toUpperCase();
+    const tecnicoNombreReal = tecnicoCrudo.toUpperCase() === 'SIN ASIGNAR' ? 'Sin Asignar' : tecnicoCrudo;
+    
+    if (!acc[tecnicoKey]) {
+      acc[tecnicoKey] = { nombre: tecnicoNombreReal, count: 0 };
+    }
+    acc[tecnicoKey].count += 1;
     return acc;
   }, {});
 
-  // 2. TICKETS POR CATEGORÍA
+  // 2. TICKETS POR CATEGORÍA (Normalizado para evitar duplicados visuales)
   const porCategoria = ticketsFiltrados.reduce((acc, t) => {
-    const cat = t.categoria || 'Sin categoría';
-    acc[cat] = (acc[cat] || 0) + 1;
+    const catCruda = (t.categoria || 'Sin categoría').trim();
+    const catKey = catCruda.toUpperCase();
+    
+    if (!acc[catKey]) {
+      acc[catKey] = { nombre: catCruda.toUpperCase(), count: 0 };
+    }
+    acc[catKey].count += 1;
     return acc;
   }, {});
 
-  // 3. DISTRIBUCIÓN POR CAMPAÑA
+  // 3. DISTRIBUCIÓN POR CAMPAÑA (Normalizado)
   const porCampana = ticketsFiltrados.reduce((acc, t) => {
-    const camp = t.campana || 'Sin campaña';
-    acc[camp] = (acc[camp] || 0) + 1;
+    const campCruda = (t.campana || 'Sin campaña').trim();
+    const campKey = campCruda.toUpperCase();
+
+    if (!acc[campKey]) {
+      acc[campKey] = { nombre: campCruda, count: 0 };
+    }
+    acc[campKey].count += 1;
     return acc;
   }, {});
 
-  // 4. SATISFACCIÓN DEL CLIENTE (Compatible con objeto del servidor o arreglo)
+  // 4. SATISFACCIÓN DEL CLIENTE
   const listaEncuestas = Array.isArray(estadisticasEncuestas) 
     ? estadisticasEncuestas 
     : (estadisticasEncuestas?.historial || []);
@@ -49,12 +72,28 @@ export default function AdminReportesView({ tickets = [], campanas = [], estadis
         ? (listaEncuestas.reduce((acc, e) => acc + (Number(e.calificacion) || Number(e.promedio) || 0), 0) / listaEncuestas.length).toFixed(1)
         : '4.3');
 
+  // Historial de 3 meses para el nodo seleccionado en reportes
+  const ahora = new Date();
+  const haceTresMeses = new Date();
+  haceTresMeses.setMonth(ahora.getMonth() - 3);
+
+  const historialNodoReporte = nodoSeleccionadoHistorial
+    ? tickets.filter(t => {
+        if (!t.equipo || t.equipo.toUpperCase() !== nodoSeleccionadoHistorial.toUpperCase()) return false;
+        const fechaT = new Date(t.created_at || t.fecha);
+        return fechaT >= haceTresMeses;
+      })
+    : [];
+
+  // Lista única de nodos disponibles en los tickets para el buscador de historial
+  const listaNodosUnicos = Array.from(new Set(tickets.map(t => t.equipo).filter(eq => eq && eq !== 'Ninguno')));
+
   const exportarExcelSimulado = () => {
     alert('Exportando reporte completo a CSV/Excel...');
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 animate-fade-in">
       {/* ENCABEZADO Y FILTROS */}
       <div className="bg-slate-800 border border-slate-700 p-6 rounded-xl shadow-lg flex flex-col md:flex-row justify-between items-center gap-4">
         <div>
@@ -62,7 +101,7 @@ export default function AdminReportesView({ tickets = [], campanas = [], estadis
             📊 REPORTES Y ANALÍTICAS
           </h2>
           <p className="text-slate-400 text-sm mt-1">
-            Métricas de rendimiento, productividad de técnicos, tiempos y satisfacción del cliente.
+            Métricas de rendimiento, productividad de técnicos, tiempos, categorías e historial de nodos.
           </p>
         </div>
 
@@ -91,7 +130,7 @@ export default function AdminReportesView({ tickets = [], campanas = [], estadis
 
           <button 
             onClick={exportarExcelSimulado}
-            className="bg-emerald-600 hover:bg-emerald-500 text-white font-medium text-sm px-4 py-2 rounded-lg transition shadow flex items-center gap-2"
+            className="bg-emerald-600 hover:bg-emerald-500 text-white font-medium text-sm px-4 py-2 rounded-lg transition shadow flex items-center gap-2 cursor-pointer"
           >
             📥 Exportar Excel
           </button>
@@ -124,6 +163,8 @@ export default function AdminReportesView({ tickets = [], campanas = [], estadis
 
       {/* ANALÍTICAS DETALLADAS */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        
+        {/* Productividad por Técnico */}
         <div className="bg-slate-800 border border-slate-700 p-6 rounded-xl shadow flex flex-col justify-between">
           <div>
             <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
@@ -132,14 +173,14 @@ export default function AdminReportesView({ tickets = [], campanas = [], estadis
             {Object.keys(productividadTecnicos).length === 0 ? (
               <p className="text-slate-500 text-sm italic">No hay registros suficientes</p>
             ) : (
-              <div className="space-y-3">
-                {Object.entries(productividadTecnicos).map(([tecnico, cantidad], idx) => {
-                  const porcentaje = totalTickets > 0 ? Math.round((cantidad / totalTickets) * 100) : 0;
+              <div className="space-y-3 max-h-72 overflow-y-auto pr-1">
+                {Object.values(productividadTecnicos).map((item, idx) => {
+                  const porcentaje = totalTickets > 0 ? Math.round((item.count / totalTickets) * 100) : 0;
                   return (
                     <div key={idx} className="space-y-1">
                       <div className="flex justify-between text-sm">
-                        <span className="text-slate-300 font-medium">{tecnico}</span>
-                        <span className="text-slate-400">{cantidad} tickets ({porcentaje}%)</span>
+                        <span className="text-slate-300 font-medium">{item.nombre}</span>
+                        <span className="text-slate-400">{item.count} tickets ({porcentaje}%)</span>
                       </div>
                       <div className="w-full bg-slate-900 rounded-full h-2">
                         <div className="bg-blue-500 h-2 rounded-full" style={{ width: `${porcentaje}%` }}></div>
@@ -155,6 +196,7 @@ export default function AdminReportesView({ tickets = [], campanas = [], estadis
           </div>
         </div>
 
+        {/* Tickets por Categoría */}
         <div className="bg-slate-800 border border-slate-700 p-6 rounded-xl shadow flex flex-col justify-between">
           <div>
             <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
@@ -163,14 +205,14 @@ export default function AdminReportesView({ tickets = [], campanas = [], estadis
             {Object.keys(porCategoria).length === 0 ? (
               <p className="text-slate-500 text-sm italic">No hay registros suficientes</p>
             ) : (
-              <div className="space-y-3">
-                {Object.entries(porCategoria).map(([cat, cantidad], idx) => {
-                  const porcentaje = totalTickets > 0 ? Math.round((cantidad / totalTickets) * 100) : 0;
+              <div className="space-y-3 max-h-72 overflow-y-auto pr-1">
+                {Object.values(porCategoria).map((item, idx) => {
+                  const porcentaje = totalTickets > 0 ? Math.round((item.count / totalTickets) * 100) : 0;
                   return (
                     <div key={idx} className="space-y-1">
                       <div className="flex justify-between text-sm">
-                        <span className="text-slate-300 font-medium">{cat}</span>
-                        <span className="text-slate-400">{cantidad} ({porcentaje}%)</span>
+                        <span className="text-slate-300 font-medium">{item.nombre}</span>
+                        <span className="text-slate-400">{item.count} ({porcentaje}%)</span>
                       </div>
                       <div className="w-full bg-slate-900 rounded-full h-2">
                         <div className="bg-emerald-500 h-2 rounded-full" style={{ width: `${porcentaje}%` }}></div>
@@ -186,6 +228,7 @@ export default function AdminReportesView({ tickets = [], campanas = [], estadis
           </div>
         </div>
 
+        {/* Distribución por Campaña */}
         <div className="bg-slate-800 border border-slate-700 p-6 rounded-xl shadow flex flex-col justify-between">
           <div>
             <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
@@ -194,14 +237,14 @@ export default function AdminReportesView({ tickets = [], campanas = [], estadis
             {Object.keys(porCampana).length === 0 ? (
               <p className="text-slate-500 text-sm italic">No hay registros suficientes</p>
             ) : (
-              <div className="space-y-3">
-                {Object.entries(porCampana).map(([camp, cantidad], idx) => {
-                  const porcentaje = totalTickets > 0 ? Math.round((cantidad / totalTickets) * 100) : 0;
+              <div className="space-y-3 max-h-72 overflow-y-auto pr-1">
+                {Object.values(porCampana).map((item, idx) => {
+                  const porcentaje = totalTickets > 0 ? Math.round((item.count / totalTickets) * 100) : 0;
                   return (
                     <div key={idx} className="space-y-1">
                       <div className="flex justify-between text-sm">
-                        <span className="text-slate-300 font-medium">{camp}</span>
-                        <span className="text-slate-400">{cantidad} ({porcentaje}%)</span>
+                        <span className="text-slate-300 font-medium">{item.nombre}</span>
+                        <span className="text-slate-400">{item.count} ({porcentaje}%)</span>
                       </div>
                       <div className="w-full bg-slate-900 rounded-full h-2">
                         <div className="bg-purple-500 h-2 rounded-full" style={{ width: `${porcentaje}%` }}></div>
@@ -216,7 +259,60 @@ export default function AdminReportesView({ tickets = [], campanas = [], estadis
             Analiza el comportamiento operativo por cada campaña o departamento.
           </div>
         </div>
+
       </div>
+
+      {/* SECCIÓN ADICIONAL: CONSULTA DE HISTORIAL DE NODOS (ÚLTIMOS 3 MESES) */}
+      <div className="bg-slate-800 border border-slate-700 p-6 rounded-xl shadow-lg space-y-4">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
+          <div>
+            <h3 className="text-lg font-bold text-white flex items-center gap-2">
+              <span>📋</span> Expediente e Historial de Nodos (Últimos 3 Meses)
+            </h3>
+            <p className="text-slate-400 text-xs mt-0.5">
+              Selecciona o busca un nodo para consultar todas las incidencias reportadas en los últimos 90 días.
+            </p>
+          </div>
+
+          <select
+            value={nodoSeleccionadoHistorial}
+            onChange={(e) => setNodoSeleccionadoHistorial(e.target.value)}
+            className="bg-slate-900 border border-slate-700 text-slate-200 text-sm rounded-xl px-4 py-2.5 focus:outline-none focus:border-indigo-500 font-mono"
+          >
+            <option value="">-- Seleccionar Nodo / Equipo --</option>
+            {listaNodosUnicos.map((nodo, idx) => (
+              <option key={idx} value={nodo}>{nodo}</option>
+            ))}
+          </select>
+        </div>
+
+        {nodoSeleccionadoHistorial && (
+          <div className="bg-slate-900/80 border border-slate-700/80 p-5 rounded-2xl space-y-3 mt-4 animate-fade-in">
+            <h4 className="text-sm font-bold text-indigo-400 uppercase tracking-wider">
+              Resultados para el nodo: <span className="text-white font-mono">{nodoSeleccionadoHistorial}</span> ({historialNodoReporte.length} incidencias en 3 meses)
+            </h4>
+
+            {historialNodoReporte.length === 0 ? (
+              <p className="text-slate-500 text-xs italic py-4">No se encontraron incidencias para este nodo en el periodo trimestral.</p>
+            ) : (
+              <div className="space-y-3 max-h-80 overflow-y-auto pr-2">
+                {historialNodoReporte.map((t, idx) => (
+                  <div key={idx} className="bg-slate-800 p-4 rounded-xl border border-slate-700 space-y-1">
+                    <div className="flex justify-between text-xs font-bold text-indigo-300 font-mono">
+                      <span>Folio #{t.folio}</span>
+                      <span className="text-slate-400">{t.fecha || t.created_at}</span>
+                    </div>
+                    <p className="font-bold text-white text-sm">{t.asunto || t.subcategoria}</p>
+                    <p className="text-xs text-slate-300">👤 Reportado por: {t.creador} | 🛠️ Técnico: {t.tecnico || 'Sin asignar'} | Estatus: <span className="text-amber-400 font-bold">{t.estatus}</span></p>
+                    {t.resolucion && <p className="text-xs text-emerald-400 mt-1">✔ Resolución: {t.resolucion}</p>}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
     </div>
   );
 }
