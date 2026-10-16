@@ -128,12 +128,12 @@ function App() {
     fetch('/api/categorias').then(res => res.json()).then(data => { if (Array.isArray(data)) setCategorias(data); });
     fetch('/api/encuestas/reporte').then(res => res.json()).then(data => { if (data && data.historial) setEstadisticasEncuestas(data.historial); });
 
-    // ⚡ CONEXIÓN EN TIEMPO REAL CON SOCKET.IO (Sustituye al setInterval de 5s)
+    // ⚡ CONEXIÓN ESTABLE EN TIEMPO REAL CON SOCKET.IO (Sin intervalos repetitivos)
     const socket = io();
 
     socket.on('ticketActualizado', (data) => {
       console.log("⚡ Actualización en tiempo real recibida:", data);
-      cargarDatosIniciales(); // Recarga los datos al instante cuando el servidor avisa un cambio
+      cargarDatosIniciales(); 
     });
 
     socket.on('nuevoMensajeChat', (data) => {
@@ -144,7 +144,7 @@ function App() {
     return () => {
       socket.disconnect();
     };
-  }, [folioChatActivo]);
+  }, []); // 👈 Dependencia vacía para evitar bucles y llamadas duplicadas en Red
 
   // FUNCIÓN PARA TOMAR TICKET (Limpia fechas para MySQL)
   const handleTomarTicket = async (folio) => {
