@@ -80,7 +80,7 @@ export default function AdminReportesView({ tickets = [], campanas = [], estadis
         ? (listaEncuestas.reduce((acc, e) => acc + (Number(e.calificacion) || Number(e.promedio) || 0), 0) / listaEncuestas.length).toFixed(1)
         : '4.3');
 
-  // Nodo activo a consultar (prioriza el input de texto libre si se escribió algo, de lo contrario usa el select)
+  // Nodo activo a consultar
   const nodoActivo = (busquedaNodoTexto.trim() !== '' ? busquedaNodoTexto.trim() : nodoSeleccionadoHistorial);
 
   // Historial de 3 meses para el nodo activo
@@ -96,7 +96,7 @@ export default function AdminReportesView({ tickets = [], campanas = [], estadis
       })
     : [];
 
-  // EXCLUSIVO: Extraer únicamente los nodos de los tickets existentes en la base de datos
+  // Lista única de nodos con reportes
   const listaNodosConReportes = Array.from(
     new Set(tickets.map(t => t.equipo).filter(eq => eq && eq !== 'Ninguno' && eq.trim() !== ''))
   ).sort();
@@ -106,7 +106,7 @@ export default function AdminReportesView({ tickets = [], campanas = [], estadis
   };
 
   return (
-    <div className="space-y-6 animate-fade-in">
+    <div className="space-y-6 animate-fade-in pb-12">
       {/* ENCABEZADO Y FILTROS */}
       <div className="bg-slate-800 border border-slate-700 p-6 rounded-xl shadow-lg flex flex-col md:flex-row justify-between items-center gap-4">
         <div>
@@ -275,9 +275,9 @@ export default function AdminReportesView({ tickets = [], campanas = [], estadis
 
       </div>
 
-      {/* SECCIÓN ADICIONAL: CONSULTA DE HISTORIAL DE NODOS (ÚLTIMOS 3 MESES) */}
+      {/* SECCIÓN ADICIONAL: CONSULTA DE HISTORIAL DE NODOS (REORGANIZADA HACIA ABAJO) */}
       <div className="bg-slate-800 border border-slate-700 p-6 rounded-xl shadow-lg space-y-4">
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
+        <div className="flex flex-col gap-3">
           <div>
             <h3 className="text-lg font-bold text-white flex items-center gap-2">
               <span>📋</span> Expediente e Historial de Nodos (Últimos 3 Meses)
@@ -287,7 +287,8 @@ export default function AdminReportesView({ tickets = [], campanas = [], estadis
             </p>
           </div>
 
-          <div className="flex items-center gap-2 w-full md:w-auto">
+          {/* Controles distribuidos en bloque inferior para que el menú desplegable tenga espacio libre hacia abajo */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
             <input 
               type="text"
               placeholder="Escribe nodo (ej. B-02)..."
@@ -296,7 +297,7 @@ export default function AdminReportesView({ tickets = [], campanas = [], estadis
                 setBusquedaNodoTexto(e.target.value);
                 if (e.target.value) setNodoSeleccionadoHistorial('');
               }}
-              className="bg-slate-900 border border-slate-700 text-slate-200 text-sm rounded-xl px-3 py-2 outline-none focus:border-indigo-500 font-mono w-full md:w-48"
+              className="bg-slate-900 border border-slate-700 text-slate-200 text-sm rounded-xl px-4 py-3 outline-none focus:border-indigo-500 font-mono w-full"
             />
             <select
               value={nodoSeleccionadoHistorial}
@@ -304,7 +305,7 @@ export default function AdminReportesView({ tickets = [], campanas = [], estadis
                 setNodoSeleccionadoHistorial(e.target.value);
                 if (e.target.value) setBusquedaNodoTexto('');
               }}
-              className="bg-slate-900 border border-slate-700 text-slate-200 text-sm rounded-xl px-4 py-2 focus:outline-none focus:border-indigo-500 font-mono"
+              className="bg-slate-900 border border-slate-700 text-slate-200 text-sm rounded-xl px-4 py-3 focus:outline-none focus:border-indigo-500 font-mono w-full"
             >
               <option value="">-- Seleccionar Nodo --</option>
               {listaNodosConReportes.map((nodo, idx) => (
