@@ -2,6 +2,8 @@ const express = require('express');
 const mysql = require('mysql2');
 const cors = require('cors');
 const path = require('path');
+const http = require('http');
+const { Server } = require('socket.io');
 
 // Importamos las respuestas automáticas y lógica de Centinela / Chat
 const {
@@ -11,6 +13,14 @@ const {
 } = require('./respuestasChat.cjs');
 
 const app = express();
+const server = http.createServer(app);
+const io = new Server(server, {
+  cors: {
+    origin: "*",
+    methods: ["GET", "POST", "PUT", "DELETE"]
+  }
+});
+
 app.use(express.json());
 app.use(cors());
 
@@ -43,6 +53,15 @@ db.connect((err) => {
 dbCentinela.connect((err) => { 
   if (err) console.error('Error BD Centinela:', err); 
   else console.log('Conectado a Servidor Centinela (Base de datos: Centinela)'); 
+});
+
+// Configuración de conexiones de Socket.io en tiempo real
+io.on('connection', (socket) => {
+  console.log(`🔌 Cliente conectado en tiempo real: ${socket.id}`);
+
+  socket.on('disconnect', () => {
+    console.log(`🔌 Cliente desconectado: ${socket.id}`);
+  });
 });
 
 // ============================================================================
@@ -131,6 +150,8 @@ const continuarInsercionTicket = (ticketData, res) => {
     db.query('INSERT INTO tickets SET ?', ticketData, (err, result) => {
       if (err) return res.status(500).json({ error: err.message });
       db.query('INSERT INTO mensajes_chat (folio, remitente, texto, hora) VALUES (?, ?, ?, ?)', [ticketData.folio, 'Sistema', primerMensaje, horaCorta], () => {
+        // ⚡ Emitir evento en tiempo real al crear ticket
+        io.emit('ticketActualizado', { folio: ticketData.folio });
         res.json({ message: 'Ticket creado exitosamente', id: result.insertId, fecha: fechaSolo, folioPrevio });
       });
     });
@@ -201,6 +222,8 @@ app.post(['/api/tickets', '/tickets'], (req, res) => {
 
           db.query('INSERT INTO mensajes_chat (folio, remitente, texto, hora) VALUES (?, ?, ?, ?)', [nuevoFolio, 'Sistema', textoMensaje, horaCorta], (errChat) => {
             if (errChat) console.error("Error al registrar mensaje en chat:", errChat);
+            // ⚡ Emitir evento en tiempo real
+            io.emit('ticketActualizado', { folio: nuevoFolio });
             res.json({ message: 'Ticket creado exitosamente', id: result.insertId, esSubsecuente, fecha: fechaSolo });
           });
         });
@@ -224,6 +247,10 @@ app.put(['/api/tickets/:folio', '/tickets/:folio'], (req, res) => {
   db.query('UPDATE tickets SET ? WHERE folio = ?', [ticketData, req.params.folio], (err, result) => {
     if (err) return res.status(500).json({ error: err.message });
     if (result.affectedRows === 0) return res.status(404).json({ error: 'No se encontró el ticket.' });
+    
+    // ⚡ Emitir aviso en tiempo real a todos los clientes conectados
+    io.emit('ticketActualizado', { folio: req.params.folio });
+
     res.json({ message: 'Ticket actualizado correctamente' });
   });
 });
@@ -260,6 +287,9 @@ app.post(['/api/chat', '/chat'], (req, res) => {
 
   db.query('INSERT INTO mensajes_chat (folio, remitente, texto, hora) VALUES (?, ?, ?, ?)', [folio, remitente, texto, horaActual], (err, result) => {
     if (err) return res.status(500).json({ error: 'Error al guardar mensaje' });
+
+    // ⚡ Emitir nuevo mensaje de chat en tiempo real
+    io.emit('nuevoMensajeChat', { folio });
 
     if (!remitente || remitente.toUpperCase() === 'SISTEMA') {
       return res.json({ success: true, id: result.insertId });
@@ -298,6 +328,8 @@ app.post(['/api/chat', '/chat'], (req, res) => {
               db.query("UPDATE tickets SET estatus = 'Cerrado', colorEstatus = 'bg-red-600' WHERE folio = ?", [folio]);
             }
             db.query('INSERT INTO mensajes_chat (folio, remitente, texto, hora) VALUES (?, ?, ?, ?)', [folio, 'Sistema', evaluacion.textoRespuesta, horaActual], () => {
+              io.emit('nuevoMensajeChat', { folio });
+              io.emit('ticketActualizado', { folio });
               return res.json({ success: true, id: result.insertId, cerradoAutomatico: evaluacion.cerrarTicket });
             });
           } else {
@@ -509,4 +541,4 @@ app.get('/', (req, res) => {
 });
 
 const PORT = process.env.PORT || 80;
-app.listen(PORT, () => console.log(`Servidor corriendo en el puerto ${PORT}`));
+server.listen(PORT, () => console.log(`Servidor en tiempo real corriendo en el puerto ${PORT}`));
