@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 
 function SolicitudesView({ 
   tickets = [], 
+  categorias = [], 
   activeColumns = [], 
   columnLabels = {}, 
   user, 
@@ -30,7 +31,6 @@ function SolicitudesView({
     ? tickets.filter(t => t.creador && user?.name && t.creador.toLowerCase() === user.name.toLowerCase())
     : tickets;
 
-  // Funciones auxiliares para evaluar asignación
   const estaSinAsignar = (t) => {
     const asig = (t.tecnico || t.asignado || t.responsable || '').trim().toLowerCase();
     return !asig || asig === 'sin asignar' || asig === 'pendiente' || asig === 'ninguno' || asig === '—';
@@ -43,13 +43,12 @@ function SolicitudesView({
     return (miNombre && asig.includes(miNombre)) || (miUser && asig.includes(miUser));
   };
 
-  // Contadores en vivo para las píldoras
   const conteoActivos = ticketsBase.filter(t => !(t.estatus || '').toLowerCase().includes('cerrado')).length;
   const conteoSinAsignar = ticketsBase.filter(t => !(t.estatus || '').toLowerCase().includes('cerrado') && estaSinAsignar(t)).length;
   const conteoMios = ticketsBase.filter(t => !(t.estatus || '').toLowerCase().includes('cerrado') && esMiTicket(t)).length;
   const conteoCerrados = ticketsBase.filter(t => (t.estatus || '').toLowerCase().includes('cerrado')).length;
 
-  // Cálculo del Semáforo de SLA (basado en 24h por defecto o el SLA del ticket)
+  // Cálculo del Semáforo de SLA basado en la categoría seleccionada
   const calcularSLA = (ticket) => {
     const estatusLower = (ticket.estatus || '').toLowerCase();
     const esCerrado = estatusLower.includes('cerrado');
@@ -90,7 +89,10 @@ function SolicitudesView({
       };
     }
 
-    const slaLimite = Number(ticket.sla) || 24;
+    // Buscar el SLA configurado en la categoría
+    const catObj = categorias.find(c => c.nombre && ticket.categoria && c.nombre.toUpperCase() === ticket.categoria.toUpperCase());
+    const slaLimite = Number(catObj?.sla) || Number(ticket.sla) || 24;
+
     if (diffHrs < slaLimite * 0.5) {
       return {
         texto: `${tiempoStr} • En tiempo`,
@@ -166,7 +168,6 @@ function SolicitudesView({
 
       <div className="bg-slate-800 rounded-xl shadow-lg border border-slate-700 p-6 space-y-4">
         <div className="flex flex-col lg:flex-row justify-between items-stretch lg:items-center gap-4 border-b border-slate-700 pb-4">
-          {/* PÍLDORAS DE FILTRO RÁPIDO */}
           <div className="flex flex-wrap items-center gap-2">
             <button 
               onClick={() => setFiltroEstatus('activos')}
@@ -213,7 +214,6 @@ function SolicitudesView({
             </button>
           </div>
 
-          {/* BUSCADOR EN TIEMPO REAL */}
           <div className="relative w-full lg:w-80">
             <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400 pointer-events-none">
               🔍
@@ -229,7 +229,6 @@ function SolicitudesView({
               <button
                 onClick={() => setBusqueda('')}
                 className="absolute inset-y-0 right-0 flex items-center pr-3 text-slate-400 hover:text-white cursor-pointer"
-                title="Limpiar búsqueda"
               >
                 ✕
               </button>
@@ -302,7 +301,6 @@ function SolicitudesView({
                         </span>
                       </td>
 
-                      {/* SEMÁFORO DE SLA EN VIVO */}
                       <td className="px-4 py-3 whitespace-nowrap">
                         <span className={`px-2.5 py-1 rounded-md text-xs font-semibold inline-flex items-center gap-1.5 border ${infoSLA.color}`}>
                           <span>{infoSLA.icono}</span>
@@ -343,7 +341,7 @@ function SolicitudesView({
                             ) : (
                               <button 
                                 onClick={() => onIrAEncuestaSpecific(ticket)}
-                                className="px-3 py-1.5 bg-green-600/20 text-green-400 hover:bg-green-600 hover:text-white rounded-lg font-semibold text-xs transition-colors border border-green-500/30 cursor-pointer"
+                                className="px-3.5 py-2 bg-slate-800/80 hover:bg-green-600/20 text-slate-300 hover:text-green-300 rounded-xl text-xs font-medium border border-slate-700/60 hover:border-green-500/40 transition-all cursor-pointer"
                               >
                                 Encuesta
                               </button>
