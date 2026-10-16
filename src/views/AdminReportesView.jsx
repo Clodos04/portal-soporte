@@ -1,12 +1,25 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 
 export default function AdminReportesView({ tickets = [], campanas = [], estadisticasEncuestas = [] }) {
   const [filtroCampana, setFiltroCampana] = useState('Todas');
   const [filtroEstatus, setFiltroEstatus] = useState('Todos');
   
-  // Estados para la consulta de Historial de Nodos en Reportes
+  // Estados para la consulta de Historial de Nodos
   const [nodoSeleccionadoHistorial, setNodoSeleccionadoHistorial] = useState('');
   const [busquedaNodoTexto, setBusquedaNodoTexto] = useState('');
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const dropdownRef = useRef(null);
+
+  // Cerrar el dropdown si se hace clic fuera de él
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   // Filtrar tickets según los selectores superiores
   const ticketsFiltrados = tickets.filter(t => {
@@ -106,7 +119,7 @@ export default function AdminReportesView({ tickets = [], campanas = [], estadis
   };
 
   return (
-    <div className="space-y-6 animate-fade-in pb-12">
+    <div className="space-y-6 animate-fade-in pb-16">
       {/* ENCABEZADO Y FILTROS */}
       <div className="bg-slate-800 border border-slate-700 p-6 rounded-xl shadow-lg flex flex-col md:flex-row justify-between items-center gap-4">
         <div>
@@ -275,8 +288,8 @@ export default function AdminReportesView({ tickets = [], campanas = [], estadis
 
       </div>
 
-      {/* SECCIÓN ADICIONAL: CONSULTA DE HISTORIAL DE NODOS (REORGANIZADA HACIA ABAJO) */}
-      <div className="bg-slate-800 border border-slate-700 p-6 rounded-xl shadow-lg space-y-4">
+      {/* SECCIÓN ADICIONAL: CONSULTA DE HISTORIAL DE NODOS (CON SELECTOR FLOTANTE HACIA ABAJO) */}
+      <div className="bg-slate-800 border border-slate-700 p-6 rounded-xl shadow-lg space-y-4 relative z-10">
         <div className="flex flex-col gap-3">
           <div>
             <h3 className="text-lg font-bold text-white flex items-center gap-2">
@@ -287,7 +300,6 @@ export default function AdminReportesView({ tickets = [], campanas = [], estadis
             </p>
           </div>
 
-          {/* Controles distribuidos en bloque inferior para que el menú desplegable tenga espacio libre hacia abajo */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
             <input 
               type="text"
@@ -299,19 +311,46 @@ export default function AdminReportesView({ tickets = [], campanas = [], estadis
               }}
               className="bg-slate-900 border border-slate-700 text-slate-200 text-sm rounded-xl px-4 py-3 outline-none focus:border-indigo-500 font-mono w-full"
             />
-            <select
-              value={nodoSeleccionadoHistorial}
-              onChange={(e) => {
-                setNodoSeleccionadoHistorial(e.target.value);
-                if (e.target.value) setBusquedaNodoTexto('');
-              }}
-              className="bg-slate-900 border border-slate-700 text-slate-200 text-sm rounded-xl px-4 py-3 focus:outline-none focus:border-indigo-500 font-mono w-full"
-            >
-              <option value="">-- Seleccionar Nodo --</option>
-              {listaNodosConReportes.map((nodo, idx) => (
-                <option key={idx} value={nodo}>{nodo}</option>
-              ))}
-            </select>
+
+            {/* SELECTOR PERSONALIZADO QUE SIEMPRE DESPLIEGA HACIA ABAJO */}
+            <div className="relative" ref={dropdownRef}>
+              <div
+                onClick={() => setDropdownOpen(!dropdownOpen)}
+                className="bg-slate-900 border border-slate-700 text-slate-200 text-sm rounded-xl px-4 py-3 cursor-pointer flex justify-between items-center font-mono select-none hover:border-indigo-500 transition-colors"
+              >
+                <span className={nodoSeleccionadoHistorial ? "text-white" : "text-slate-400"}>
+                  {nodoSeleccionadoHistorial || "-- Seleccionar Nodo --"}
+                </span>
+                <span className="text-slate-400 text-xs">▼</span>
+              </div>
+
+              {dropdownOpen && (
+                <div className="absolute left-0 right-0 top-full mt-2 bg-slate-900 border border-slate-700 rounded-xl shadow-2xl max-h-60 overflow-y-auto z-50 p-1 space-y-1 animate-fade-in">
+                  <div
+                    onClick={() => {
+                      setNodoSeleccionadoHistorial('');
+                      setDropdownOpen(false);
+                    }}
+                    className="px-3 py-2 text-slate-400 hover:bg-slate-800 rounded-lg cursor-pointer text-sm"
+                  >
+                    -- Seleccionar Nodo --
+                  </div>
+                  {listaNodosConReportes.map((nodo, idx) => (
+                    <div
+                      key={idx}
+                      onClick={() => {
+                        setNodoSeleccionadoHistorial(nodo);
+                        setBusquedaNodoTexto('');
+                        setDropdownOpen(false);
+                      }}
+                      className="px-3 py-2 text-slate-200 hover:bg-indigo-600 hover:text-white rounded-lg cursor-pointer text-sm font-mono transition-colors"
+                    >
+                      {nodo}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
