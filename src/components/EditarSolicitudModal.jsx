@@ -35,7 +35,6 @@ function EditarSolicitudModal({ ticket = {}, user, usuarios = [], grupos = [], u
     ? usuariosPorGrupo[grupoEncontrado] 
     : [];
 
-  // CORREGIDO: Arreglado el nombre de la función auxiliar para limpiar la lista de técnicos únicos
   const tecnicosFinales = Array.from(new Set([...tecnicosDisponibles, ticket.tecnico].filter(t => t && t !== 'Sin Asignar')));
 
   const categoriaObj = listaCategorias.find(
@@ -238,6 +237,66 @@ function EditarSolicitudModal({ ticket = {}, user, usuarios = [], grupos = [], u
               ))}
             </select>
           </div>
+
+          {/* CATEGORÍA, SUBCATEGORÍA Y ELEMENTO RESTAURADOS */}
+          {esCentinela ? (
+            <div className="bg-purple-950/30 border border-purple-500/30 p-4 rounded-xl space-y-2 text-xs">
+              <div className="text-purple-300 font-bold uppercase">🛡️ Tipificación Automática Centinela:</div>
+              <div className="grid grid-cols-2 gap-2 text-slate-300">
+                <div>Componente: <strong className="text-white uppercase">{ticket.subcategoria || 'Periférico'}</strong></div>
+                <div>Falla: <strong className="text-white uppercase">{ticket.elemento || 'Daño reportado'}</strong></div>
+              </div>
+            </div>
+          ) : (
+            <>
+              <div>
+                <label className="block text-xs font-bold text-slate-300 uppercase mb-1.5">Categoría:</label>
+                <select 
+                  value={categoria} 
+                  disabled={esCliente}
+                  onChange={(e) => { setCategoria(e.target.value); setSubcategoria(''); setElemento(''); }} 
+                  className="w-full px-3 py-2 rounded-lg bg-slate-900 border border-slate-700 text-white text-sm outline-none focus:border-green-500 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                >
+                  <option value="">Seleccione Categoría</option>
+                  {listaCategorias
+                    .filter(c => (c?.estatus || 'ACTIVO').toUpperCase() === 'ACTIVO')
+                    .map((cat, idx) => (
+                      <option key={cat.id || idx} value={cat.nombre}>{cat.nombre}</option>
+                    ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-300 uppercase mb-1.5">Sub-Categoría:</label>
+                <select 
+                  value={subcategoria} 
+                  disabled={esCliente}
+                  onChange={(e) => { setSubcategoria(e.target.value); setElemento(''); }} 
+                  className="w-full px-3 py-2 rounded-lg bg-slate-900 border border-slate-700 text-white text-sm outline-none focus:border-green-500 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                >
+                  <option value="">Seleccione Sub-Categoría</option>
+                  {subcategoriasDisponibles.map((sub, idx) => (
+                    <option key={sub.id || idx} value={sub.nombre}>{sub.nombre}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-300 uppercase mb-1.5">Elemento:</label>
+                <select 
+                  value={elemento} 
+                  disabled={esCliente}
+                  onChange={(e) => setElemento(e.target.value)} 
+                  className="w-full px-3 py-2 rounded-lg bg-slate-900 border border-slate-700 text-white text-sm outline-none focus:border-green-500 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                >
+                  <option value="">Seleccione Elemento</option>
+                  {elementosDisponibles.map((elem, idx) => (
+                    <option key={elem.id || idx} value={elem.nombre}>{elem.nombre}</option>
+                  ))}
+                </select>
+              </div>
+            </>
+          )}
 
           <div>
             <div className="flex justify-between items-center mb-1.5">
