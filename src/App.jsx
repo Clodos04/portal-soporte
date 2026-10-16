@@ -131,24 +131,37 @@ function App() {
     return () => clearInterval(intervaloRefresco);
   }, [folioChatActivo]);
 
-  // FUNCIÓN BLINDADA PARA TOMAR TICKET (Estructura completa compatible con MySQL)
+  // FUNCIÓN CORREGIDA PARA TOMAR TICKET (Limpia fechas para MySQL)
   const handleTomarTicket = async (folio) => {
     const nombreTecnico = user?.name || 'Soporte Técnico';
     const ticketActual = tickets.find(t => String(t.folio) === String(folio));
     if (!ticketActual) return;
 
-    const ticketCompletoParaGuardar = {
+    const limpiarFechaMySQL = (fechaStr) => {
+      if (!fechaStr) return null;
+      if (String(fechaStr).includes('T')) {
+        const d = new Date(fechaStr);
+        if (!isNaN(d.getTime())) {
+          return d.toISOString().slice(0, 19).replace('T', ' ');
+        }
+      }
+      return fechaStr;
+    };
+
+    const ticketLimpioParaGuardar = {
       ...ticketActual,
       tecnico: nombreTecnico,
       estatus: 'En Proceso',
-      colorEstatus: 'bg-orange-500'
+      colorEstatus: 'bg-orange-500',
+      created_at: limpiarFechaMySQL(ticketActual.created_at),
+      updated_at: new Date().toISOString().slice(0, 19).replace('T', ' ')
     };
 
     try {
       const resPut = await fetch(`/api/tickets/${folio}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(ticketCompletoParaGuardar)
+        body: JSON.stringify(ticketLimpioParaGuardar)
       });
 
       if (!resPut.ok) {
@@ -169,7 +182,7 @@ function App() {
         })
       });
 
-      setTickets(tickets.map(t => String(t.folio) === String(folio) ? ticketCompletoParaGuardar : t));
+      setTickets(tickets.map(t => String(t.folio) === String(folio) ? ticketLimpioParaGuardar : t));
       reproducirAlerta(`Has tomado el ticket #${folio}`);
     } catch (error) {
       console.error('Error al tomar ticket:', error);
