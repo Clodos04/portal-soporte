@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 
-function LiveChatView({ folio, user, onFinalizarChat, onAbrirModalEdicion, ticket }) {
+function LiveChatView({ folio, user, onFinalizarChat, onAbrirModalEdicion, ticket, onTomarTicket }) {
   const [mensajes, setMensajes] = useState([]);
   const [nuevoMensaje, setNuevoMensaje] = useState('');
   const [conectado, setConectado] = useState(false);
@@ -10,7 +10,6 @@ function LiveChatView({ folio, user, onFinalizarChat, onAbrirModalEdicion, ticke
   const cantidadMensajesPrevios = useRef(0);
   const chatEndRef = useRef(null);
 
-  // Separa el texto limpio de las opciones interactivas [[OPCIONES:op1|op2|op3]]
   const extraerTextoYOpciones = (textoCrudo = '') => {
     const regex = /\[\[OPCIONES:(.*?)\]\]/s;
     const match = String(textoCrudo).match(regex);
@@ -18,10 +17,7 @@ function LiveChatView({ folio, user, onFinalizarChat, onAbrirModalEdicion, ticke
       return { textoLimpio: textoCrudo, opciones: [] };
     }
     const textoLimpio = String(textoCrudo).replace(regex, '').trim();
-    const opciones = match[1]
-      .split('|')
-      .map(op => op.trim())
-      .filter(Boolean);
+    const opciones = match[1].split('|').map(op => op.trim()).filter(Boolean);
     return { textoLimpio, opciones };
   };
 
@@ -31,10 +27,7 @@ function LiveChatView({ folio, user, onFinalizarChat, onAbrirModalEdicion, ticke
     audio.play().catch(err => console.log("Audio bloqueado por el navegador:", err));
 
     if ("Notification" in window && Notification.permission === "granted") {
-      new Notification(`Nuevo mensaje de ${remitente}`, {
-        body: textoLimpio,
-        icon: "/favicon.ico"
-      });
+      new Notification(`Nuevo mensaje de ${remitente}`, { body: textoLimpio, icon: "/favicon.ico" });
     }
   };
 
@@ -118,11 +111,13 @@ function LiveChatView({ folio, user, onFinalizarChat, onAbrirModalEdicion, ticke
     enviarTextoAlChat(nuevoMensaje);
   };
 
-  // Revisamos si el último mensaje en el chat es del Sistema y contiene opciones para elegir
   const ultimoMsg = mensajes.length > 0 ? mensajes[mensajes.length - 1] : null;
   const opcionesActivas = (ultimoMsg && ultimoMsg.remitente === 'Sistema')
     ? extraerTextoYOpciones(ultimoMsg.texto).opciones
     : [];
+
+  const esSoporte = user?.role === 'support';
+  const sinAsignar = !ticket?.tecnico || ticket?.tecnico === 'Sin Asignar';
 
   return (
     <div className="animate-fade-in max-w-4xl mx-auto bg-slate-900 rounded-3xl shadow-2xl border border-slate-700 text-slate-200 overflow-hidden flex flex-col h-[78vh]">
@@ -144,8 +139,18 @@ function LiveChatView({ folio, user, onFinalizarChat, onAbrirModalEdicion, ticke
           </div>
         </div>
 
-        <div className="flex gap-2">
-          {user?.role === 'support' && ticket && (
+        <div className="flex gap-2 items-center">
+          {esSoporte && sinAsignar && ticket && (
+            <button 
+              type="button"
+              onClick={() => onTomarTicket(ticket.folio)}
+              className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold shadow-lg transition-all cursor-pointer flex items-center gap-1.5 animate-pulse"
+            >
+              <span>🙋‍♂️</span> Tomar Ticket
+            </button>
+          )}
+
+          {esSoporte && ticket && (
             <button 
               type="button"
               onClick={() => onAbrirModalEdicion(ticket)}
@@ -195,7 +200,6 @@ function LiveChatView({ folio, user, onFinalizarChat, onAbrirModalEdicion, ticke
         <div ref={chatEndRef} />
       </div>
 
-      {/* Panel de Opciones Interactivas (Muestra las 3 opciones del paso actual) */}
       {opcionesActivas.length > 0 && (
         <div className="p-4 bg-slate-900/95 border-t border-indigo-500/30 space-y-2 shrink-0 animate-fade-in">
           <div className="flex items-center justify-between">
@@ -231,7 +235,7 @@ function LiveChatView({ folio, user, onFinalizarChat, onAbrirModalEdicion, ticke
         </div>
       )}
 
-      {/* Barra de Escritura Libre */}
+      {/* Barra de Escritura */}
       <form onSubmit={enviarMensaje} className="p-4 bg-slate-800 border-t border-slate-700 flex gap-3 shrink-0">
         <input 
           type="text"
