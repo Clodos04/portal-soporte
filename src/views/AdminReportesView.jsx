@@ -1,27 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 
 export default function AdminReportesView({ tickets = [], campanas = [], estadisticasEncuestas = [] }) {
   const [filtroCampana, setFiltroCampana] = useState('Todas');
   const [filtroEstatus, setFiltroEstatus] = useState('Todos');
   
-  // Estados para la consulta de Historial de Nodos en Reportes (Conectado a Centinela)
-  const [nodosCentinelaDisponibles, setNodosCentinelaDisponibles] = useState([]);
+  // Estados para la consulta de Historial de Nodos en Reportes
   const [nodoSeleccionadoHistorial, setNodoSeleccionadoHistorial] = useState('');
   const [busquedaNodoTexto, setBusquedaNodoTexto] = useState('');
-
-  // Cargar nodos oficiales desde Centinela al montar la vista
-  useEffect(() => {
-    fetch('/api/centinela/datos')
-      .then(res => res.json())
-      .then(data => {
-        if (data && Array.isArray(data.equipos)) {
-          // Extraemos los nombres de nodos únicos de Centinela
-          const listaNodos = Array.from(new Set(data.equipos.map(e => e.equipo).filter(Boolean)));
-          setNodosCentinelaDisponibles(listaNodos);
-        }
-      })
-      .catch(err => console.error('Error al cargar nodos de Centinela para reportes:', err));
-  }, []);
 
   // Filtrar tickets según los selectores superiores
   const ticketsFiltrados = tickets.filter(t => {
@@ -95,23 +80,26 @@ export default function AdminReportesView({ tickets = [], campanas = [], estadis
         ? (listaEncuestas.reduce((acc, e) => acc + (Number(e.calificacion) || Number(e.promedio) || 0), 0) / listaEncuestas.length).toFixed(1)
         : '4.3');
 
-  // Historial de 3 meses para el nodo seleccionado en reportes
+  // Nodo activo a consultar (prioriza el input de texto libre si se escribió algo, de lo contrario usa el select)
+  const nodoActivo = (busquedaNodoTexto.trim() !== '' ? busquedaNodoTexto.trim() : nodoSeleccionadoHistorial);
+
+  // Historial de 3 meses para el nodo activo
   const ahora = new Date();
   const haceTresMeses = new Date();
   haceTresMeses.setMonth(ahora.getMonth() - 3);
 
-  const historialNodoReporte = nodoSeleccionadoHistorial
+  const historialNodoReporte = nodoActivo
     ? tickets.filter(t => {
-        if (!t.equipo || t.equipo.toUpperCase() !== nodoSeleccionadoHistorial.toUpperCase()) return false;
+        if (!t.equipo || t.equipo.toUpperCase() !== nodoActivo.toUpperCase()) return false;
         const fechaT = new Date(t.created_at || t.fecha);
         return fechaT >= haceTresMeses;
       })
     : [];
 
-  // Nodos filtrados para el buscador rápido
-  const nodosFiltradosBusqueda = nodosCentinelaDisponibles.filter(n => 
-    n.toLowerCase().includes(busquedaNodoTexto.toLowerCase())
-  );
+  // EXCLUSIVO: Extraer únicamente los nodos de los tickets existentes en la base de datos
+  const listaNodosConReportes = Array.from(
+    new Set(tickets.map(t => t.equipo).filter(eq => eq && eq !== 'Ninguno' && eq.trim() !== ''))
+  ).sort();
 
   const exportarExcelSimulado = () => {
     alert('Exportando reporte completo a CSV/Excel...');
@@ -287,7 +275,7 @@ export default function AdminReportesView({ tickets = [], campanas = [], estadis
 
       </div>
 
-      {/* SECCIÓN ADICIONAL: CONSULTA DE HISTORIAL DE NODOS (ÚLTIMOS 3 MESES CON CENTINELA) */}
+      {/* SECCIÓN ADICIONAL: CONSULTA DE HISTORIAL DE NODOS (ÚLTIMOS 3 MESES) */}
       <div className="bg-slate-800 border border-slate-700 p-6 rounded-xl shadow-lg space-y-4">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
           <div>
@@ -295,7 +283,7 @@ export default function AdminReportesView({ tickets = [], campanas = [], estadis
               <span>📋</span> Expediente e Historial de Nodos (Últimos 3 Meses)
             </h3>
             <p className="text-slate-400 text-xs mt-0.5">
-              Busca o selecciona cualquier nodo oficial de Centinela para consultar todas sus incidencias en los últimos 90 días.
+              Selecciona un nodo con reportes previos o escribe cualquier nombre de nodo para consultar sus incidencias en los últimos 90 días.
             </p>
           </div>
 
@@ -304,32 +292,37 @@ export default function AdminReportesView({ tickets = [], campanas = [], estadis
               type="text"
               placeholder="Escribe nodo (ej. B-02)..."
               value={busquedaNodoTexto}
-              onChange={(e) => setBusquedaNodoTexto(e.target.value)}
+              onChange={(e) => {
+                setBusquedaNodoTexto(e.target.value);
+                if (e.target.value) setNodoSeleccionadoHistorial('');
+              }}
               className="bg-slate-900 border border-slate-700 text-slate-200 text-sm rounded-xl px-3 py-2 outline-none focus:border-indigo-500 font-mono w-full md:w-48"
             />
             <select
               value={nodoSeleccionadoHistorial}
-              onChange={(e) => setNodoSeleccionadoHistorial(e.target.value)}
+              onChange={(e) => {
+                setNodoSeleccionadoHistorial(e.target.value);
+                if (e.target.value) setBusquedaNodoTexto('');
+              }}
               className="bg-slate-900 border border-slate-700 text-slate-200 text-sm rounded-xl px-4 py-2 focus:outline-none focus:border-indigo-500 font-mono"
             >
               <option value="">-- Seleccionar Nodo --</option>
-              {nodosFiltradosBusqueda.slice(0, 100).map((nodo, idx) => (
+              {listaNodosConReportes.map((nodo, idx) => (
                 <option key={idx} value={nodo}>{nodo}</option>
               ))}
             </select>
           </div>
         </div>
 
-        {nodoSeleccionadoHistorial && (
+        {nodoActivo && (
           <div className="bg-slate-900/80 border border-slate-700/80 p-5 rounded-2xl space-y-3 mt-4 animate-fade-in">
             <h4 className="text-sm font-bold text-indigo-400 uppercase tracking-wider">
-              Resultados para el nodo: <span className="text-white font-mono">{nodoSeleccionadoHistorial}</span> ({historialNodoReporte.length} incidencias en 3 meses)
+              Resultados para el nodo: <span className="text-white font-mono">{nodoActivo}</span> ({historialNodoReporte.length} incidencias en 3 meses)
             </h4>
 
             {historialNodoReporte.length === 0 ? (
               <div className="text-center py-8 border border-dashed border-slate-700 rounded-xl bg-slate-900/40">
                 <p className="text-slate-400 text-sm font-medium">No hay registros previos para este nodo en los últimos 3 meses.</p>
-                <p className="text-slate-500 text-xs mt-1">El nodo está activo en Centinela, pero no ha tenido reportes recientes.</p>
               </div>
             ) : (
               <div className="space-y-3 max-h-80 overflow-y-auto pr-2">
