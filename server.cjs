@@ -529,15 +529,18 @@ app.get(['/api/kpis/tiempos', '/kpis/tiempos'], (req, res) => {
   });
 });
 
-// Manejo correcto de estáticos y rutas bajo el subdirectorio /SAV_tiV2
-app.use('/SAV_tiV2', express.static(path.join(__dirname, 'dist')));
+// ============================================================================
+// MANEJO DE ESTÁTICOS Y RUTAS BAJO EL SUBDIRECTORIO /CTI
+// ============================================================================
+app.use('/CTI', express.static(path.join(__dirname, 'dist')));
 
-app.get(/^\/SAV_tiV2\/?.*/, (req, res) => {
+app.get(/^\/CTI\/?.*/, (req, res) => {
   res.sendFile(path.join(__dirname, 'dist', 'index.html'));
 });
 
-app.get('/', (req, res) => {
-  res.redirect('/SAV_tiV2/');
+// Redirigir la raíz y la ruta antigua hacia /CTI/
+app.get(['/', '/SAV_tiV2', '/SAV_tiV2/'], (req, res) => {
+  res.redirect('/CTI/');
 });
 
 const PORT = process.env.PORT || 80;
