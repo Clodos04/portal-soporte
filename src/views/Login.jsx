@@ -45,17 +45,20 @@ function Login({ onLogin }) {
 
       <div className="relative z-10 w-full max-w-md p-8 mx-4 bg-slate-900/80 backdrop-blur-xl rounded-3xl border border-slate-800 shadow-2xl shadow-indigo-950/40">
         
-        {/* LOGOTIPO OFICIAL */}
+        {/* LOGOTIPO Y NUEVA IDENTIDAD */}
         <div className="flex flex-col items-center mb-8">
           <div className="px-4 py-3 rounded-2xl bg-indigo-600/10 border border-indigo-500/20 mb-3 shadow-inner flex items-center justify-center">
             <img 
               src={logoContactus} 
-              alt="Contactus Contact Center" 
+              alt="Clodos TI Assist" 
               className="h-10 w-auto object-contain brightness-0 invert" 
             />
           </div>
+          <h1 className="text-sm font-black text-white tracking-wider uppercase">
+            Clodos TI Assist <span className="text-indigo-400 font-mono text-xs">(CTI)</span>
+          </h1>
           <p className="text-[11px] font-semibold text-slate-400 tracking-widest uppercase mt-1">
-            Centro de Soporte Técnico
+            Plataforma de Operaciones e Incidencias
           </p>
         </div>
 
@@ -130,7 +133,7 @@ function Login({ onLogin }) {
 
       {/* FOOTER DISCRETO Y CORPORATIVO */}
       <div className="absolute bottom-4 left-0 right-0 text-center text-slate-500 text-[11px] tracking-wider uppercase font-mono select-none px-4">
-        Christopher Osorio • Departamento de Desarrollo de Software, Contactus <br/>
+        Christopher Osorio • Clodos TI Assist (CTI) <br/>
         <span className="text-slate-600">Architected & Powered by</span> <span className="text-indigo-400/80 font-semibold tracking-widest">Gemini AI / Google Ecosystem</span>
       </div>
     </div>
