@@ -1,5 +1,5 @@
 const express = require('express');
-const mysql = mysql2 = require('mysql2');
+const mysql = require('mysql2');
 const cors = require('cors');
 const path = require('path');
 
@@ -13,6 +13,9 @@ const {
 const app = express();
 app.use(express.json());
 app.use(cors());
+
+// ESTO HACE QUE LA CARPETA PUBLIC SEA ACCESIBLE PÚBLICAMENTE (Soluciona el audio 404)
+app.use(express.static(path.join(__dirname, 'public')));
 
 // 1. Conexión principal para Tickets y lógica general (sav)
 const db = mysql.createConnection({
@@ -98,7 +101,6 @@ app.get(['/api/tickets', '/tickets'], (req, res) => {
   });
 });
 
-// Conteo exacto solo de los tickets creados HOY (Según fecha real de México)
 app.get(['/api/tickets/contar-hoy', '/tickets/contar-hoy'], (req, res) => {
   const hoyMexico = obtenerFechaHoraMexico().fechaSolo;
   const query = "SELECT COUNT(*) as total FROM tickets WHERE DATE(fecha) = ?";
@@ -108,10 +110,9 @@ app.get(['/api/tickets/contar-hoy', '/tickets/contar-hoy'], (req, res) => {
   });
 });
 
-// Inserción de tickets normales (Verifica si en DISPOSITIVOS es primera vez o repetido en el mes)
 const continuarInsercionTicket = (ticketData, res) => {
   const { fechaSolo, fechaHora, horaCorta } = obtenerFechaHoraMexico();
-  const anioMesActual = fechaSolo.slice(0, 7); // 'YYYY-MM'
+  const anioMesActual = fechaSolo.slice(0, 7);
   const catUpper = (ticketData.categoria || '').toUpperCase();
   const esDispositivo = catUpper.includes('DISPOSITIVO') || catUpper.includes('HARDWARE');
 
@@ -135,7 +136,6 @@ const continuarInsercionTicket = (ticketData, res) => {
     });
   };
 
-  // Si es de DISPOSITIVOS y tiene nodo y subcategoría, revisamos si ya hubo uno este mes
   if (esDispositivo && ticketData.equipo && ticketData.equipo !== 'Ninguno' && ticketData.subcategoria) {
     const queryPrevio = `
       SELECT folio FROM tickets 
@@ -279,7 +279,6 @@ app.post(['/api/chat', '/chat'], (req, res) => {
 
         const mensajesDelSistema = countRes[0].totalSistema;
 
-        // Verificamos si existe un ticket anterior en el mes (con id menor al actual) para este mismo nodo y subcategoría
         const queryPrevio = `
           SELECT folio FROM tickets 
           WHERE equipo = ? 
@@ -345,7 +344,7 @@ app.delete(['/api/usuarios/:id', '/usuarios/:id'], (req, res) => {
   });
 });
 
-app.get(['/api/grupos', '/grupos'], (err, res) => {
+app.get(['/api/grupos', '/grupos'], (req, res) => {
   db.query('SELECT nombre FROM grupos', (err, results) => {
     if (err) return res.status(500).json({ error: err.message });
     res.json(results.map(g => g.nombre));
@@ -366,9 +365,6 @@ app.delete(['/api/grupos/:nombre', '/grupos/:nombre'], (req, res) => {
   });
 });
 
-// ==========================================
-// CATEGORÍAS Y SUBCATEGORÍAS (SINCRONIZACIÓN REAL CON MYSQL)
-// ==========================================
 app.get(['/api/categorias', '/categorias'], (req, res) => {
   db.query('SELECT * FROM categorias ORDER BY id ASC', (err, results) => {
     if (err) return res.status(500).json({ error: err.message });
