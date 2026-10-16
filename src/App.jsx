@@ -131,13 +131,13 @@ function App() {
     return () => clearInterval(intervaloRefresco);
   }, [folioChatActivo]);
 
-  // FUNCIÓN PARA TOMAR TICKET CORREGIDA (Evita error 500 y bucles)
+  // FUNCIÓN BLINDADA PARA TOMAR TICKET (Estructura completa compatible con MySQL)
   const handleTomarTicket = async (folio) => {
     const nombreTecnico = user?.name || 'Soporte Técnico';
     const ticketActual = tickets.find(t => String(t.folio) === String(folio));
     if (!ticketActual) return;
 
-    const datosActualizados = {
+    const ticketCompletoParaGuardar = {
       ...ticketActual,
       tecnico: nombreTecnico,
       estatus: 'En Proceso',
@@ -148,11 +148,12 @@ function App() {
       const resPut = await fetch(`/api/tickets/${folio}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(datosActualizados)
+        body: JSON.stringify(ticketCompletoParaGuardar)
       });
 
       if (!resPut.ok) {
-        console.error('Error al actualizar el ticket en el servidor');
+        const errorText = await resPut.text();
+        console.error('El servidor rechazó la actualización del ticket:', errorText);
         return;
       }
 
@@ -168,7 +169,7 @@ function App() {
         })
       });
 
-      setTickets(tickets.map(t => String(t.folio) === String(folio) ? datosActualizados : t));
+      setTickets(tickets.map(t => String(t.folio) === String(folio) ? ticketCompletoParaGuardar : t));
       reproducirAlerta(`Has tomado el ticket #${folio}`);
     } catch (error) {
       console.error('Error al tomar ticket:', error);
