@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { io } from 'socket.io-client'; // ⚡ Importar el cliente de Socket.io
+import { io } from 'socket.io-client';
 
 import Header from './components/Header';
 import Menu from './components/Menu';
@@ -30,6 +30,20 @@ function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false); 
   const [user, setUser] = useState(null); 
   const [currentView, setCurrentView] = useState('inicio'); 
+
+  // 🌓 Estado para Modo Oscuro / Claro (Persistente en localStorage)
+  const [isDarkMode, setIsDarkMode] = useState(() => {
+    const savedTheme = localStorage.getItem('sav_theme');
+    return savedTheme ? savedTheme === 'dark' : true;
+  });
+
+  const toggleTheme = () => {
+    setIsDarkMode(prev => {
+      const nextMode = !prev;
+      localStorage.setItem('sav_theme', nextMode ? 'dark' : 'light');
+      return nextMode;
+    });
+  };
 
   const [isColumnCustomizerOpen, setIsColumnCustomizerOpen] = useState(false);
   const [isNotesModalOpen, setIsNotesModalOpen] = useState(false);
@@ -128,7 +142,7 @@ function App() {
     fetch('/api/categorias').then(res => res.json()).then(data => { if (Array.isArray(data)) setCategorias(data); });
     fetch('/api/encuestas/reporte').then(res => res.json()).then(data => { if (data && data.historial) setEstadisticasEncuestas(data.historial); });
 
-    // ⚡ CONEXIÓN ESTABLE EN TIEMPO REAL CON SOCKET.IO (Sin intervalos repetitivos)
+    // ⚡ CONEXIÓN ESTABLE EN TIEMPO REAL CON SOCKET.IO
     const socket = io();
 
     socket.on('ticketActualizado', (data) => {
@@ -144,9 +158,8 @@ function App() {
     return () => {
       socket.disconnect();
     };
-  }, []); // 👈 Dependencia vacía para evitar bucles y llamadas duplicadas en Red
+  }, []);
 
-  // FUNCIÓN PARA TOMAR TICKET (Limpia fechas para MySQL)
   const handleTomarTicket = async (folio) => {
     const nombreTecnico = user?.name || 'Soporte Técnico';
     const ticketActual = tickets.find(t => String(t.folio) === String(folio));
@@ -306,13 +319,17 @@ function App() {
   };
 
   if (!isLoggedIn) {
-    return <Login onLogin={handleLogin} />;
+    return (
+      <div className={!isDarkMode ? 'light-mode' : ''}>
+        <Login onLogin={handleLogin} />
+      </div>
+    );
   }
 
   return (
-    <div className="min-h-screen bg-slate-900 font-sans pb-10 text-slate-200 relative">
+    <div className={`${!isDarkMode ? 'light-mode' : ''} min-h-screen bg-slate-900 font-sans pb-10 text-slate-200 relative`}>
       {alertaVisual && (
-        <div className="fixed bottom-6 right-6 z-50 bg-slate-800 border border-indigo-500/50 text-white px-5 py-4 rounded-2xl shadow-2xl flex items-center space-x-3 animate-bounce">
+        <div className="fixed bottom-6 right-6 z-50 bg-slate-800 border border-indigo-500/50 text-slate-100 px-5 py-4 rounded-2xl shadow-2xl flex items-center space-x-3 animate-bounce">
           <span className="text-xl">🔔</span>
           <div>
             <p className="text-xs font-bold text-indigo-400 uppercase tracking-wider">Actualización Portal</p>
@@ -361,7 +378,12 @@ function App() {
         />
       )}
 
-      <Header user={user} onLogout={() => { setIsLoggedIn(false); setUser(null); }} />
+      <Header 
+        user={user} 
+        onLogout={() => { setIsLoggedIn(false); setUser(null); }} 
+        isDarkMode={isDarkMode}
+        onToggleTheme={toggleTheme}
+      />
       <Menu currentView={currentView} setCurrentView={setCurrentView} user={user} />
 
       <main className="p-6 max-w-7xl mx-auto relative z-0">
