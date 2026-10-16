@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 
 function EditarSolicitudModal({ ticket = {}, user, usuarios = [], grupos = [], usuariosPorGrupo = {}, categorias = [], onClose, onActualizar, onAbrirChat }) {
   const esCentinela = ticket.tipo_solicitud === 'CENTINELA' || (ticket.categoria || '').toUpperCase().includes('CENTINELA') || (ticket.asunto || '').toUpperCase().includes('CENTINELA');
@@ -8,7 +8,6 @@ function EditarSolicitudModal({ ticket = {}, user, usuarios = [], grupos = [], u
 
   const [estatus, setEstatus] = useState(ticket.estatus || 'Abierto');
   
-  // CORREGIDO: Inicialización robusta para que detecte grupo y técnico sin perderlos
   const grupoInicial = esCentinela ? 'CENTINELA' : (ticket.grupo || listaGrupos[0] || '');
   const [grupo, setGrupo] = useState(grupoInicial);
   const [tecnico, setTecnico] = useState(ticket.tecnico || 'Sin Asignar');
@@ -20,7 +19,6 @@ function EditarSolicitudModal({ ticket = {}, user, usuarios = [], grupos = [], u
   const [resolucion, setResolucion] = useState(ticket.resolucion || '');
   const [cargando, setCargando] = useState(false);
 
-  // Estados para la mini-ventana de Cambiar Nodo (Centinela) e Historial
   const [modalCambiarNodoOpen, setModalCambiarNodoOpen] = useState(false);
   const [modalHistorialOpen, setModalHistorialOpen] = useState(false);
   const [nodosCentinela, setNodosCentinela] = useState([]);
@@ -32,17 +30,13 @@ function EditarSolicitudModal({ ticket = {}, user, usuarios = [], grupos = [], u
   const esCliente = user?.role === 'client';
   const esSoporte = user?.role === 'support' || (user?.nivel || '').toUpperCase() === 'ADMINISTRADOR' || (user?.nivel || '').toUpperCase() === 'TECNICO';
 
-  // Obtener técnicos del grupo seleccionado (con búsqueda flexible)
   const grupoEncontrado = listaGrupos.find(g => g.toUpperCase() === grupo.toUpperCase()) || grupo;
   const tecnicosDisponibles = (usuariosPorGrupo && Array.isArray(usuariosPorGrupo[grupoEncontrado])) 
     ? usuariosPorGrupo[grupoEncontrado] 
     : [];
 
-  // Asegurar que si el ticket trae un técnico asignado, aparezca en las opciones aunque pertenezca a otro grupo
-  const tecnicosFinales = [...newSetTecnicos([...tecnicosDisponibles, ticket.tecnico])];
-  function setTecnicosUnicos(arr) {
-    return Array.from(new Set(arr.filter(t => t && t !== 'Sin Asignar')));
-  }
+  // CORREGIDO: Arreglado el nombre de la función auxiliar para limpiar la lista de técnicos únicos
+  const tecnicosFinales = Array.from(new Set([...tecnicosDisponibles, ticket.tecnico].filter(t => t && t !== 'Sin Asignar')));
 
   const categoriaObj = listaCategorias.find(
     c => (c?.nombre || '').toUpperCase() === (categoria || '').toUpperCase()
@@ -60,7 +54,6 @@ function EditarSolicitudModal({ ticket = {}, user, usuarios = [], grupos = [], u
     ? subcategoriaObj.elementos.filter(el => (el?.estatus || 'ACTIVO').toUpperCase() === 'ACTIVO')
     : [];
 
-  // Cargar datos de Centinela para el cambio de nodo
   const abrirSelectorNodo = async () => {
     setModalCambiarNodoOpen(true);
     try {
@@ -75,7 +68,6 @@ function EditarSolicitudModal({ ticket = {}, user, usuarios = [], grupos = [], u
     }
   };
 
-  // Cargar historial de 3 meses del nodo
   const abrirHistorialNodo = async () => {
     setModalHistorialOpen(true);
     setCargandoHistorial(true);
@@ -83,7 +75,6 @@ function EditarSolicitudModal({ ticket = {}, user, usuarios = [], grupos = [], u
       const res = await fetch('/api/tickets');
       const todosLosTickets = await res.json();
       if (Array.isArray(todosLosTickets)) {
-        // Filtrar tickets de los últimos 3 meses para este mismo equipo/nodo
         const ahora = new Date();
         const haceTresMeses = new Date();
         haceTresMeses.setMonth(ahora.getMonth() - 3);
@@ -166,7 +157,6 @@ function EditarSolicitudModal({ ticket = {}, user, usuarios = [], grupos = [], u
     <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm flex justify-center items-center z-50 p-4">
       <div className="bg-slate-800 border border-slate-700 rounded-2xl shadow-2xl max-w-2xl w-full overflow-hidden text-slate-200 animate-fade-in max-h-[90vh] flex flex-col">
         
-        {/* Cabecera */}
         <div className="flex justify-between items-center bg-slate-900/80 px-6 py-4 border-b border-slate-700">
           <div className="flex items-center gap-3">
             <h2 className="text-lg font-bold text-white uppercase tracking-wide flex items-center gap-2">
@@ -243,13 +233,12 @@ function EditarSolicitudModal({ ticket = {}, user, usuarios = [], grupos = [], u
               className="w-full px-3 py-2 rounded-lg bg-slate-900 border border-slate-700 text-white text-sm outline-none focus:border-green-500 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
             >
               <option value="Sin Asignar">Sin Asignar</option>
-              {setTecnicosUnicos([...tecnicosDisponibles, ticket.tecnico]).map((tec, idx) => (
+              {tecnicosFinales.map((tec, idx) => (
                 <option key={idx} value={tec}>{tec}</option>
               ))}
             </select>
           </div>
 
-          {/* EQUIPO / NODO CON BOTÓN DE CAMBIO DESDE CENTINELA */}
           <div>
             <div className="flex justify-between items-center mb-1.5">
               <label className="block text-xs font-bold text-slate-300 uppercase">Equipo(s) / Nodo:</label>
@@ -303,7 +292,6 @@ function EditarSolicitudModal({ ticket = {}, user, usuarios = [], grupos = [], u
           </div>
         </form>
 
-        {/* MINI MODAL: CAMBIAR NODO DESDE CENTINELA */}
         {modalCambiarNodoOpen && (
           <div className="absolute inset-0 bg-slate-950/90 z-50 flex flex-col p-6 animate-fade-in">
             <div className="flex justify-between items-center mb-4">
@@ -348,12 +336,11 @@ function EditarSolicitudModal({ ticket = {}, user, usuarios = [], grupos = [], u
           </div>
         )}
 
-        {/* MINI MODAL: HISTORIAL DE NODO (ÚLTIMOS 3 MESES) */}
         {modalHistorialOpen && (
           <div className="absolute inset-0 bg-slate-950/90 z-50 flex flex-col p-6 animate-fade-in">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-sm font-bold text-white uppercase flex items-center gap-2">
-                <span>📋</span> Historial de Mantenimiento y Reportes (Últimos 3 Meses) - Nodo: <strong className="text-indigo-400">{equipoNodo}</strong>
+                <span>📋</span> Historial de Mantenimiento (Últimos 3 Meses) - Nodo: <strong className="text-indigo-400">{equipoNodo}</strong>
               </h3>
               <button 
                 onClick={() => setModalHistorialOpen(false)}
