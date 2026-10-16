@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState } from 'react';
 
 export default function AdminReportesView({ tickets = [], campanas = [], estadisticasEncuestas = [] }) {
   const [filtroCampana, setFiltroCampana] = useState('Todas');
@@ -7,19 +7,6 @@ export default function AdminReportesView({ tickets = [], campanas = [], estadis
   // Estados para la consulta de Historial de Nodos
   const [nodoSeleccionadoHistorial, setNodoSeleccionadoHistorial] = useState('');
   const [busquedaNodoTexto, setBusquedaNodoTexto] = useState('');
-  const [dropdownOpen, setDropdownOpen] = useState(false);
-  const dropdownRef = useRef(null);
-
-  // Cerrar el dropdown si se hace clic fuera de él
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
-        setDropdownOpen(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
 
   // Filtrar tickets según los selectores superiores
   const ticketsFiltrados = tickets.filter(t => {
@@ -93,7 +80,7 @@ export default function AdminReportesView({ tickets = [], campanas = [], estadis
         ? (listaEncuestas.reduce((acc, e) => acc + (Number(e.calificacion) || Number(e.promedio) || 0), 0) / listaEncuestas.length).toFixed(1)
         : '4.3');
 
-  // Nodo activo a consultar
+  // Nodo activo a consultar (prioriza el input de texto libre si se escribió algo, de lo contrario usa el select)
   const nodoActivo = (busquedaNodoTexto.trim() !== '' ? busquedaNodoTexto.trim() : nodoSeleccionadoHistorial);
 
   // Historial de 3 meses para el nodo activo
@@ -109,7 +96,7 @@ export default function AdminReportesView({ tickets = [], campanas = [], estadis
       })
     : [];
 
-  // Lista única de nodos con reportes
+  // Lista única de nodos con reportes previos
   const listaNodosConReportes = Array.from(
     new Set(tickets.map(t => t.equipo).filter(eq => eq && eq !== 'Ninguno' && eq.trim() !== ''))
   ).sort();
@@ -119,7 +106,7 @@ export default function AdminReportesView({ tickets = [], campanas = [], estadis
   };
 
   return (
-    <div className="space-y-6 animate-fade-in pb-32">
+    <div className="space-y-6 animate-fade-in">
       {/* ENCABEZADO Y FILTROS */}
       <div className="bg-slate-800 border border-slate-700 p-6 rounded-xl shadow-lg flex flex-col md:flex-row justify-between items-center gap-4">
         <div>
@@ -288,9 +275,9 @@ export default function AdminReportesView({ tickets = [], campanas = [], estadis
 
       </div>
 
-      {/* SECCIÓN ADICIONAL: CONSULTA DE HISTORIAL DE NODOS (CON OVERFLOW VISIBLE Y MARGEN AMPLIADO) */}
-      <div className="bg-slate-800 border border-slate-700 p-6 rounded-xl shadow-lg space-y-4 relative z-20 overflow-visible">
-        <div className="flex flex-col gap-3">
+      {/* SECCIÓN ADICIONAL: CONSULTA DE HISTORIAL DE NODOS (SELECT NATIVO) */}
+      <div className="bg-slate-800 border border-slate-700 p-6 rounded-xl shadow-lg space-y-4">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
           <div>
             <h3 className="text-lg font-bold text-white flex items-center gap-2">
               <span>📋</span> Expediente e Historial de Nodos (Últimos 3 Meses)
@@ -300,7 +287,7 @@ export default function AdminReportesView({ tickets = [], campanas = [], estadis
             </p>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
+          <div className="flex items-center gap-2 w-full md:w-auto">
             <input 
               type="text"
               placeholder="Escribe nodo (ej. B-02)..."
@@ -309,48 +296,21 @@ export default function AdminReportesView({ tickets = [], campanas = [], estadis
                 setBusquedaNodoTexto(e.target.value);
                 if (e.target.value) setNodoSeleccionadoHistorial('');
               }}
-              className="bg-slate-900 border border-slate-700 text-slate-200 text-sm rounded-xl px-4 py-3 outline-none focus:border-indigo-500 font-mono w-full"
+              className="bg-slate-900 border border-slate-700 text-slate-200 text-sm rounded-xl px-3 py-2 outline-none focus:border-indigo-500 font-mono w-full md:w-48"
             />
-
-            {/* SELECTOR FLOTANTE CON OVERFLOW VISIBLE */}
-            <div className="relative overflow-visible" ref={dropdownRef}>
-              <div
-                onClick={() => setDropdownOpen(!dropdownOpen)}
-                className="bg-slate-900 border border-slate-700 text-slate-200 text-sm rounded-xl px-4 py-3 cursor-pointer flex justify-between items-center font-mono select-none hover:border-indigo-500 transition-colors"
-              >
-                <span className={nodoSeleccionadoHistorial ? "text-white" : "text-slate-400"}>
-                  {nodoSeleccionadoHistorial || "-- Seleccionar Nodo --"}
-                </span>
-                <span className="text-slate-400 text-xs">▼</span>
-              </div>
-
-              {dropdownOpen && (
-                <div className="absolute left-0 right-0 top-full mt-2 bg-slate-900 border border-slate-700 rounded-xl shadow-2xl max-h-60 overflow-y-auto z-50 p-1 space-y-1 animate-fade-in">
-                  <div
-                    onClick={() => {
-                      setNodoSeleccionadoHistorial('');
-                      setDropdownOpen(false);
-                    }}
-                    className="px-3 py-2 text-slate-400 hover:bg-slate-800 rounded-lg cursor-pointer text-sm"
-                  >
-                    -- Seleccionar Nodo --
-                  </div>
-                  {listaNodosConReportes.map((nodo, idx) => (
-                    <div
-                      key={idx}
-                      onClick={() => {
-                        setNodoSeleccionadoHistorial(nodo);
-                        setBusquedaNodoTexto('');
-                        setDropdownOpen(false);
-                      }}
-                      className="px-3 py-2 text-slate-200 hover:bg-indigo-600 hover:text-white rounded-lg cursor-pointer text-sm font-mono transition-colors"
-                    >
-                      {nodo}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
+            <select
+              value={nodoSeleccionadoHistorial}
+              onChange={(e) => {
+                setNodoSeleccionadoHistorial(e.target.value);
+                if (e.target.value) setBusquedaNodoTexto('');
+              }}
+              className="bg-slate-900 border border-slate-700 text-slate-200 text-sm rounded-xl px-4 py-2 focus:outline-none focus:border-indigo-500 font-mono"
+            >
+              <option value="">-- Seleccionar Nodo --</option>
+              {listaNodosConReportes.map((nodo, idx) => (
+                <option key={idx} value={nodo}>{nodo}</option>
+              ))}
+            </select>
           </div>
         </div>
 
