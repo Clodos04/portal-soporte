@@ -1,12 +1,27 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 
 export default function AdminReportesView({ tickets = [], campanas = [], estadisticasEncuestas = [] }) {
   const [filtroCampana, setFiltroCampana] = useState('Todas');
   const [filtroEstatus, setFiltroEstatus] = useState('Todos');
   
-  // Estados para la consulta de Historial de Nodos en Reportes
-  const [busquedaNodoReporte, setBusquedaNodoReporte] = useState('');
-  const [nodoSeleccionadoHistorial, setNodoSeleccionadoHistorial] = useState(null);
+  // Estados para la consulta de Historial de Nodos en Reportes (Conectado a Centinela)
+  const [nodosCentinelaDisponibles, setNodosCentinelaDisponibles] = useState([]);
+  const [nodoSeleccionadoHistorial, setNodoSeleccionadoHistorial] = useState('');
+  const [busquedaNodoTexto, setBusquedaNodoTexto] = useState('');
+
+  // Cargar nodos oficiales desde Centinela al montar la vista
+  useEffect(() => {
+    fetch('/api/centinela/datos')
+      .then(res => res.json())
+      .then(data => {
+        if (data && Array.isArray(data.equipos)) {
+          // Extraemos los nombres de nodos únicos de Centinela
+          const listaNodos = Array.from(new Set(data.equipos.map(e => e.equipo).filter(Boolean)));
+          setNodosCentinelaDisponibles(listaNodos);
+        }
+      })
+      .catch(err => console.error('Error al cargar nodos de Centinela para reportes:', err));
+  }, []);
 
   // Filtrar tickets según los selectores superiores
   const ticketsFiltrados = tickets.filter(t => {
@@ -37,11 +52,19 @@ export default function AdminReportesView({ tickets = [], campanas = [], estadis
     return acc;
   }, {});
 
-  // 2. TICKETS POR CATEGORÍA (Normalizado para evitar duplicados visuales)
+  // 2. TICKETS POR CATEGORÍA (Normalizado y limpio de duplicados por acentos)
   const porCategoria = ticketsFiltrados.reduce((acc, t) => {
-    const catCruda = (t.categoria || 'Sin categoría').trim();
-    const catKey = catCruda.toUpperCase();
-    
+    let catCruda = (t.categoria || 'Sin categoría').trim();
+    let catKey = catCruda
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toUpperCase();
+
+    if (catKey.includes('CENTINELA')) {
+      catCruda = 'CENTINELA (PERIFÉRICO)';
+      catKey = 'CENTINELA (PERIFÉRICO)';
+    }
+
     if (!acc[catKey]) {
       acc[catKey] = { nombre: catCruda.toUpperCase(), count: 0 };
     }
@@ -85,8 +108,10 @@ export default function AdminReportesView({ tickets = [], campanas = [], estadis
       })
     : [];
 
-  // Lista única de nodos disponibles en los tickets para el buscador de historial
-  const listaNodosUnicos = Array.from(new Set(tickets.map(t => t.equipo).filter(eq => eq && eq !== 'Ninguno')));
+  // Nodos filtrados para el buscador rápido
+  const nodosFiltradosBusqueda = nodosCentinelaDisponibles.filter(n => 
+    n.toLowerCase().includes(busquedaNodoTexto.toLowerCase())
+  );
 
   const exportarExcelSimulado = () => {
     alert('Exportando reporte completo a CSV/Excel...');
@@ -262,7 +287,7 @@ export default function AdminReportesView({ tickets = [], campanas = [], estadis
 
       </div>
 
-      {/* SECCIÓN ADICIONAL: CONSULTA DE HISTORIAL DE NODOS (ÚLTIMOS 3 MESES) */}
+      {/* SECCIÓN ADICIONAL: CONSULTA DE HISTORIAL DE NODOS (ÚLTIMOS 3 MESES CON CENTINELA) */}
       <div className="bg-slate-800 border border-slate-700 p-6 rounded-xl shadow-lg space-y-4">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
           <div>
@@ -270,20 +295,29 @@ export default function AdminReportesView({ tickets = [], campanas = [], estadis
               <span>📋</span> Expediente e Historial de Nodos (Últimos 3 Meses)
             </h3>
             <p className="text-slate-400 text-xs mt-0.5">
-              Selecciona o busca un nodo para consultar todas las incidencias reportadas en los últimos 90 días.
+              Busca o selecciona cualquier nodo oficial de Centinela para consultar todas sus incidencias en los últimos 90 días.
             </p>
           </div>
 
-          <select
-            value={nodoSeleccionadoHistorial}
-            onChange={(e) => setNodoSeleccionadoHistorial(e.target.value)}
-            className="bg-slate-900 border border-slate-700 text-slate-200 text-sm rounded-xl px-4 py-2.5 focus:outline-none focus:border-indigo-500 font-mono"
-          >
-            <option value="">-- Seleccionar Nodo / Equipo --</option>
-            {listaNodosUnicos.map((nodo, idx) => (
-              <option key={idx} value={nodo}>{nodo}</option>
-            ))}
-          </select>
+          <div className="flex items-center gap-2 w-full md:w-auto">
+            <input 
+              type="text"
+              placeholder="Escribe nodo (ej. B-02)..."
+              value={busquedaNodoTexto}
+              onChange={(e) => setBusquedaNodoTexto(e.target.value)}
+              className="bg-slate-900 border border-slate-700 text-slate-200 text-sm rounded-xl px-3 py-2 outline-none focus:border-indigo-500 font-mono w-full md:w-48"
+            />
+            <select
+              value={nodoSeleccionadoHistorial}
+              onChange={(e) => setNodoSeleccionadoHistorial(e.target.value)}
+              className="bg-slate-900 border border-slate-700 text-slate-200 text-sm rounded-xl px-4 py-2 focus:outline-none focus:border-indigo-500 font-mono"
+            >
+              <option value="">-- Seleccionar Nodo --</option>
+              {nodosFiltradosBusqueda.slice(0, 100).map((nodo, idx) => (
+                <option key={idx} value={nodo}>{nodo}</option>
+              ))}
+            </select>
+          </div>
         </div>
 
         {nodoSeleccionadoHistorial && (
@@ -293,7 +327,10 @@ export default function AdminReportesView({ tickets = [], campanas = [], estadis
             </h4>
 
             {historialNodoReporte.length === 0 ? (
-              <p className="text-slate-500 text-xs italic py-4">No se encontraron incidencias para este nodo en el periodo trimestral.</p>
+              <div className="text-center py-8 border border-dashed border-slate-700 rounded-xl bg-slate-900/40">
+                <p className="text-slate-400 text-sm font-medium">No hay registros previos para este nodo en los últimos 3 meses.</p>
+                <p className="text-slate-500 text-xs mt-1">El nodo está activo en Centinela, pero no ha tenido reportes recientes.</p>
+              </div>
             ) : (
               <div className="space-y-3 max-h-80 overflow-y-auto pr-2">
                 {historialNodoReporte.map((t, idx) => (
