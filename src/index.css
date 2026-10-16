@@ -2,38 +2,84 @@
 
 /* =========================================================
    MOTOR DE MODO CLARO AUTOMÁTICO (Tailwind v4)
-   Invierte la paleta Slate para transformar todas las vistas
-   sin necesidad de editar componente por componente.
    ========================================================= */
 .light-mode {
   /* Fondos oscuros pasan a ser claros y limpios */
-  --color-slate-950: #f8fafc; /* Fondo ultra claro */
-  --color-slate-900: #f1f5f9; /* Fondo principal de la app */
-  --color-slate-800: #ffffff; /* Tarjetas, Header, Menú y Tablas en blanco puro */
-  --color-slate-700: #e2e8f0; /* Bordes suaves y cabeceras secundarias */
-  --color-slate-600: #cbd5e1; /* Bordes de inputs y divisores */
+  --color-slate-950: #f8fafc;
+  --color-slate-900: #f1f5f9;
+  --color-slate-800: #ffffff;
+  --color-slate-700: #e2e8f0;
+  --color-slate-600: #cbd5e1;
   
   /* Textos claros pasan a ser oscuros con alto contraste */
-  --color-slate-500: #64748b; /* Texto secundario */
-  --color-slate-400: #475569; /* Subtítulos e iconos */
-  --color-slate-300: #334155; /* Texto de tablas y formularios */
-  --color-slate-200: #1e293b; /* Texto principal oscuro */
-  --color-slate-100: #0f172a; /* Títulos principales en negro azulado */
+  --color-slate-500: #64748b;
+  --color-slate-400: #475569;
+  --color-slate-300: #334155;
+  --color-slate-200: #1e293b;
+  --color-slate-100: #0f172a;
+  --color-slate-50:  #0f172a;
 
   /* Ajuste de acentos para máxima legibilidad sobre fondo blanco */
   --color-indigo-300: #4f46e5;
   --color-indigo-400: #4338ca;
+  --color-purple-300: #6b21a8;
+  --color-purple-400: #7e22ce;
   --color-emerald-400: #059669;
   --color-amber-400: #d97706;
   --color-red-400: #dc2626;
 }
 
-/* Transición suave al cambiar entre Modo Claro y Oscuro */
-.min-h-screen, header, nav, main, div, table, tr, td, th, input, select, textarea, button {
-  transition: background-color 0.2s ease, border-color 0.2s ease, color 0.15s ease;
+/* =========================================================
+   CORRECCIÓN DE TEXTOS BLANCOS (text-white) EN MODO CLARO
+   Convierte títulos, números y textos blancos a oscuro (#0f172a),
+   pero respeta el blanco en botones y badges de colores vivos.
+   ========================================================= */
+.light-mode .text-white {
+  color: #0f172a !important;
 }
 
-/* Sombras elegantes para las tarjetas blancas en Modo Claro */
+/* Mantener texto blanco en botones y etiquetas con fondo de color sólido */
+.light-mode [class*="bg-indigo-5"] .text-white,
+.light-mode [class*="bg-indigo-6"] .text-white,
+.light-mode [class*="bg-emerald-5"] .text-white,
+.light-mode [class*="bg-emerald-6"] .text-white,
+.light-mode [class*="bg-green-5"] .text-white,
+.light-mode [class*="bg-green-6"] .text-white,
+.light-mode [class*="bg-red-5"] .text-white,
+.light-mode [class*="bg-red-6"] .text-white,
+.light-mode [class*="bg-orange-5"] .text-white,
+.light-mode [class*="bg-amber-5"] .text-white,
+.light-mode [class*="bg-blue-5"] .text-white,
+.light-mode [class*="bg-blue-6"] .text-white,
+.light-mode [class*="bg-purple-6"] .text-white,
+.light-mode .text-white[class*="bg-indigo-5"],
+.light-mode .text-white[class*="bg-indigo-6"],
+.light-mode .text-white[class*="bg-emerald-5"],
+.light-mode .text-white[class*="bg-emerald-6"],
+.light-mode .text-white[class*="bg-green-5"],
+.light-mode .text-white[class*="bg-green-6"],
+.light-mode .text-white[class*="bg-red-5"],
+.light-mode .text-white[class*="bg-red-6"],
+.light-mode .text-white[class*="bg-orange-5"],
+.light-mode .text-white[class*="bg-amber-5"],
+.light-mode .text-white[class*="bg-blue-5"],
+.light-mode .text-white[class*="bg-blue-6"],
+.light-mode .text-white[class*="bg-purple-6"] {
+  color: #ffffff !important;
+}
+
+/* Ajuste especial para tarjetas con fondos traslúcidos (ej. Reporte Centinela) */
+.light-mode [class*="bg-purple-900"],
+.light-mode [class*="bg-indigo-900"] {
+  background-color: #f3e8ff !important; /* Morado pastel muy suave y legible */
+}
+
+/* Sombras elegantes y bordes definidos para las tarjetas blancas en Modo Claro */
 .light-mode .bg-slate-800 {
-  box-shadow: 0 1px 3px 0 rgba(15, 23, 42, 0.06), 0 1px 2px -1px rgba(15, 23, 42, 0.04);
+  box-shadow: 0 2px 6px -1px rgba(15, 23, 42, 0.07), 0 1px 3px -1px rgba(15, 23, 42, 0.05);
+}
+
+/* Transición suave al cambiar entre Modo Claro y Oscuro */
+.min-h-screen, header, nav, main, div, table, tr, td, th, input, select, textarea, button, h1, h2, h3, h4, p, span {
+  transition: background-color 0.2s ease, border-color 0.2s ease, color 0.15s ease;
 }
