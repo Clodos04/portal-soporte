@@ -37,8 +37,9 @@ function NuevaSolicitudView({ user, usuarios = [], grupos = [], usuariosPorGrupo
   const [descripcion, setDescripcion] = useState('');
 
   const [equiposSeleccionados, setEquiposSeleccionados] = useState([]);
-  const [nivel, setNivel] = useState('Bajo');
-  const [modo, setModo] = useState('WEB');
+  // Valores internos por defecto para MySQL (sin mostrar selectores en pantalla)
+  const [nivel] = useState('Bajo');
+  const [modo] = useState('WEB');
   const [archivo, setArchivo] = useState(null);
   const [enviando, setEnviando] = useState(false); // <--- Candado anti-doble clic
 
@@ -315,60 +316,37 @@ function NuevaSolicitudView({ user, usuarios = [], grupos = [], usuariosPorGrupo
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
-            <div>
-              <label className="block text-xs font-bold text-slate-300 uppercase mb-1.5">Equipo (Seleccione uno o más):</label>
-              <div className="w-full h-36 overflow-y-auto px-3 py-2 rounded-lg bg-slate-900 border border-slate-700 text-white text-sm space-y-1.5">
-                {listaEquiposActuales.length === 0 ? (
-                  <span className="text-slate-500 italic text-xs">Seleccione una campaña para ver los equipos disponibles</span>
-                ) : (
-                  listaEquiposActuales.map((eq, idx) => {
-                    const isSelected = equiposSeleccionados.includes(eq);
-                    return (
-                      <label key={idx} className="flex items-center gap-2 cursor-pointer hover:bg-slate-800/80 p-1.5 rounded transition-colors">
-                        <input 
-                          type="checkbox"
-                          checked={isSelected}
-                          onChange={(e) => {
-                            if (e.target.checked) {
-                              setEquiposSeleccionados([...equiposSeleccionados, eq]);
-                            } else {
-                              setEquiposSeleccionados(equiposSeleccionados.filter(item => item !== eq));
-                            }
-                          }}
-                          className="rounded bg-slate-900 border-slate-700 text-indigo-600 focus:ring-0 cursor-pointer w-4 h-4"
-                        />
-                        <span className="text-xs text-slate-200 font-mono">{eq}</span>
-                      </label>
-                    );
-                  })
-                )}
-              </div>
-              <p className="text-[11px] text-indigo-400 mt-1 font-medium">
-                Seleccionados: {equiposSeleccionados.length > 0 ? equiposSeleccionados.join(', ') : 'Ninguno'}
-              </p>
+          <div className="pt-2">
+            <label className="block text-xs font-bold text-slate-300 uppercase mb-1.5">Equipo / Nodo (Seleccione uno o más):</label>
+            <div className="w-full h-36 overflow-y-auto px-3 py-2 rounded-lg bg-slate-900 border border-slate-700 text-white text-sm space-y-1.5">
+              {listaEquiposActuales.length === 0 ? (
+                <span className="text-slate-500 italic text-xs">Seleccione una campaña para ver los equipos disponibles</span>
+              ) : (
+                listaEquiposActuales.map((eq, idx) => {
+                  const isSelected = equiposSeleccionados.includes(eq);
+                  return (
+                    <label key={idx} className="flex items-center gap-2 cursor-pointer hover:bg-slate-800/80 p-1.5 rounded transition-colors">
+                      <input 
+                        type="checkbox"
+                        checked={isSelected}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setEquiposSeleccionados([...equiposSeleccionados, eq]);
+                          } else {
+                            setEquiposSeleccionados(equiposSeleccionados.filter(item => item !== eq));
+                          }
+                        }}
+                        className="rounded bg-slate-900 border-slate-700 text-indigo-600 focus:ring-0 cursor-pointer w-4 h-4"
+                      />
+                      <span className="text-xs text-slate-200 font-mono">{eq}</span>
+                    </label>
+                  );
+                })
+              )}
             </div>
-
-            <div className="space-y-4">
-              <div>
-                <label className="block text-xs font-bold text-slate-300 uppercase mb-1.5">Nivel:</label>
-                <select value={nivel} onChange={(e) => setNivel(e.target.value)} className="w-full px-3 py-2.5 rounded-lg bg-slate-900 border border-slate-700 text-white text-sm outline-none focus:border-indigo-500 transition-colors">
-                  <option value="Bajo">Bajo</option>
-                  <option value="Medio">Medio</option>
-                  <option value="Experto">Experto</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-slate-300 uppercase mb-1.5">Modo:</label>
-                <select value={modo} onChange={(e) => setModo(e.target.value)} className="w-full px-3 py-2.5 rounded-lg bg-slate-900 border border-slate-700 text-white text-sm outline-none focus:border-indigo-500 transition-colors">
-                  <option value="WEB">WEB</option>
-                  <option value="CORREO">CORREO</option>
-                  <option value="TELEFONO">TELEFONO</option>
-                  <option value="VERBAL">VERBAL</option>
-                </select>
-              </div>
-            </div>
+            <p className="text-[11px] text-indigo-400 mt-1 font-medium">
+              Seleccionados ({equiposSeleccionados.length}): {equiposSeleccionados.length > 0 ? equiposSeleccionados.join(', ') : 'Ninguno'}
+            </p>
           </div>
 
           <div className="pt-2">
