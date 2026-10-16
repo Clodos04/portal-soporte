@@ -119,7 +119,7 @@ export default function AdminReportesView({ tickets = [], campanas = [], estadis
   };
 
   return (
-    <div className="space-y-6 animate-fade-in pb-16">
+    <div className="space-y-6 animate-fade-in pb-32">
       {/* ENCABEZADO Y FILTROS */}
       <div className="bg-slate-800 border border-slate-700 p-6 rounded-xl shadow-lg flex flex-col md:flex-row justify-between items-center gap-4">
         <div>
@@ -288,8 +288,8 @@ export default function AdminReportesView({ tickets = [], campanas = [], estadis
 
       </div>
 
-      {/* SECCIÓN ADICIONAL: CONSULTA DE HISTORIAL DE NODOS (CON SELECTOR FLOTANTE HACIA ABAJO) */}
-      <div className="bg-slate-800 border border-slate-700 p-6 rounded-xl shadow-lg space-y-4 relative z-10">
+      {/* SECCIÓN ADICIONAL: CONSULTA DE HISTORIAL DE NODOS (CON OVERFLOW VISIBLE Y MARGEN AMPLIADO) */}
+      <div className="bg-slate-800 border border-slate-700 p-6 rounded-xl shadow-lg space-y-4 relative z-20 overflow-visible">
         <div className="flex flex-col gap-3">
           <div>
             <h3 className="text-lg font-bold text-white flex items-center gap-2">
@@ -312,8 +312,8 @@ export default function AdminReportesView({ tickets = [], campanas = [], estadis
               className="bg-slate-900 border border-slate-700 text-slate-200 text-sm rounded-xl px-4 py-3 outline-none focus:border-indigo-500 font-mono w-full"
             />
 
-            {/* SELECTOR PERSONALIZADO QUE SIEMPRE DESPLIEGA HACIA ABAJO */}
-            <div className="relative" ref={dropdownRef}>
+            {/* SELECTOR FLOTANTE CON OVERFLOW VISIBLE */}
+            <div className="relative overflow-visible" ref={dropdownRef}>
               <div
                 onClick={() => setDropdownOpen(!dropdownOpen)}
                 className="bg-slate-900 border border-slate-700 text-slate-200 text-sm rounded-xl px-4 py-3 cursor-pointer flex justify-between items-center font-mono select-none hover:border-indigo-500 transition-colors"
