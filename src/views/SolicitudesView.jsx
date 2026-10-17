@@ -48,7 +48,7 @@ function SolicitudesView({
   const conteoMios = ticketsBase.filter(t => !(t.estatus || '').toLowerCase().includes('cerrado') && esMiTicket(t)).length;
   const conteoCerrados = ticketsBase.filter(t => (t.estatus || '').toLowerCase().includes('cerrado')).length;
 
-  // Cálculo del Semáforo de SLA basado en la categoría seleccionada
+  // Cálculo del Semáforo de SLA robusto y sin errores de zona horaria
   const calcularSLA = (ticket) => {
     const estatusLower = (ticket.estatus || '').toLowerCase();
     const esCerrado = estatusLower.includes('cerrado');
@@ -58,13 +58,31 @@ function SolicitudesView({
       return { texto: '—', color: 'bg-slate-700/50 text-slate-400 border-slate-600', icono: '⏱️' };
     }
 
-    const inicio = new Date(fechaInicioStr);
+    // Convertir de forma segura la fecha de MySQL o estándar
+    let fechaLimpia = String(fechaInicioStr).trim();
+    if (fechaLimpia.includes(' ') && !fechaLimpia.includes('T')) {
+      fechaLimpia = fechaLimpia.replace(' ', 'T');
+    }
+
+    const inicio = new Date(fechaLimpia);
     if (isNaN(inicio.getTime())) {
       return { texto: ticket.fecha || '—', color: 'bg-slate-700/50 text-slate-400 border-slate-600', icono: '📅' };
     }
 
-    const fin = (esCerrado && ticket.updated_at) ? new Date(ticket.updated_at) : new Date();
-    const diffMs = Math.max(0, fin - inicio);
+    const ahora = new Date();
+    // Si por desfase de zona horaria la fecha del ticket parece ser del futuro, la igualamos al momento actual para evitar negativos o saltos falsos
+    const tiempoInicio = inicio > ahora ? ahora : inicio;
+    
+    let fin = ahora;
+    if (esCerrado && ticket.updated_at) {
+      let fechaFinLimpia = String(ticket.updated_at).trim().replace(' ', 'T');
+      const fechaFinParsed = new Date(fechaFinLimpia);
+      if (!isNaN(fechaFinParsed.getTime())) {
+        fin = fechaFinParsed;
+      }
+    }
+
+    const diffMs = Math.max(0, fin - tiempoInicio);
     const diffMin = Math.floor(diffMs / 60000);
     const diffHrs = diffMin / 60;
 
@@ -89,8 +107,9 @@ function SolicitudesView({
       };
     }
 
-    // Buscar el SLA configurado en la categoría
-    const catObj = categorias.find(c => c.nombre && ticket.categoria && c.nombre.toUpperCase() === ticket.categoria.toUpperCase());
+    // Buscar el SLA configurado en la categoría (coincidencia flexible)
+    const catTicketNorm = (ticket.categoria || '').trim().toUpperCase();
+    const catObj = categorias.find(c => c.nombre && c.nombre.trim().toUpperCase() === catTicketNorm);
     const slaLimite = Number(catObj?.sla) || Number(ticket.sla) || 24;
 
     if (diffHrs < slaLimite * 0.5) {
