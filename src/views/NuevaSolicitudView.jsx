@@ -96,45 +96,60 @@ function NuevaSolicitudView({ user, usuarios = [], grupos = [], usuariosPorGrupo
     setElemento('');
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (enviando) return; // Bloquear si ya se está enviando
     setEnviando(true);
 
-    const nuevoFolio = Math.floor(10000 + Math.random() * 90000).toString();
-    const fechaHoy = new Date().toISOString().split('T')[0];
+    try {
+      // Consultar el total de tickets de hoy para asignar el consecutivo correcto (#DDMMYYNN)
+      const resContar = await fetch('/api/tickets/contar-hoy');
+      const dataContar = await resContar.json();
+      const totalHoy = (dataContar.totalHoy || 0) + 1;
 
-    let colorEstatus = 'bg-green-500';
-    if (estado === 'EN PROCESO') colorEstatus = 'bg-orange-500';
-    if (estado === 'CERRADO') colorEstatus = 'bg-red-500';
+      const ahora = new Date();
+      const dd = String(ahora.getDate()).padStart(2, '0');
+      const mm = String(ahora.getMonth() + 1).padStart(2, '0');
+      const yy = String(ahora.getFullYear()).slice(-2);
+      
+      const nuevoFolio = `${dd}${mm}${yy}${String(totalHoy).padStart(2, '0')}`;
+      const fechaHoy = dataContar.fechaHoy || ahora.toISOString().split('T')[0];
 
-    const campObj = campanasBD.find(c => String(c.idcamp) === String(campanaSeleccionadaId));
+      let colorEstatus = 'bg-green-500';
+      if (estado === 'EN PROCESO') colorEstatus = 'bg-orange-500';
+      if (estado === 'CERRADO') colorEstatus = 'bg-red-500';
 
-    const ticketNuevo = {
-      folio: nuevoFolio,
-      notas: [],
-      estatus: estado === 'ABIERTO' ? 'Abierto' : (estado === 'EN PROCESO' ? 'En Proceso' : 'Cerrado'),
-      colorEstatus: colorEstatus,
-      tecnico: usuarioAsignado,
-      creador: nombreCliente || user?.name || 'VALERIA GOMEZ',
-      asunto: asunto,
-      descripcion: descripcion,
-      campana: campObj ? campObj.nombre : (areaCliente || 'General'),
-      equipo: equiposSeleccionados.length > 0 ? equiposSeleccionados.join(', ') : 'Ninguno',
-      nivel: nivel,
-      modo: modo,
-      fecha: fechaHoy,
-      grupo: grupo || 'Soporte Técnico',
-      categoria: categoria || 'GENERAL',
-      subcategoria: subCategoria || '',
-      elemento: elemento || '',
-      resolucion: '',
-      archivoNombre: archivo ? archivo.name : null,
-      archivoUrl: archivo ? URL.createObjectURL(archivo) : null,
-      tipo_solicitud: 'REPORTE'
-    };
+      const campObj = campanasBD.find(c => String(c.idcamp) === String(campanaSeleccionadaId));
 
-    onGuardar(ticketNuevo);
+      const ticketNuevo = {
+        folio: nuevoFolio,
+        notas: [],
+        estatus: estado === 'ABIERTO' ? 'Abierto' : (estado === 'EN PROCESO' ? 'En Proceso' : 'Cerrado'),
+        colorEstatus: colorEstatus,
+        tecnico: usuarioAsignado,
+        creador: nombreCliente || user?.name || 'VALERIA GOMEZ',
+        asunto: asunto,
+        descripcion: descripcion,
+        campana: campObj ? campObj.nombre : (areaCliente || 'General'),
+        equipo: equiposSeleccionados.length > 0 ? equiposSeleccionados.join(', ') : 'Ninguno',
+        nivel: nivel,
+        modo: modo,
+        fecha: fechaHoy,
+        grupo: grupo || 'Soporte Técnico',
+        categoria: categoria || 'GENERAL',
+        subcategoria: subCategoria || '',
+        elemento: elemento || '',
+        resolucion: '',
+        archivoNombre: archivo ? archivo.name : null,
+        archivoUrl: archivo ? URL.createObjectURL(archivo) : null,
+        tipo_solicitud: 'REPORTE'
+      };
+
+      onGuardar(ticketNuevo);
+    } catch (error) {
+      console.error("Error al generar folio:", error);
+      setEnviando(false);
+    }
   };
 
   return (
