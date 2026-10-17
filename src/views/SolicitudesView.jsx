@@ -48,7 +48,7 @@ function SolicitudesView({
   const conteoMios = ticketsBase.filter(t => !(t.estatus || '').toLowerCase().includes('cerrado') && esMiTicket(t)).length;
   const conteoCerrados = ticketsBase.filter(t => (t.estatus || '').toLowerCase().includes('cerrado')).length;
 
-  // Cálculo del Semáforo de SLA robusto y sin errores de zona horaria
+  // Cálculo del Semáforo de SLA usando hora local exacta (sin desfases UTC)
   const calcularSLA = (ticket) => {
     const estatusLower = (ticket.estatus || '').toLowerCase();
     const esCerrado = estatusLower.includes('cerrado');
@@ -58,25 +58,33 @@ function SolicitudesView({
       return { texto: '—', color: 'bg-slate-700/50 text-slate-400 border-slate-600', icono: '⏱️' };
     }
 
-    // Convertir de forma segura la fecha de MySQL o estándar
-    let fechaLimpia = String(fechaInicioStr).trim();
-    if (fechaLimpia.includes(' ') && !fechaLimpia.includes('T')) {
-      fechaLimpia = fechaLimpia.replace(' ', 'T');
-    }
+    // Parseo manual seguro para evitar que JS la convierta a UTC
+    const parsearLocal = (str) => {
+      if (!str) return new Date();
+      const partes = String(str).trim().split(/[- :T]/);
+      if (partes.length >= 3) {
+        const y = parseInt(partes[0], 10);
+        const m = parseInt(partes[1], 10) - 1;
+        const d = parseInt(partes[2], 10);
+        const h = partes.length > 3 ? parseInt(partes[3], 10) : 0;
+        const min = partes.length > 4 ? parseInt(partes[4], 10) : 0;
+        const s = partes.length > 5 ? parseInt(partes[5], 10) : 0;
+        return new Date(y, m, d, h, min, s);
+      }
+      return new Date(str);
+    };
 
-    const inicio = new Date(fechaLimpia);
+    const inicio = parsearLocal(fechaInicioStr);
     if (isNaN(inicio.getTime())) {
       return { texto: ticket.fecha || '—', color: 'bg-slate-700/50 text-slate-400 border-slate-600', icono: '📅' };
     }
 
     const ahora = new Date();
-    // Si por desfase de zona horaria la fecha del ticket parece ser del futuro, la igualamos al momento actual para evitar negativos o saltos falsos
     const tiempoInicio = inicio > ahora ? ahora : inicio;
     
     let fin = ahora;
     if (esCerrado && ticket.updated_at) {
-      let fechaFinLimpia = String(ticket.updated_at).trim().replace(' ', 'T');
-      const fechaFinParsed = new Date(fechaFinLimpia);
+      const fechaFinParsed = parsearLocal(ticket.updated_at);
       if (!isNaN(fechaFinParsed.getTime())) {
         fin = fechaFinParsed;
       }
