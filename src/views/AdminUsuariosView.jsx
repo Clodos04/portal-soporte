@@ -52,7 +52,12 @@ function AdminUsuariosView({ grupos: gruposProp = [], usuarios = [], setUsuarios
     setFormMaterno(usu.materno || '');
     setFormUsername(usu.username || '');
     setFormPassword(usu.password || '');
-    setFormNivel(usu.nivel || 'CLIENTE');
+    
+    // Normalizar si el usuario antiguo tenía otro rol para mapearlo correctamente
+    const nivelUpper = (usu.nivel || '').toUpperCase();
+    const nivelNormalizado = nivelUpper.includes('ADMIN') ? 'ADMINISTRADOR' : 'CLIENTE';
+    setFormNivel(nivelNormalizado);
+
     setFormCampana(usu.campana || listaCampanas[0]);
     setFormEstatus(usu.estatus || 'ACTIVO');
     setFormGrupos(usu.gruposAsignados || []);
@@ -128,7 +133,7 @@ function AdminUsuariosView({ grupos: gruposProp = [], usuarios = [], setUsuarios
             <p className="text-slate-400 text-sm">Listado oficial de usuarios registrados en el sistema</p>
             <button 
               onClick={abrirNuevo}
-              className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg font-bold text-sm shadow transition-colors flex items-center gap-2"
+              className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg font-bold text-sm shadow transition-colors flex items-center gap-2 cursor-pointer"
             >
               📄 Nuevo Usuario
             </button>
@@ -170,10 +175,10 @@ function AdminUsuariosView({ grupos: gruposProp = [], usuarios = [], setUsuarios
                       </td>
                       <td className="px-4 py-3 font-bold text-slate-300">{usu.nivel}</td>
                       <td className="px-4 py-3 text-center flex justify-center gap-2">
-                        <button onClick={() => abrirEdicion(usu)} className="p-1.5 bg-blue-600/20 text-blue-400 hover:bg-blue-600 hover:text-white rounded transition-colors" title="Editar">
+                        <button onClick={() => abrirEdicion(usu)} className="p-1.5 bg-blue-600/20 text-blue-400 hover:bg-blue-600 hover:text-white rounded transition-colors cursor-pointer" title="Editar">
                           ✏️
                         </button>
-                        <button onClick={() => eliminarUsuario(usu.id)} className="p-1.5 bg-red-600/20 text-red-400 hover:bg-red-600 hover:text-white rounded transition-colors" title="Eliminar">
+                        <button onClick={() => eliminarUsuario(usu.id)} className="p-1.5 bg-red-600/20 text-red-400 hover:bg-red-600 hover:text-white rounded transition-colors cursor-pointer" title="Eliminar">
                           🗑️
                         </button>
                       </td>
@@ -225,17 +230,15 @@ function AdminUsuariosView({ grupos: gruposProp = [], usuarios = [], setUsuarios
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
-            <label className="block text-xs font-bold text-slate-300 mb-1 uppercase">Nivel:</label>
-            <select value={formNivel} onChange={(e) => setFormNivel(e.target.value)} className="w-full px-3 py-2 rounded bg-slate-900 border border-slate-700 text-white text-sm outline-none">
+            <label className="block text-xs font-bold text-slate-300 mb-1 uppercase">Nivel / Rol:</label>
+            <select value={formNivel} onChange={(e) => setFormNivel(e.target.value)} className="w-full px-3 py-2 rounded bg-slate-900 border border-slate-700 text-white text-sm outline-none cursor-pointer">
               <option value="CLIENTE">CLIENTE</option>
-              <option value="TECNICO">TECNICO</option>
               <option value="ADMINISTRADOR">ADMINISTRADOR</option>
-              <option value="TECNICO SUPERVISOR">TECNICO SUPERVISOR</option>
             </select>
           </div>
           <div>
             <label className="block text-xs font-bold text-slate-300 mb-1 uppercase">Campaña:</label>
-            <select value={formCampana} onChange={(e) => setFormCampana(e.target.value)} className="w-full px-3 py-2 rounded bg-slate-900 border border-slate-700 text-white text-sm outline-none">
+            <select value={formCampana} onChange={(e) => setFormCampana(e.target.value)} className="w-full px-3 py-2 rounded bg-slate-900 border border-slate-700 text-white text-sm outline-none cursor-pointer">
               {listaCampanas.map((camp, idx) => (
                 <option key={idx} value={camp}>{camp}</option>
               ))}
@@ -243,7 +246,7 @@ function AdminUsuariosView({ grupos: gruposProp = [], usuarios = [], setUsuarios
           </div>
           <div>
             <label className="block text-xs font-bold text-slate-300 mb-1 uppercase">Estatus:</label>
-            <select value={formEstatus} onChange={(e) => setFormEstatus(e.target.value)} className="w-full px-3 py-2 rounded bg-slate-900 border border-slate-700 text-white text-sm outline-none">
+            <select value={formEstatus} onChange={(e) => setFormEstatus(e.target.value)} className="w-full px-3 py-2 rounded bg-slate-900 border border-slate-700 text-white text-sm outline-none cursor-pointer">
               <option value="ACTIVO">ACTIVO</option>
               <option value="BAJA">BAJA</option>
             </select>
@@ -255,7 +258,7 @@ function AdminUsuariosView({ grupos: gruposProp = [], usuarios = [], setUsuarios
           <div className="grid grid-cols-1 md:grid-cols-2 gap-2 max-h-40 overflow-y-auto pr-2">
             {gruposDisponibles.map((g, idx) => (
               <label key={idx} className="flex items-center gap-2 cursor-pointer text-sm text-slate-300 hover:text-white">
-                <input type="checkbox" checked={formGrupos.includes(g)} onChange={() => toggleGrupoAsignado(g)} className="accent-blue-500 w-4 h-4 rounded" />
+                <input type="checkbox" checked={formGrupos.includes(g)} onChange={() => toggleGrupoAsignado(g)} className="accent-blue-500 w-4 h-4 rounded cursor-pointer" />
                 <span className="truncate">{g}</span>
               </label>
             ))}
@@ -263,10 +266,10 @@ function AdminUsuariosView({ grupos: gruposProp = [], usuarios = [], setUsuarios
         </div>
 
         <div className="flex justify-end gap-4 pt-4 border-t border-slate-700">
-          <button type="button" onClick={() => setModo('lista')} className="bg-slate-700 hover:bg-slate-600 text-slate-200 px-6 py-2 rounded-lg font-bold border border-slate-600 transition-colors text-sm">
+          <button type="button" onClick={() => setModo('lista')} className="bg-slate-700 hover:bg-slate-600 text-slate-200 px-6 py-2 rounded-lg font-bold border border-slate-600 transition-colors text-sm cursor-pointer">
             Cancelar
           </button>
-          <button type="submit" className="bg-blue-600 hover:bg-blue-500 text-white px-8 py-2 rounded-lg shadow-lg font-bold transition-colors text-sm">
+          <button type="submit" className="bg-blue-600 hover:bg-blue-500 text-white px-8 py-2 rounded-lg shadow-lg font-bold transition-colors text-sm cursor-pointer">
             Guardar Usuario
           </button>
         </div>
