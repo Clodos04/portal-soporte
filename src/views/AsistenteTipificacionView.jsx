@@ -101,40 +101,52 @@ function AsistenteTipificacionView({ categorias = [], campanas = [], equipos = [
     setEnviando(true);
     setErrorDuplicado('');
 
-    const fechaHoy = new Date().toISOString().split('T')[0];
-    const campObj = campanas.find(c => String(c.idcamp) === String(campanaSeleccionadaId));
+    try {
+      // Obtenemos el conteo y la fecha oficial desde el servidor para armar el folio DDMMYYNN
+      const resContar = await fetch('/api/tickets/contar-hoy');
+      const dataContar = await resContar.json();
+      let baseTotalHoy = Number(dataContar.totalHoy) || 0;
 
-    if (tipoReporte === 'CENTINELA' && equiposSeleccionados.length > 0) {
-      for (const [index, nodoUnico] of equiposSeleccionados.entries()) {
-        const nuevoFolio = Math.floor(10000 + Math.random() * 90000).toString() + '-' + (index + 1);
-        const compNombre = perifericoCentinela || subcatSeleccionada?.nombre || 'DISPOSITIVO';
-        const detalleFalla = subFallaCentinela || elementoSeleccionado?.nombre || 'Falla general de dispositivo';
-        
-        const ticketIndependiente = {
-          folio: nuevoFolio,
-          notas: [],
-          estatus: 'Abierto',
-          colorEstatus: 'bg-purple-500',
-          tecnico: 'Sin Asignar',
-          creador: user?.name || 'VALERIA GOMEZ',
-          asunto: `[CENTINELA] ${compNombre}: ${detalleFalla}`,
-          descripcion: `Reporte automático de componente dañado. Componente: ${compNombre}, Falla: ${detalleFalla}, Nodo: ${nodoUnico}.`,
-          campana: campObj ? campObj.nombre : 'General',
-          equipo: nodoUnico,
-          nivel: 'Medio',
-          modo: modo,
-          fecha: fechaHoy,
-          grupo: 'CENTINELA',
-          categoria: categoriaSeleccionada?.nombre || 'DISPOSITIVOS',
-          subcategoria: compNombre,
-          elemento: detalleFalla,
-          resolucion: '',
-          archivoNombre: archivo ? archivo.name : null,
-          archivoUrl: archivo ? URL.createObjectURL(archivo) : null,
-          tipo_solicitud: 'CENTINELA'
-        };
+      const ahora = new Date();
+      const dd = String(ahora.getDate()).padStart(2, '0');
+      const mm = String(ahora.getMonth() + 1).padStart(2, '0');
+      const yy = String(ahora.getFullYear()).slice(-2);
+      const prefijoFolio = dataContar.prefijoFolio || `${dd}${mm}${yy}`;
+      const fechaHoy = dataContar.fechaHoy || ahora.toISOString().split('T')[0];
 
-        try {
+      const campObj = campanas.find(c => String(c.idcamp) === String(campanaSeleccionadaId));
+
+      if (tipoReporte === 'CENTINELA' && equiposSeleccionados.length > 0) {
+        for (const [index, nodoUnico] of equiposSeleccionados.entries()) {
+          const consecutivoStr = String(baseTotalHoy + index + 1).padStart(2, '0');
+          const nuevoFolio = `${prefijoFolio}${consecutivoStr}`;
+          const compNombre = perifericoCentinela || subcatSeleccionada?.nombre || 'DISPOSITIVO';
+          const detalleFalla = subFallaCentinela || elementoSeleccionado?.nombre || 'Falla general de dispositivo';
+          
+          const ticketIndependiente = {
+            folio: nuevoFolio,
+            notas: [],
+            estatus: 'Abierto',
+            colorEstatus: 'bg-purple-500',
+            tecnico: 'Sin Asignar',
+            creador: user?.name || 'VALERIA GOMEZ',
+            asunto: `[CENTINELA] ${compNombre}: ${detalleFalla}`,
+            descripcion: `Reporte automático de componente dañado. Componente: ${compNombre}, Falla: ${detalleFalla}, Nodo: ${nodoUnico}.`,
+            campana: campObj ? campObj.nombre : 'General',
+            equipo: nodoUnico,
+            nivel: 'Medio',
+            modo: modo,
+            fecha: fechaHoy,
+            grupo: 'CENTINELA',
+            categoria: categoriaSeleccionada?.nombre || 'DISPOSITIVOS',
+            subcategoria: compNombre,
+            elemento: detalleFalla,
+            resolucion: '',
+            archivoNombre: archivo ? archivo.name : null,
+            archivoUrl: archivo ? URL.createObjectURL(archivo) : null,
+            tipo_solicitud: 'CENTINELA'
+          };
+
           const response = await fetch('/api/tickets', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -149,58 +161,70 @@ function AsistenteTipificacionView({ categorias = [], campanas = [], equipos = [
             return;
           }
 
+          const ticketConfirmado = {
+            ...ticketIndependiente,
+            folio: data.folio || nuevoFolio,
+            id: data.id,
+            estatus: data.esSubsecuente ? 'Cerrado' : 'Abierto',
+            colorEstatus: data.esSubsecuente ? 'bg-red-600' : 'bg-purple-500',
+            yaGuardadoEnBD: true
+          };
+
           if (onGuardarTicket) {
-            onGuardarTicket(ticketIndependiente);
+            onGuardarTicket(ticketConfirmado);
           }
-        } catch (err) {
-          setErrorDuplicado('Error de red al intentar conectar con el servidor.');
-          setEnviando(false);
-          return;
         }
+
+        setEnviando(false);
+        if (onCancelar) onCancelar();
+        return;
       }
 
-      setEnviando(false);
-      if (onCancelar) onCancelar();
-      return;
-    }
+      // Comportamiento normal para reportes estándar
+      const consecutivoNormal = String(baseTotalHoy + 1).padStart(2, '0');
+      const nuevoFolio = `${prefijoFolio}${consecutivoNormal}`;
+      const ticketNuevo = {
+        folio: nuevoFolio,
+        notas: [],
+        estatus: 'Abierto',
+        colorEstatus: 'bg-green-500',
+        tecnico: 'Sin Asignar',
+        creador: user?.name || 'VALERIA GOMEZ',
+        asunto: asunto || 'Sin asunto',
+        descripcion: descripcion || 'Sin descripción',
+        campana: campObj ? campObj.nombre : 'General',
+        equipo: equiposSeleccionados.length > 0 ? equiposSeleccionados.join(', ') : 'Ninguno',
+        nivel: nivel,
+        modo: modo,
+        fecha: fechaHoy,
+        grupo: 'Soporte Técnico',
+        categoria: categoriaSeleccionada?.nombre || 'GENERAL',
+        subcategoria: subcatSeleccionada?.nombre || '',
+        elemento: elementoSeleccionado?.nombre || '',
+        resolucion: '',
+        archivoNombre: archivo ? archivo.name : null,
+        archivoUrl: archivo ? URL.createObjectURL(archivo) : null,
+        tipo_solicitud: 'REPORTE'
+      };
 
-    // Comportamiento normal para reportes estándar
-    const nuevoFolio = Math.floor(10000 + Math.random() * 90000).toString();
-    const ticketNuevo = {
-      folio: nuevoFolio,
-      notas: [],
-      estatus: 'Abierto',
-      colorEstatus: 'bg-green-500',
-      tecnico: 'Sin Asignar',
-      creador: user?.name || 'VALERIA GOMEZ',
-      asunto: asunto || 'Sin asunto',
-      descripcion: descripcion || 'Sin descripción',
-      campana: campObj ? campObj.nombre : 'General',
-      equipo: equiposSeleccionados.length > 0 ? equiposSeleccionados.join(', ') : 'Ninguno',
-      nivel: nivel,
-      modo: modo,
-      fecha: fechaHoy,
-      grupo: 'Soporte Técnico',
-      categoria: categoriaSeleccionada?.nombre || 'GENERAL',
-      subcategoria: subcatSeleccionada?.nombre || '',
-      elemento: elementoSeleccionado?.nombre || '',
-      resolucion: '',
-      archivoNombre: archivo ? archivo.name : null,
-      archivoUrl: archivo ? URL.createObjectURL(archivo) : null,
-      tipo_solicitud: 'REPORTE'
-    };
-
-    try {
       const response = await fetch('/api/tickets', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(ticketNuevo)
       });
+      const data = await response.json();
+
       if (response.ok && onGuardarTicket) {
-        onGuardarTicket(ticketNuevo);
+        onGuardarTicket({
+          ...ticketNuevo,
+          folio: data.folio || nuevoFolio,
+          id: data.id,
+          yaGuardadoEnBD: true
+        });
       }
     } catch (e) {
       console.error(e);
+      setErrorDuplicado('Error de red al intentar conectar con el servidor.');
     } finally {
       setEnviando(false);
     }
