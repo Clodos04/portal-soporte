@@ -5,10 +5,12 @@ function AdminCategoriasView({ categorias = [], setCategorias, user, onVerSubcat
   const [categoriaActual, setCategoriaActual] = useState(null);
   
   const [formNombre, setFormNombre] = useState('');
+  const [formSla, setFormSla] = useState(24);
   const [formEstatus, setFormEstatus] = useState('ACTIVO');
 
   const abrirNueva = () => {
     setFormNombre('');
+    setFormSla(24);
     setFormEstatus('ACTIVO');
     setCategoriaActual(null);
     setModo('form');
@@ -16,7 +18,8 @@ function AdminCategoriasView({ categorias = [], setCategorias, user, onVerSubcat
 
   const abrirEdicion = (cat) => {
     setCategoriaActual(cat);
-    setFormNombre(cat.nombre);
+    setFormNombre(cat.nombre || '');
+    setFormSla(cat.sla !== undefined && cat.sla !== null ? Number(cat.sla) : 24);
     setFormEstatus(cat.estatus || 'ACTIVO');
     setModo('form');
   };
@@ -24,6 +27,8 @@ function AdminCategoriasView({ categorias = [], setCategorias, user, onVerSubcat
   const guardarCategoria = (e) => {
     e.preventDefault();
     if (!formNombre.trim()) return;
+
+    const slaValidado = Math.max(1, Number(formSla) || 24);
 
     const fechaActual = new Date().toLocaleString('es-MX', { 
       day: '2-digit', month: '2-digit', year: 'numeric', 
@@ -35,6 +40,7 @@ function AdminCategoriasView({ categorias = [], setCategorias, user, onVerSubcat
       const nueva = {
         id: categorias.length > 0 ? Math.max(...categorias.map(c => Number(c.id) || 0)) + 1 : 1,
         nombre: formNombre.trim().toUpperCase(),
+        sla: slaValidado,
         estatus: formEstatus,
         fecAlta: fechaActual,
         fec_alta: fechaActual,
@@ -46,6 +52,7 @@ function AdminCategoriasView({ categorias = [], setCategorias, user, onVerSubcat
       setCategorias(categorias.map(c => c.id === categoriaActual.id ? {
         ...c,
         nombre: formNombre.trim().toUpperCase(),
+        sla: slaValidado,
         estatus: formEstatus
       } : c));
     }
@@ -61,24 +68,27 @@ function AdminCategoriasView({ categorias = [], setCategorias, user, onVerSubcat
   if (modo === 'lista') {
     return (
       <div className="animate-fade-in max-w-7xl mx-auto space-y-6 text-slate-200">
-        <h1 className="text-3xl font-light text-white tracking-wide uppercase">Administración de Categorías</h1>
+        <div className="bg-slate-800 p-6 rounded-xl border border-slate-700 shadow-lg flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+          <div>
+            <h1 className="text-3xl font-light text-white tracking-wide uppercase">Administración de Categorías</h1>
+            <p className="text-slate-400 text-sm mt-1">Configuración de catálogo y tiempos máximos de resolución (SLA)</p>
+          </div>
+          <button 
+            onClick={abrirNueva}
+            className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg font-bold text-sm shadow transition-colors flex items-center gap-2 cursor-pointer"
+          >
+            📄 Nueva Categoría
+          </button>
+        </div>
 
         <div className="bg-slate-800 rounded-xl shadow-lg border border-slate-700 p-6 space-y-4">
-          <div className="flex justify-between items-center">
-            <button 
-              onClick={abrirNueva}
-              className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg font-bold text-sm shadow transition-colors flex items-center gap-2"
-            >
-              📄 Nueva Categoría
-            </button>
-          </div>
-
           <div className="overflow-x-auto border border-slate-700 rounded-lg">
             <table className="w-full text-left text-sm text-slate-300">
               <thead className="bg-slate-700 text-slate-200 uppercase text-xs">
                 <tr>
                   <th className="px-4 py-3">ID</th>
                   <th className="px-4 py-3">Categoría</th>
+                  <th className="px-4 py-3">SLA (Tiempo Máx.)</th>
                   <th className="px-4 py-3">Estatus</th>
                   <th className="px-4 py-3">Fec. Alta</th>
                   <th className="px-4 py-3">Usuario</th>
@@ -88,39 +98,53 @@ function AdminCategoriasView({ categorias = [], setCategorias, user, onVerSubcat
               <tbody className="divide-y divide-slate-700">
                 {categorias.length === 0 ? (
                   <tr>
-                    <td colSpan="6" className="px-4 py-8 text-center text-slate-500 italic">No hay categorías registradas.</td>
+                    <td colSpan="7" className="px-4 py-8 text-center text-slate-500 italic">No hay categorías registradas.</td>
                   </tr>
                 ) : (
-                  categorias.map((cat) => (
-                    <tr key={cat.id} className="hover:bg-slate-700/50 transition-colors">
-                      <td className="px-4 py-3 font-bold">{cat.id}</td>
-                      <td className="px-4 py-3 font-semibold text-white flex items-center gap-2">
-                        <button 
-                          onClick={() => onVerSubcategorias(cat)}
-                          className="text-blue-400 hover:text-blue-300 font-bold text-base bg-blue-500/20 hover:bg-blue-500/30 w-6 h-6 rounded flex items-center justify-center transition-colors"
-                          title="Ver Subcategorías"
-                        >
-                          ⊕
-                        </button>
-                        <span>{cat.nombre}</span>
-                      </td>
-                      <td className="px-4 py-3">
-                        <span className={`px-2 py-0.5 rounded text-xs font-bold ${(cat.estatus || 'ACTIVO') === 'ACTIVO' ? 'bg-green-600/30 text-green-400' : 'bg-red-600/30 text-red-400'}`}>
-                          {cat.estatus || 'ACTIVO'}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-slate-400 text-xs">{cat.fecAlta || cat.fec_alta || 'N/D'}</td>
-                      <td className="px-4 py-3 text-slate-300">{cat.usuario || 'SISTEMA'}</td>
-                      <td className="px-4 py-3 text-center flex justify-center gap-2">
-                        <button onClick={() => abrirEdicion(cat)} className="p-1.5 bg-blue-600/20 text-blue-400 hover:bg-blue-600 hover:text-white rounded transition-colors" title="Editar">
-                          ✏️
-                        </button>
-                        <button onClick={() => eliminarCategoria(cat.id)} className="p-1.5 bg-red-600/20 text-red-400 hover:bg-red-600 hover:text-white rounded transition-colors" title="Eliminar">
-                          🗑️
-                        </button>
-                      </td>
-                    </tr>
-                  ))
+                  categorias.map((cat) => {
+                    const slaHrs = Number(cat.sla) || 24;
+                    const colorSla = slaHrs <= 2 
+                      ? 'bg-amber-500/15 text-amber-400 border-amber-500/30' 
+                      : slaHrs <= 8 
+                        ? 'bg-blue-500/15 text-blue-400 border-blue-500/30' 
+                        : 'bg-slate-700/60 text-slate-300 border-slate-600';
+
+                    return (
+                      <tr key={cat.id} className="hover:bg-slate-700/50 transition-colors">
+                        <td className="px-4 py-3 font-bold">{cat.id}</td>
+                        <td className="px-4 py-3 font-semibold text-white flex items-center gap-2">
+                          <button 
+                            onClick={() => onVerSubcategorias(cat)}
+                            className="text-blue-400 hover:text-blue-300 font-bold text-base bg-blue-500/20 hover:bg-blue-500/30 w-6 h-6 rounded flex items-center justify-center transition-colors cursor-pointer"
+                            title="Ver Subcategorías"
+                          >
+                            ⊕
+                          </button>
+                          <span>{cat.nombre}</span>
+                        </td>
+                        <td className="px-4 py-3">
+                          <span className={`px-2.5 py-1 rounded-md text-xs font-bold border inline-flex items-center gap-1.5 ${colorSla}`}>
+                            ⏱️ {slaHrs} {slaHrs === 1 ? 'hora' : 'horas'}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3">
+                          <span className={`px-2 py-0.5 rounded text-xs font-bold ${(cat.estatus || 'ACTIVO') === 'ACTIVO' ? 'bg-green-600/30 text-green-400' : 'bg-red-600/30 text-red-400'}`}>
+                            {cat.estatus || 'ACTIVO'}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-slate-400 text-xs">{cat.fecAlta || cat.fec_alta || 'N/D'}</td>
+                        <td className="px-4 py-3 text-slate-300">{cat.usuario || 'SISTEMA'}</td>
+                        <td className="px-4 py-3 text-center flex justify-center gap-2">
+                          <button onClick={() => abrirEdicion(cat)} className="p-1.5 bg-blue-600/20 text-blue-400 hover:bg-blue-600 hover:text-white rounded transition-colors cursor-pointer" title="Editar Categoría y SLA">
+                            ✏️
+                          </button>
+                          <button onClick={() => eliminarCategoria(cat.id)} className="p-1.5 bg-red-600/20 text-red-400 hover:bg-red-600 hover:text-white rounded transition-colors cursor-pointer" title="Eliminar">
+                            🗑️
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })
                 )}
               </tbody>
             </table>
@@ -139,7 +163,7 @@ function AdminCategoriasView({ categorias = [], setCategorias, user, onVerSubcat
       </div>
 
       <form onSubmit={guardarCategoria} className="p-8 space-y-6">
-        <div className="space-y-4">
+        <div className="space-y-5">
           <div>
             <label className="block text-sm font-bold text-slate-300 mb-2">Nombre de la Categoría:</label>
             <input 
@@ -148,8 +172,52 @@ function AdminCategoriasView({ categorias = [], setCategorias, user, onVerSubcat
               value={formNombre} 
               onChange={(e) => setFormNombre(e.target.value)} 
               placeholder="Ej. DISPOSITIVOS"
-              className="w-full px-4 py-2.5 rounded bg-slate-900 border border-slate-700 text-white outline-none uppercase text-sm" 
+              className="w-full px-4 py.5 rounded bg-slate-900 border border-slate-700 text-white outline-none uppercase text-sm focus:border-blue-500 transition-colors" 
             />
+          </div>
+
+          {/* CONFIGURACIÓN DE SLA EN HORAS */}
+          <div className="bg-slate-900/50 p-4 rounded-lg border border-slate-700 space-y-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div>
+                <label className="block text-sm font-bold text-slate-200">
+                  ⏱️ Tiempo Máximo de Resolución (SLA):
+                </label>
+                <p className="text-xs text-slate-400">
+                  Si un ticket supera estas horas sin cerrarse, el semáforo marcará <strong className="text-red-400">Vencido</strong>.
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <input 
+                  type="number" 
+                  min="1" 
+                  max="720"
+                  required
+                  value={formSla} 
+                  onChange={(e) => setFormSla(e.target.value)} 
+                  className="w-20 px-3 py-2 rounded bg-slate-950 border border-slate-600 text-white font-bold text-center text-sm outline-none focus:border-blue-500"
+                />
+                <span className="text-sm font-semibold text-slate-300">Horas</span>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-slate-800">
+              <span className="text-xs text-slate-400 mr-1">Ajuste rápido:</span>
+              {[1, 2, 3, 4, 8, 12, 24, 48].map((hrs) => (
+                <button
+                  key={hrs}
+                  type="button"
+                  onClick={() => setFormSla(hrs)}
+                  className={`px-2.5 py-1 rounded text-xs font-bold transition-all cursor-pointer border ${
+                    Number(formSla) === hrs 
+                      ? 'bg-blue-600 text-white border-blue-500 shadow' 
+                      : 'bg-slate-800 text-slate-400 hover:text-white border-slate-700'
+                  }`}
+                >
+                  {hrs}h
+                </button>
+              ))}
+            </div>
           </div>
 
           <div className="flex items-center gap-6 bg-slate-900/50 p-4 rounded-lg border border-slate-700">
@@ -166,10 +234,10 @@ function AdminCategoriasView({ categorias = [], setCategorias, user, onVerSubcat
         </div>
 
         <div className="flex justify-end gap-4 pt-6 border-t border-slate-700">
-          <button type="button" onClick={() => setModo('lista')} className="bg-slate-700 hover:bg-slate-600 text-slate-200 px-6 py-2.5 rounded-lg font-bold border border-slate-600 transition-colors text-sm">
+          <button type="button" onClick={() => setModo('lista')} className="bg-slate-700 hover:bg-slate-600 text-slate-200 px-6 py-2.5 rounded-lg font-bold border border-slate-600 transition-colors text-sm cursor-pointer">
             Cancelar
           </button>
-          <button type="submit" className="bg-blue-600 hover:bg-blue-500 text-white px-8 py-2.5 rounded-lg shadow-lg font-bold transition-colors text-sm">
+          <button type="submit" className="bg-blue-600 hover:bg-blue-500 text-white px-8 py-2.5 rounded-lg shadow-lg font-bold transition-colors text-sm cursor-pointer">
             Guardar Categoría
           </button>
         </div>
