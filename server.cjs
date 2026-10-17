@@ -78,7 +78,8 @@ const obtenerFechaHoraMexico = () => {
   return {
     fechaSolo: `${yyyy}-${mm}-${dd}`,
     fechaHora: `${yyyy}-${mm}-${dd} ${hh}:${min}:${ss}`,
-    horaCorta: `${hh}:${min}`
+    horaCorta: `${hh}:${min}`,
+    prefijoFolio: `${dd}${mm}${String(yyyy).slice(-2)}`
   };
 };
 
@@ -124,11 +125,11 @@ app.get(['/api/tickets', '/tickets'], (req, res) => {
 });
 
 app.get(['/api/tickets/contar-hoy', '/tickets/contar-hoy'], (req, res) => {
-  const hoyMexico = obtenerFechaHoraMexico().fechaSolo;
+  const { fechaSolo, prefijoFolio } = obtenerFechaHoraMexico();
   const query = "SELECT COUNT(*) as total FROM tickets WHERE DATE(fecha) = ?";
-  db.query(query, [hoyMexico], (err, results) => {
+  db.query(query, [fechaSolo], (err, results) => {
     if (err) return res.status(500).json({ error: err.message });
-    res.json({ totalHoy: results[0].total, fechaHoy: hoyMexico });
+    res.json({ totalHoy: results[0].total, fechaHoy: fechaSolo, prefijoFolio });
   });
 });
 
@@ -154,7 +155,7 @@ const continuarInsercionTicket = (ticketData, res) => {
       if (err) return res.status(500).json({ error: err.message });
       db.query('INSERT INTO mensajes_chat (folio, remitente, texto, hora) VALUES (?, ?, ?, ?)', [ticketData.folio, 'Sistema', primerMensaje, horaCorta], () => {
         io.emit('ticketActualizado', { folio: ticketData.folio });
-        res.json({ message: 'Ticket creado exitosamente', id: result.insertId, fecha: fechaSolo, folioPrevio });
+        res.json({ message: 'Ticket creado exitosamente', id: result.insertId, folio: ticketData.folio, fecha: fechaSolo, folioPrevio });
       });
     });
   };
@@ -179,15 +180,32 @@ const continuarInsercionTicket = (ticketData, res) => {
 app.post(['/api/tickets', '/tickets'], (req, res) => {
   const ticketData = { ...req.body };
   delete ticketData.archivos;
+  delete ticketData.yaGuardadoEnBD;
 
-  db.query('SELECT id FROM tickets WHERE folio = ?', [ticketData.folio], (errCheck, existing) => {
-    if (errCheck) return res.status(500).json({ error: errCheck.message });
-    if (existing && existing.length > 0) {
-      return res.status(400).json({ error: 'Este ticket ya fue registrado previamente.' });
-    }
+  const { fechaSolo, fechaHora, horaCorta, prefijoFolio } = obtenerFechaHoraMexico();
+
+  // Contamos cuántos tickets hay hoy en la BD para garantizar formato DDMMYYNN sin duplicados
+  db.query('SELECT folio FROM tickets WHERE DATE(fecha) = ? OR folio LIKE ?', [fechaSolo, `${prefijoFolio}%`], (errCount, rowsHoy) => {
+    if (errCount) return res.status(500).json({ error: errCount.message });
+
+    let maxConsecutivo = rowsHoy.length;
+    rowsHoy.forEach(r => {
+      const fStr = String(r.folio || '');
+      if (fStr.startsWith(prefijoFolio) && fStr.length >= 8) {
+        const num = parseInt(fStr.slice(6), 10);
+        if (!isNaN(num) && num > maxConsecutivo) {
+          maxConsecutivo = num;
+        }
+      }
+    });
+
+    const siguienteConsecutivo = String(maxConsecutivo + 1).padStart(2, '0');
+    const folioOficial = `${prefijoFolio}${siguienteConsecutivo}`; // Ej: 16102601
+
+    // Forzamos siempre el formato DDMMYYNN generado por el servidor
+    ticketData.folio = folioOficial;
 
     if (ticketData.tipo_solicitud === 'CENTINELA' && ticketData.equipo && ticketData.subcategoria) {
-      const { fechaSolo, fechaHora, horaCorta } = obtenerFechaHoraMexico();
       const anioMesActual = fechaSolo.slice(0, 7);
 
       const queryMesActual = `
@@ -226,7 +244,7 @@ app.post(['/api/tickets', '/tickets'], (req, res) => {
           db.query('INSERT INTO mensajes_chat (folio, remitente, texto, hora) VALUES (?, ?, ?, ?)', [nuevoFolio, 'Sistema', textoMensaje, horaCorta], (errChat) => {
             if (errChat) console.error("Error al registrar mensaje en chat:", errChat);
             io.emit('ticketActualizado', { folio: nuevoFolio });
-            res.json({ message: 'Ticket creado exitosamente', id: result.insertId, esSubsecuente, fecha: fechaSolo });
+            res.json({ message: 'Ticket creado exitosamente', id: result.insertId, folio: nuevoFolio, esSubsecuente, fecha: fechaSolo });
           });
         });
       });
@@ -240,6 +258,7 @@ app.put(['/api/tickets/:folio', '/tickets/:folio'], (req, res) => {
   const ticketData = { ...req.body };
   delete ticketData.folio;
   delete ticketData.archivos;
+  delete ticketData.yaGuardadoEnBD;
   for (let key in ticketData) {
     if (typeof ticketData[key] === 'object' && ticketData[key] !== null) {
       ticketData[key] = JSON.stringify(ticketData[key]);
