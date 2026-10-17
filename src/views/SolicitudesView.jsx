@@ -48,7 +48,7 @@ function SolicitudesView({
   const conteoMios = ticketsBase.filter(t => !(t.estatus || '').toLowerCase().includes('cerrado') && esMiTicket(t)).length;
   const conteoCerrados = ticketsBase.filter(t => (t.estatus || '').toLowerCase().includes('cerrado')).length;
 
-  // Cálculo del Semáforo de SLA usando hora local exacta (sin desfases UTC)
+  // Cálculo del Semáforo de SLA usando hora local exacta (sin desfases de 6 horas)
   const calcularSLA = (ticket) => {
     const estatusLower = (ticket.estatus || '').toLowerCase();
     const esCerrado = estatusLower.includes('cerrado');
@@ -58,7 +58,6 @@ function SolicitudesView({
       return { texto: '—', color: 'bg-slate-700/50 text-slate-400 border-slate-600', icono: '⏱️' };
     }
 
-    // Parseo manual seguro para evitar que JS la convierta a UTC
     const parsearLocal = (str) => {
       if (!str) return new Date();
       const partes = String(str).trim().split(/[- :T]/);
@@ -115,7 +114,6 @@ function SolicitudesView({
       };
     }
 
-    // Buscar el SLA configurado en la categoría (coincidencia flexible)
     const catTicketNorm = (ticket.categoria || '').trim().toUpperCase();
     const catObj = categorias.find(c => c.nombre && c.nombre.trim().toUpperCase() === catTicketNorm);
     const slaLimite = Number(catObj?.sla) || Number(ticket.sla) || 24;
