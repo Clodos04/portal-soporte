@@ -84,21 +84,24 @@ const obtenerFechaHoraMexico = () => {
 
 const obtenerFechaMySQL = () => obtenerFechaHoraMexico().fechaHora;
 
-// Login
+// Login (Soportando solo CLIENTE y ADMINISTRADOR)
 const handleLogin = (req, res) => {
   const { username, password } = req.body;
   db.query('SELECT * FROM usuarios WHERE username = ? AND password = ? AND estatus = "ACTIVO"', [username, password], (err, results) => {
     if (err) return res.status(500).json({ error: 'Error en el servidor' });
     if (results.length === 0) return res.status(401).json({ error: 'Credenciales incorrectas o usuario inactivo.' });
     const usuario = results[0];
+    const nivelUpper = (usuario.nivel || '').toUpperCase();
+    const rolNormalizado = nivelUpper.includes('ADMIN') ? 'support' : 'client';
+
     res.json({
       success: true,
       user: {
         id: usuario.id,
         name: `${usuario.nombre || ''} ${usuario.paterno || ''}`.trim(),
-        role: usuario.nivel === 'ADMINISTRADOR' ? 'support' : 'client',
+        role: rolNormalizado,
         username: usuario.username,
-        nivel: usuario.nivel,
+        nivel: nivelUpper.includes('ADMIN') ? 'ADMINISTRADOR' : 'CLIENTE',
         gruposAsignados: usuario.gruposAsignados,
         nombre: usuario.nombre || '',
         paterno: usuario.paterno || '',
@@ -150,7 +153,6 @@ const continuarInsercionTicket = (ticketData, res) => {
     db.query('INSERT INTO tickets SET ?', ticketData, (err, result) => {
       if (err) return res.status(500).json({ error: err.message });
       db.query('INSERT INTO mensajes_chat (folio, remitente, texto, hora) VALUES (?, ?, ?, ?)', [ticketData.folio, 'Sistema', primerMensaje, horaCorta], () => {
-        // ⚡ Emitir evento en tiempo real al crear ticket
         io.emit('ticketActualizado', { folio: ticketData.folio });
         res.json({ message: 'Ticket creado exitosamente', id: result.insertId, fecha: fechaSolo, folioPrevio });
       });
@@ -217,12 +219,12 @@ app.post(['/api/tickets', '/tickets'], (req, res) => {
           const textoMensaje = obtenerMensajeCentinela(nuevoFolio, esSubsecuente, folioAnterior);
 
           if (esSubsecuente) {
-            db.query("UPDATE tickets SET estatus = 'Cerrado', colorEstatus = 'bg-red-600' WHERE folio = ?", [nuevoFolio]);
+            const horaMexActual = obtenerFechaMySQL();
+            db.query("UPDATE tickets SET estatus = 'Cerrado', colorEstatus = 'bg-red-600', updated_at = ? WHERE folio = ?", [horaMexActual, nuevoFolio]);
           }
 
           db.query('INSERT INTO mensajes_chat (folio, remitente, texto, hora) VALUES (?, ?, ?, ?)', [nuevoFolio, 'Sistema', textoMensaje, horaCorta], (errChat) => {
             if (errChat) console.error("Error al registrar mensaje en chat:", errChat);
-            // ⚡ Emitir evento en tiempo real
             io.emit('ticketActualizado', { folio: nuevoFolio });
             res.json({ message: 'Ticket creado exitosamente', id: result.insertId, esSubsecuente, fecha: fechaSolo });
           });
@@ -248,9 +250,7 @@ app.put(['/api/tickets/:folio', '/tickets/:folio'], (req, res) => {
     if (err) return res.status(500).json({ error: err.message });
     if (result.affectedRows === 0) return res.status(404).json({ error: 'No se encontró el ticket.' });
     
-    // ⚡ Emitir aviso en tiempo real a todos los clientes conectados
     io.emit('ticketActualizado', { folio: req.params.folio });
-
     res.json({ message: 'Ticket actualizado correctamente' });
   });
 });
@@ -288,7 +288,6 @@ app.post(['/api/chat', '/chat'], (req, res) => {
   db.query('INSERT INTO mensajes_chat (folio, remitente, texto, hora) VALUES (?, ?, ?, ?)', [folio, remitente, texto, horaActual], (err, result) => {
     if (err) return res.status(500).json({ error: 'Error al guardar mensaje' });
 
-    // ⚡ Emitir nuevo mensaje de chat en tiempo real
     io.emit('nuevoMensajeChat', { folio });
 
     if (!remitente || remitente.toUpperCase() === 'SISTEMA') {
@@ -325,7 +324,8 @@ app.post(['/api/chat', '/chat'], (req, res) => {
 
           if (evaluacion && evaluacion.textoRespuesta) {
             if (evaluacion.cerrarTicket) {
-              db.query("UPDATE tickets SET estatus = 'Cerrado', colorEstatus = 'bg-red-600' WHERE folio = ?", [folio]);
+              const horaMexActual = obtenerFechaMySQL();
+              db.query("UPDATE tickets SET estatus = 'Cerrado', colorEstatus = 'bg-red-600', updated_at = ? WHERE folio = ?", [horaMexActual, folio]);
             }
             db.query('INSERT INTO mensajes_chat (folio, remitente, texto, hora) VALUES (?, ?, ?, ?)', [folio, 'Sistema', evaluacion.textoRespuesta, horaActual], () => {
               io.emit('nuevoMensajeChat', { folio });
@@ -529,9 +529,7 @@ app.get(['/api/kpis/tiempos', '/kpis/tiempos'], (req, res) => {
   });
 });
 
-// ============================================================================
-// MANEJO DE ESTÁTICOS Y RUTAS BAJO EL SUBDIRECTORIO /CTI
-// ============================================================================
+// Manejo de estáticos y rutas bajo el subdirectorio /CTI
 app.use('/CTI', express.static(path.join(__dirname, 'dist')));
 
 app.get(/^\/CTI\/?.*/, (req, res) => {
