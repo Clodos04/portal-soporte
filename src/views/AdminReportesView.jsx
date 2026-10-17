@@ -1,12 +1,15 @@
 import React, { useState } from 'react';
 
-export default function AdminReportesView({ tickets = [], campanas = [], estadisticasEncuestas = [] }) {
+export default function AdminReportesView({ tickets = [], campanas = [], estadisticasEncuestas = [], user, onIrACentinela }) {
   const [filtroCampana, setFiltroCampana] = useState('Todas');
   const [filtroEstatus, setFiltroEstatus] = useState('Todos');
   
   // Estados para la consulta de Historial de Nodos
   const [nodoSeleccionadoHistorial, setNodoSeleccionadoHistorial] = useState('');
   const [busquedaNodoTexto, setBusquedaNodoTexto] = useState('');
+
+  const rolUsuario = (user?.role || user?.nivel || '').toLowerCase();
+  const esAdmin = rolUsuario === 'support' || rolUsuario === 'administrador' || rolUsuario === 'admin';
 
   // Filtrar tickets según los selectores superiores
   const ticketsFiltrados = tickets.filter(t => {
@@ -119,6 +122,15 @@ export default function AdminReportesView({ tickets = [], campanas = [], estadis
         </div>
 
         <div className="flex flex-wrap items-center gap-3">
+          {esAdmin && onIrACentinela && (
+            <button 
+              onClick={onIrACentinela}
+              className="bg-purple-600 hover:bg-purple-500 text-white font-bold text-sm px-4 py-2 rounded-lg transition shadow flex items-center gap-2 cursor-pointer"
+            >
+              🛡️ Panel Centinela
+            </button>
+          )}
+
           <select 
             value={filtroCampana} 
             onChange={(e) => setFiltroCampana(e.target.value)}
