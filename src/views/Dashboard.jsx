@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
-function Dashboard({ user, tickets = [], grupos = [], onIrANuevaSolicitud, onIrAEncuesta, estadisticasEncuestas = [], onTomarTicket, onAbrirChat }) {
+function Dashboard({ user, tickets = [], grupos = [], onIrANuevaSolicitud, onIrAEncuesta, onIrABuzon, estadisticasEncuestas = [], onTomarTicket, onAbrirChat }) {
   const safeTickets = Array.isArray(tickets) ? tickets : [];
   const [gruposBD, setGruposBD] = useState(Array.isArray(grupos) ? grupos : []);
   const [soloHoyGrafica, setSoloHoyGrafica] = useState(false);
@@ -143,6 +143,26 @@ function Dashboard({ user, tickets = [], grupos = [], onIrANuevaSolicitud, onIrA
               )}
             </div>
           </div>
+        </div>
+
+        {/* TARJETA DIRECTA AL BUZÓN DE SUGERENCIAS Y REPORTE DE BUGS */}
+        <div className="bg-gradient-to-r from-amber-950/40 via-slate-800 to-slate-800 rounded-2xl shadow-xl p-6 border border-amber-500/30 flex flex-col sm:flex-row justify-between items-center gap-4">
+          <div className="space-y-1">
+            <h2 className="text-base font-bold text-amber-300 uppercase flex items-center gap-2">
+              <span>📬</span> Buzón de Sugerencias y Reporte de Errores del Portal
+            </h2>
+            <p className="text-xs text-slate-300">
+              ¿Notaste algún fallo en la página o tienes alguna idea para mejorar el sistema? Envíanos tu comentario directo.
+            </p>
+          </div>
+          {onIrABuzon && (
+            <button
+              onClick={onIrABuzon}
+              className="w-full sm:w-auto bg-amber-600 hover:bg-amber-500 text-white font-bold px-5 py-3 rounded-xl shadow-lg transition-colors text-xs uppercase tracking-wider cursor-pointer whitespace-nowrap"
+            >
+              💡 Abrir Buzón de Feedback
+            </button>
+          )}
         </div>
 
         {ultimoTicketCerradoPendiente && (
