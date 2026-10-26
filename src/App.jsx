@@ -19,6 +19,7 @@ import GuiaTicketsView from './views/GuiaTicketsView';
 import AdminReportesView from './views/AdminReportesView';
 import SupervisorPanel from './views/SupervisorPanel';
 import CentinelaDetallesView from './views/CentinelaDetallesView';
+import BuzonSugerenciasView from './views/BuzonSugerenciasView';
 
 import AdminGruposView from './views/AdminGruposView';
 import AdminUsuariosView from './views/AdminUsuariosView';
@@ -155,6 +156,10 @@ function App() {
       cargarDatosIniciales();
     });
 
+    socket.on('nuevoFeedbackBuzon', (data) => {
+      reproducirAlerta(`📬 Nuevo comentario en el Buzón (${data?.tipo || 'SUGERENCIA'}) de ${data?.usuario || 'Usuario'}`);
+    });
+
     return () => {
       socket.disconnect();
     };
@@ -253,16 +258,28 @@ function App() {
     setTickets(tickets.map(t => t.folio === folio ? { ...t, notas: [...t.notas, nuevaNota] } : t));
   };
 
+  // CORREGIDO: Si el asistente ya lo guardó en BD, no repetir POST y usar el folio oficial DDMMYYNN
   const handleAgregarTicket = (nuevoTicket) => {
+    if (nuevoTicket.yaGuardadoEnBD) {
+      const copiaLimpia = { ...nuevoTicket };
+      delete copiaLimpia.yaGuardadoEnBD;
+      setTickets(prev => [copiaLimpia, ...prev.filter(t => t.folio !== copiaLimpia.folio)]);
+      setFolioChatActivo(copiaLimpia.folio);
+      setCurrentView('live-chat');
+      return;
+    }
+
     fetch('/api/tickets', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(nuevoTicket)
     })
     .then(res => res.json())
-    .then(() => {
-      setTickets([nuevoTicket, ...tickets]);
-      setFolioChatActivo(nuevoTicket.folio);
+    .then((data) => {
+      const folioFinal = data.folio || nuevoTicket.folio;
+      const ticketConFolioOficial = { ...nuevoTicket, folio: folioFinal, id: data.id };
+      setTickets(prev => [ticketConFolioOficial, ...prev]);
+      setFolioChatActivo(folioFinal);
       setCurrentView('live-chat'); 
     });
   };
@@ -299,12 +316,12 @@ function App() {
       if (!response.ok || !usuarioEncontrado) return false;
 
       const nivel = (usuarioEncontrado.nivel || '').toUpperCase();
-      const esSoporte = nivel === 'ADMINISTRADOR' || nivel === 'TECNICO SUPERVISOR' || nivel === 'TECNICO';
+      const esAdmin = nivel.includes('ADMIN');
        
       setUser({
         name: `${usuarioEncontrado.nombre || ''} ${usuarioEncontrado.paterno || ''}`.trim() || usuarioEncontrado.username,
-        role: esSoporte ? 'support' : 'client',
-        nivel: usuarioEncontrado.nivel,
+        role: esAdmin ? 'support' : 'client',
+        nivel: esAdmin ? 'ADMINISTRADOR' : 'CLIENTE',
         username: usuarioEncontrado.username,
         campana: usuarioEncontrado.campana || '*111'
       });
@@ -400,7 +417,12 @@ function App() {
             }}
             onIrANuevaSolicitud={() => setCurrentView('nueva-solicitud')} 
             onIrAEncuesta={() => { setTicketParaEncuesta(null); setCurrentView('encuesta-ti'); }}
+            onIrABuzon={() => setCurrentView('buzon')}
           />
+        )}
+
+        {currentView === 'buzon' && (
+          <BuzonSugerenciasView user={user} />
         )}
 
         {currentView === 'encuesta-ti' && (
@@ -495,7 +517,13 @@ function App() {
         )}
 
         {currentView === 'admin-reportes' && (
-          <AdminReportesView tickets={tickets} campanas={campanas} />
+          <AdminReportesView 
+            tickets={tickets} 
+            campanas={campanas} 
+            estadisticasEncuestas={estadisticasEncuestas}
+            user={user}
+            onIrACentinela={() => setCurrentView('admin-supervisor-panel')}
+          />
         )}
 
         {currentView === 'admin-supervisor-panel' && (
