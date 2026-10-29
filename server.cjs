@@ -46,8 +46,29 @@ const dbCentinela = mysql.createConnection({
 });
 
 db.connect((err) => { 
-  if (err) console.error('Error BD Tickets:', err); 
-  else console.log('Conectado a BD Tickets (sav)'); 
+  if (err) {
+    console.error('Error BD Tickets:', err); 
+  } else {
+    console.log('Conectado a BD Tickets (sav)');
+    // Crear automáticamente la tabla buzon_sugerencias si no existe
+    const sqlTablaBuzon = `
+      CREATE TABLE IF NOT EXISTS buzon_sugerencias (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        usuario VARCHAR(150) NOT NULL,
+        username VARCHAR(100) DEFAULT '',
+        campana VARCHAR(100) DEFAULT 'General',
+        tipo VARCHAR(50) DEFAULT 'SUGERENCIA',
+        mensaje TEXT NOT NULL,
+        estatus VARCHAR(50) DEFAULT 'PENDIENTE',
+        respuesta_admin TEXT,
+        fecha_creacion DATETIME
+      )
+    `;
+    db.query(sqlTablaBuzon, (errTabla) => {
+      if (errTabla) console.error('Error al crear/verificar tabla buzon_sugerencias:', errTabla);
+      else console.log('Tabla buzon_sugerencias verificada correctamente en BD sav');
+    });
+  }
 });
 
 dbCentinela.connect((err) => { 
@@ -104,6 +125,7 @@ const handleLogin = (req, res) => {
         username: usuario.username,
         nivel: nivelUpper.includes('ADMIN') ? 'ADMINISTRADOR' : 'CLIENTE',
         gruposAsignados: usuario.gruposAsignados,
+        campana: usuario.campana || 'General',
         nombre: usuario.nombre || '',
         paterno: usuario.paterno || '',
         materno: usuario.materno || ''
@@ -545,6 +567,60 @@ app.get(['/api/kpis/tiempos', '/kpis/tiempos'], (req, res) => {
   db.query('SELECT * FROM tickets', (err, results) => {
     if (err) return res.status(500).json({ error: err.message });
     res.json(results.map(t => ({ id: t.id, folio: t.folio, minutos_resolucion: Math.round(((t.estatus === 'Cerrado' ? new Date(t.updated_at) : new Date()) - new Date(t.created_at)) / (1000 * 60)) || 5 })));
+  });
+});
+
+// ============================================================================
+// MÓDULO: BUZÓN DE SUGERENCIAS Y REPORTE DE ERRORES (FEEDBACK DEL PORTAL)
+// ============================================================================
+app.get(['/api/buzon', '/buzon', '/CTI/api/buzon'], (req, res) => {
+  db.query('SELECT * FROM buzon_sugerencias ORDER BY id DESC', (err, results) => {
+    if (err) return res.status(500).json({ error: err.message });
+    res.json(results);
+  });
+});
+
+app.post(['/api/buzon', '/buzon', '/CTI/api/buzon'], (req, res) => {
+  const { usuario, username, campana, tipo, mensaje } = req.body;
+  if (!mensaje || !String(mensaje).trim()) {
+    return res.status(400).json({ error: 'El mensaje no puede estar vacío.' });
+  }
+  const fechaHora = obtenerFechaMySQL();
+  const sql = `
+    INSERT INTO buzon_sugerencias (usuario, username, campana, tipo, mensaje, estatus, fecha_creacion) 
+    VALUES (?, ?, ?, ?, ?, 'PENDIENTE', ?)
+  `;
+  db.query(sql, [
+    usuario || 'Anónimo', 
+    username || '', 
+    campana || 'General', 
+    tipo || 'SUGERENCIA', 
+    String(mensaje).trim(), 
+    fechaHora
+  ], (err, result) => {
+    if (err) return res.status(500).json({ error: err.message });
+    io.emit('nuevoFeedbackBuzon', { id: result.insertId, usuario, tipo });
+    res.json({ success: true, id: result.insertId, fecha_creacion: fechaHora });
+  });
+});
+
+app.put(['/api/buzon/:id', '/buzon/:id', '/CTI/api/buzon/:id'], (req, res) => {
+  const { estatus, respuesta_admin } = req.body;
+  db.query(
+    'UPDATE buzon_sugerencias SET estatus = ?, respuesta_admin = ? WHERE id = ?',
+    [estatus || 'REVISADO', respuesta_admin || '', req.params.id],
+    (err) => {
+      if (err) return res.status(500).json({ error: err.message });
+      io.emit('actualizacionBuzon');
+      res.json({ success: true, message: 'Registro del buzón actualizado' });
+    }
+  );
+});
+
+app.delete(['/api/buzon/:id', '/buzon/:id', '/CTI/api/buzon/:id'], (req, res) => {
+  db.query('DELETE FROM buzon_sugerencias WHERE id = ?', [req.params.id], (err) => {
+    if (err) return res.status(500).json({ error: err.message });
+    res.json({ success: true, message: 'Registro eliminado' });
   });
 });
 
