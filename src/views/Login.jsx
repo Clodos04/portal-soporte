@@ -134,7 +134,7 @@ function Login({ onLogin }) {
       {/* FOOTER DISCRETO Y CORPORATIVO */}
       <div className="absolute bottom-4 left-0 right-0 text-center text-slate-500 text-[11px] tracking-wider uppercase font-mono select-none px-4">
         Christopher Osorio • Clodos TI Assist (CTI) <br/>
-        <span className="text-slate-600">Architected & Powered by</span> <span className="text-indigo-400/80 font-semibold tracking-widest">Gemini AI / Google Ecosystem</span>
+        <span className="text-slate-600">Architected & Powered by</span> <span className="text-indigo-400/80 font-semibold tracking-widest">Area de Soporte Tecnico</span>
       </div>
     </div>
   );
