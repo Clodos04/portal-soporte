@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { io } from 'socket.io-client';
 
 import Header from './components/Header';
@@ -26,6 +26,7 @@ import AdminUsuariosView from './views/AdminUsuariosView';
 import AdminCategoriasView from './views/AdminCategoriasView';
 import AdminSubcategoriasView from './views/AdminSubcategoriasView';
 import AdminCampanasView from './views/AdminCampanasView';
+import { calcularSLA, esTicketCerrado } from './utils/sla';
 
 function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false); 
@@ -165,6 +166,37 @@ function App() {
       socket.disconnect();
     };
   }, [isLoggedIn]);
+
+  // Alertas de SLA: avisa al equipo de soporte cuando un ticket abierto llega a 80% de su tiempo o se vence.
+  // Se avisa una sola vez por ticket y nivel; revisa cada minuto con los datos más recientes.
+  const datosSlaRef = useRef({ tickets: [], categorias: [] });
+  const alertasSlaEnviadas = useRef({});
+  useEffect(() => { datosSlaRef.current = { tickets, categorias }; }, [tickets, categorias]);
+
+  useEffect(() => {
+    if (!isLoggedIn || user?.role !== 'support') return;
+    const revisarSla = () => {
+      const { tickets: lista, categorias: cats } = datosSlaRef.current;
+      lista.forEach(t => {
+        if (esTicketCerrado(t)) { delete alertasSlaEnviadas.current[t.folio]; return; }
+        const sla = calcularSLA(t, cats);
+        const nivelAlerta = sla.nivel === 'vencido' ? 'vencido' : (sla.critico ? 'critico' : null);
+        if (!nivelAlerta || alertasSlaEnviadas.current[t.folio] === nivelAlerta) return;
+        // Al primer chequeo tras iniciar sesión solo se registra el estado, para no avisar de todo el histórico a la vez
+        const primeraVez = alertasSlaEnviadas.current[t.folio] === undefined && alertasSlaEnviadas.current.__listo !== true;
+        alertasSlaEnviadas.current[t.folio] = nivelAlerta;
+        if (primeraVez) return;
+        reproducirAlerta(nivelAlerta === 'vencido'
+          ? `🔴 SLA VENCIDO: ticket #${t.folio}`
+          : `🟡 SLA por vencer (80%): ticket #${t.folio}`);
+      });
+      if (lista.length > 0) alertasSlaEnviadas.current.__listo = true;
+    };
+    const arranque = setTimeout(revisarSla, 5000);
+    const intervalo = setInterval(revisarSla, 60000);
+    return () => { clearTimeout(arranque); clearInterval(intervalo); alertasSlaEnviadas.current = {}; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isLoggedIn, user?.role]);
 
   // Restaurar la sesión (cookie httpOnly) al recargar la página
   useEffect(() => {

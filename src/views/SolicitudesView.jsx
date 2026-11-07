@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { calcularSLA as calcularEstadoSLA, formatearDuracion } from '../utils/sla';
 
 function SolicitudesView({ 
   tickets = [], 
@@ -48,96 +49,33 @@ function SolicitudesView({
   const conteoMios = ticketsBase.filter(t => !(t.estatus || '').toLowerCase().includes('cerrado') && esMiTicket(t)).length;
   const conteoCerrados = ticketsBase.filter(t => (t.estatus || '').toLowerCase().includes('cerrado')).length;
 
-  // Cálculo del Semáforo de SLA usando hora local exacta (sin desfases de 6 horas)
+  // Semáforo de SLA (cálculo compartido en utils/sla.js)
   const calcularSLA = (ticket) => {
-    const estatusLower = (ticket.estatus || '').toLowerCase();
-    const esCerrado = estatusLower.includes('cerrado');
-    const fechaInicioStr = ticket.created_at || ticket.fecha;
-
-    if (!fechaInicioStr) {
-      return { texto: '—', color: 'bg-slate-700/50 text-slate-400 border-slate-600', icono: '⏱️' };
+    const sla = calcularEstadoSLA(ticket, categorias);
+    const base = { sla };
+    if (sla.nivel === 'sin_fecha') {
+      return { ...base, texto: ticket.fecha || '—', color: 'bg-slate-700/50 text-slate-400 border-slate-600', icono: '📅' };
     }
-
-    const parsearLocal = (str) => {
-      if (!str) return new Date();
-      const partes = String(str).trim().split(/[- :T]/);
-      if (partes.length >= 3) {
-        const y = parseInt(partes[0], 10);
-        const m = parseInt(partes[1], 10) - 1;
-        const d = parseInt(partes[2], 10);
-        const h = partes.length > 3 ? parseInt(partes[3], 10) : 0;
-        const min = partes.length > 4 ? parseInt(partes[4], 10) : 0;
-        const s = partes.length > 5 ? parseInt(partes[5], 10) : 0;
-        return new Date(y, m, d, h, min, s);
-      }
-      return new Date(str);
-    };
-
-    const inicio = parsearLocal(fechaInicioStr);
-    if (isNaN(inicio.getTime())) {
-      return { texto: ticket.fecha || '—', color: 'bg-slate-700/50 text-slate-400 border-slate-600', icono: '📅' };
-    }
-
-    const ahora = new Date();
-    const tiempoInicio = inicio > ahora ? ahora : inicio;
-    
-    let fin = ahora;
-    if (esCerrado && ticket.updated_at) {
-      const fechaFinParsed = parsearLocal(ticket.updated_at);
-      if (!isNaN(fechaFinParsed.getTime())) {
-        fin = fechaFinParsed;
-      }
-    }
-
-    const diffMs = Math.max(0, fin - tiempoInicio);
-    const diffMin = Math.floor(diffMs / 60000);
-    const diffHrs = diffMin / 60;
-
-    let tiempoStr = '';
-    if (diffMin < 60) {
-      tiempoStr = `${diffMin}m`;
-    } else if (diffHrs < 24) {
-      const h = Math.floor(diffHrs);
-      const m = diffMin % 60;
-      tiempoStr = `${h}h ${m}m`;
-    } else {
-      const d = Math.floor(diffHrs / 24);
-      const h = Math.floor(diffHrs % 24);
-      tiempoStr = `${d}d ${h}h`;
-    }
-
-    if (esCerrado) {
+    if (sla.nivel === 'cerrado') {
       return {
-        texto: `Resuelto (${tiempoStr})`,
+        ...base,
+        texto: `Resuelto (${formatearDuracion(sla.transcurridoMin)})${sla.cumplido ? ' • En SLA' : ' • Fuera de SLA'}`,
         color: 'bg-slate-800 text-slate-400 border-slate-700',
-        icono: '✔️'
+        icono: sla.cumplido ? '✔️' : '⚠️'
       };
     }
-
-    const catTicketNorm = (ticket.categoria || '').trim().toUpperCase();
-    const catObj = categorias.find(c => c.nombre && c.nombre.trim().toUpperCase() === catTicketNorm);
-    const slaLimite = Number(catObj?.sla) || Number(ticket.sla) || 24;
-
-    if (diffHrs < slaLimite * 0.5) {
-      return {
-        texto: `${tiempoStr} • En tiempo`,
-        color: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30',
-        icono: '🟢'
-      };
-    } else if (diffHrs < slaLimite) {
-      return {
-        texto: `${tiempoStr} • Por vencer`,
-        color: 'bg-amber-500/10 text-amber-400 border-amber-500/30',
-        icono: '🟡'
-      };
-    } else {
-      return {
-        texto: `${tiempoStr} • Vencido`,
-        color: 'bg-red-500/15 text-red-400 border-red-500/40 animate-pulse',
-        icono: '🔴'
-      };
+    if (sla.nivel === 'ok') {
+      return { ...base, texto: `Vence en ${formatearDuracion(sla.restanteMin)}`, color: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30', icono: '🟢' };
     }
+    if (sla.nivel === 'riesgo') {
+      return { ...base, texto: `Por vencer • ${formatearDuracion(sla.restanteMin)}`, color: 'bg-amber-500/10 text-amber-400 border-amber-500/30', icono: '🟡' };
+    }
+    return { ...base, texto: `Vencido hace ${formatearDuracion(-sla.restanteMin)}`, color: 'bg-red-500/15 text-red-400 border-red-500/40 animate-pulse', icono: '🔴' };
   };
+
+  const nivelSLA = (t) => calcularEstadoSLA(t, categorias).nivel;
+  const conteoVencidos = ticketsBase.filter(t => nivelSLA(t) === 'vencido').length;
+  const conteoPorVencer = ticketsBase.filter(t => nivelSLA(t) === 'riesgo').length;
 
   const ticketsFiltrados = ticketsBase.filter(t => {
     const estatusLower = t.estatus ? t.estatus.toLowerCase() : '';
@@ -147,6 +85,8 @@ function SolicitudesView({
     if (filtroEstatus === 'cerrados' && !esCerrado) return false;
     if (filtroEstatus === 'sin_asignar' && (esCerrado || !estaSinAsignar(t))) return false;
     if (filtroEstatus === 'mios' && (esCerrado || !esMiTicket(t))) return false;
+    if (filtroEstatus === 'vencidos' && nivelSLA(t) !== 'vencido') return false;
+    if (filtroEstatus === 'por_vencer' && nivelSLA(t) !== 'riesgo') return false;
 
     const query = busqueda.toLowerCase().trim();
     if (!query) return true;
@@ -223,6 +163,30 @@ function SolicitudesView({
                   <span>👤 Mis Tickets</span>
                   <span className={`px-1.5 py-0.5 rounded-full text-[10px] ${filtroEstatus === 'mios' ? 'bg-black/20 text-white' : 'bg-slate-800 text-indigo-400'}`}>
                     {conteoMios}
+                  </span>
+                </button>
+              </>
+            )}
+
+            {!esCliente && (
+              <>
+                <button 
+                  onClick={() => setFiltroEstatus('vencidos')}
+                  className={`px-3.5 py-2 rounded-lg font-bold text-xs transition-all cursor-pointer flex items-center gap-2 ${filtroEstatus === 'vencidos' ? 'bg-red-600 text-white shadow-md' : 'bg-slate-900/60 text-slate-400 hover:text-white border border-slate-700'}`}
+                >
+                  <span>🔴 SLA Vencido</span>
+                  <span className={`px-1.5 py-0.5 rounded-full text-[10px] ${filtroEstatus === 'vencidos' ? 'bg-black/20 text-white' : 'bg-slate-800 text-red-400'}`}>
+                    {conteoVencidos}
+                  </span>
+                </button>
+
+                <button 
+                  onClick={() => setFiltroEstatus('por_vencer')}
+                  className={`px-3.5 py-2 rounded-lg font-bold text-xs transition-all cursor-pointer flex items-center gap-2 ${filtroEstatus === 'por_vencer' ? 'bg-amber-600 text-white shadow-md' : 'bg-slate-900/60 text-slate-400 hover:text-white border border-slate-700'}`}
+                >
+                  <span>🟡 Por Vencer</span>
+                  <span className={`px-1.5 py-0.5 rounded-full text-[10px] ${filtroEstatus === 'por_vencer' ? 'bg-black/20 text-white' : 'bg-slate-800 text-amber-400'}`}>
+                    {conteoPorVencer}
                   </span>
                 </button>
               </>
