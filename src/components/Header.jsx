@@ -1,9 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Sun, Moon, LogOut, Bell, Menu as IconoMenu, Search } from 'lucide-react';
 
-// Los nombres se guardan en mayúsculas en la BD; se muestran como "Christopher Osorio"
-const nombrePresentable = (nombre = '') =>
-  nombre.toLowerCase().replace(/(^|\s)\S/g, (l) => l.toUpperCase());
+import { nombrePresentable } from '../utils/texto';
 
 const iniciales = (nombre = '') =>
   nombre.trim().split(/\s+/).slice(0, 2).map(p => p[0]).join('').toUpperCase() || 'U';

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { nombrePresentable } from '../utils/texto';
 import { EsqueletoPanel } from '../components/Estados';
 import EtiquetaEstatus from '../components/EtiquetaEstatus';
 
@@ -326,7 +327,7 @@ function SupervisorPanel({ user, onVerDetallesCentinela }) {
                       <td className="px-4 py-3 text-slate-300">
                         <span className="bg-slate-900 px-2 py-1 rounded text-xs border border-slate-700">{t.campana || 'N/D'}</span>
                       </td>
-                      <td className="px-4 py-3 text-slate-300">{t.tecnico || 'Sin asignar'}</td>
+                      <td className="px-4 py-3 text-slate-300">{nombrePresentable(t.tecnico) || 'Sin asignar'}</td>
                       <td className="px-4 py-3">
                         <EtiquetaEstatus estatus={t.estatus} />
                       </td>

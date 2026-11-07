@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { nombrePresentable } from '../utils/texto';
 import { EstadoVacio } from '../components/Estados';
 import { useAvisos } from '../components/Avisos';
 import { Pencil, Trash2, Users } from 'lucide-react';
@@ -167,9 +168,9 @@ function AdminUsuariosView({ grupos: gruposProp = [], usuarios = [], setUsuarios
                   usuarios.map((usu) => (
                     <tr key={usu.id} className="hover:bg-slate-700/50 transition-colors">
                       <td className="px-4 py-3 font-bold">{usu.id}</td>
-                      <td className="px-4 py-3 font-semibold text-white">{usu.nombre}</td>
-                      <td className="px-4 py-3">{usu.paterno}</td>
-                      <td className="px-4 py-3">{usu.materno}</td>
+                      <td className="px-4 py-3 font-semibold text-white">{nombrePresentable(usu.nombre)}</td>
+                      <td className="px-4 py-3">{nombrePresentable(usu.paterno)}</td>
+                      <td className="px-4 py-3">{nombrePresentable(usu.materno)}</td>
                       <td className="px-4 py-3">{usu.campana}</td>
                       <td className="px-4 py-3 text-indigo-300 font-mono text-xs">{usu.username}</td>
                       <td className="px-4 py-3">

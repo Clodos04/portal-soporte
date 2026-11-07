@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { nombrePresentable } from '../utils/texto';
 import { EstadoVacio } from '../components/Estados';
 import EtiquetaEstatus from '../components/EtiquetaEstatus';
 import { useAvisos } from '../components/Avisos';
@@ -379,7 +380,7 @@ function SolicitudesView({
 
                       {activeColumns.map(colKey => (
                         <td key={colKey} className="px-4 py-3 text-slate-300 max-w-xs truncate">
-                          {ticket[colKey] || '—'}
+                          {(colKey === 'creador' || colKey === 'tecnico' ? nombrePresentable(ticket[colKey]) : ticket[colKey]) || '—'}
                         </td>
                       ))}
 

@@ -1,5 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { io } from 'socket.io-client';
+import React, { useState, useEffect, useCallback } from 'react';
 
 import Header from './components/Header';
 import Menu from './components/Menu';
@@ -24,8 +23,13 @@ import AdminUsuariosView from './views/AdminUsuariosView';
 import AdminCategoriasView from './views/AdminCategoriasView';
 import AdminSubcategoriasView from './views/AdminSubcategoriasView';
 import AdminCampanasView from './views/AdminCampanasView';
-import { calcularSLA, esTicketCerrado } from './utils/sla';
 import Buscador from './components/Buscador';
+import useTema from './hooks/useTema';
+import useNotificaciones from './hooks/useNotificaciones';
+import useDatosPortal from './hooks/useDatosPortal';
+import useAlertasSla from './hooks/useAlertasSla';
+import useAtajoBuscador from './hooks/useAtajoBuscador';
+import { construirHash, interpretarHash } from './utils/rutas';
 import { useAvisos } from './components/Avisos';
 
 function App() {
@@ -33,27 +37,6 @@ function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false); 
   const [user, setUser] = useState(null); 
   const [currentView, setCurrentView] = useState('inicio'); 
-
-  // Estado para Modo Oscuro / Claro (Persistente en localStorage)
-  const [isDarkMode, setIsDarkMode] = useState(() => {
-    const savedTheme = localStorage.getItem('sav_theme');
-    return savedTheme ? savedTheme === 'dark' : true;
-  });
-
-  // Barras de desplazamiento, inputs nativos y color de la barra del navegador acordes al tema
-  useEffect(() => {
-    document.documentElement.style.colorScheme = isDarkMode ? 'dark' : 'light';
-    const meta = document.querySelector('meta[name="theme-color"]');
-    if (meta) meta.setAttribute('content', isDarkMode ? '#0f1011' : '#f1f5f9');
-  }, [isDarkMode]);
-
-  const toggleTheme = () => {
-    setIsDarkMode(prev => {
-      const nextMode = !prev;
-      localStorage.setItem('sav_theme', nextMode ? 'dark' : 'light');
-      return nextMode;
-    });
-  };
 
   const [isColumnCustomizerOpen, setIsColumnCustomizerOpen] = useState(false);
   const [isNotesModalOpen, setIsNotesModalOpen] = useState(false);
@@ -65,12 +48,80 @@ function App() {
   const [ticketParaEncuesta, setTicketParaEncuesta] = useState(null);
 
   const [categoriaParaSubcategorias, setCategoriaParaSubcategorias] = useState(null);
-  const [alertaVisual, setAlertaVisual] = useState(null);
   const [filtroSolicitudesInicial, setFiltroSolicitudesInicial] = useState(null);
   const [menuAbierto, setMenuAbierto] = useState(false);
   const [buscadorAbierto, setBuscadorAbierto] = useState(false);
-  // Historial de notificaciones de la sesión (campana del encabezado)
-  const [notificaciones, setNotificaciones] = useState([]);
+
+  const { isDarkMode, toggleTheme } = useTema();
+  const { alertaVisual, notificaciones, reproducirAlerta, marcarLeidas, limpiarNotificaciones } = useNotificaciones();
+  const {
+    tickets, setTickets, usuarios, setUsuarios, grupos, setGrupos, campanas, setCampanas,
+    categorias, setCategorias, estadisticasEncuestas, setEstadisticasEncuestas, senalChat
+  } = useDatosPortal({ isLoggedIn, user, reproducirAlerta });
+  useAlertasSla({ isLoggedIn, user, tickets, categorias, reproducirAlerta });
+  const alternarBuscador = useCallback(() => setBuscadorAbierto(abierto => !abierto), []);
+  useAtajoBuscador(isLoggedIn, alternarBuscador);
+
+  // ── Direcciones por pantalla (hash): "atrás" del navegador, favoritos y enlaces compartibles ──
+  const [rutaLista, setRutaLista] = useState(false);
+  const [folioTicketPendiente, setFolioTicketPendiente] = useState(null);
+  const esAdminUsuario = user?.role === 'support';
+
+  const aplicarHash = useCallback(() => {
+    const { vista, folioChat, folioTicket } = interpretarHash(window.location.hash, { esAdmin: esAdminUsuario });
+    if (vista === 'encuesta-ti' && !ticketParaEncuesta) { setCurrentView('inicio'); return; }
+    setCurrentView(vista);
+    if (folioChat) setFolioChatActivo(folioChat);
+    if (folioTicket) {
+      setFolioTicketPendiente(folioTicket);
+    } else {
+      setFolioTicketPendiente(null);
+      setIsEditModalOpen(false);
+      setTicketEnEdicion(null);
+    }
+  }, [esAdminUsuario, ticketParaEncuesta]);
+
+  // Al iniciar sesión (o restaurarla) se respeta la dirección con la que se llegó
+  useEffect(() => {
+    if (!isLoggedIn) { setRutaLista(false); return; }
+    aplicarHash();
+    setRutaLista(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isLoggedIn]);
+
+  // Botón "atrás" / "adelante" del navegador y enlaces pegados en la barra de direcciones
+  useEffect(() => {
+    if (!isLoggedIn) return;
+    window.addEventListener('hashchange', aplicarHash);
+    return () => window.removeEventListener('hashchange', aplicarHash);
+  }, [isLoggedIn, aplicarHash]);
+
+  // La interfaz manda: cada cambio de pantalla, chat o ticket abierto actualiza la dirección
+  useEffect(() => {
+    if (!isLoggedIn || !rutaLista || folioTicketPendiente) return;
+    const deseado = construirHash(currentView, {
+      folioChat: folioChatActivo,
+      folioTicket: isEditModalOpen && ticketEnEdicion ? ticketEnEdicion.folio : null
+    });
+    const actual = window.location.hash || '#/';
+    if (actual === deseado) return;
+    // Al cerrar un ticket la dirección "retrocede" a la pantalla sin apilar otra entrada en el historial
+    if (actual.startsWith(deseado + '/')) window.history.replaceState(null, '', deseado);
+    else window.location.hash = deseado;
+  }, [isLoggedIn, rutaLista, folioTicketPendiente, currentView, folioChatActivo, isEditModalOpen, ticketEnEdicion]);
+
+  // Si la dirección trae un ticket, se abre en cuanto los tickets terminan de cargar
+  useEffect(() => {
+    if (!folioTicketPendiente) return;
+    const encontrado = tickets.find(t => String(t.folio) === String(folioTicketPendiente));
+    if (encontrado) {
+      setTicketEnEdicion(encontrado);
+      setIsEditModalOpen(true);
+      setFolioTicketPendiente(null);
+    } else if (tickets.length > 0) {
+      setFolioTicketPendiente(null);
+    }
+  }, [folioTicketPendiente, tickets]);
 
   const columnLabels = {
     tecnico: 'Técnico', creador: 'Creado por', asunto: 'Asunto', descripcion: 'Descripción',
@@ -80,159 +131,6 @@ function App() {
   const [activeColumns, setActiveColumns] = useState(['tecnico', 'creador', 'asunto', 'fecha', 'grupo']);
   const [availableColumns, setAvailableColumns] = useState(['descripcion', 'campana', 'categoria', 'subcategoria']);
 
-  const [tickets, setTickets] = useState([]);
-  const [usuarios, setUsuarios] = useState([]);
-  const [grupos, setGrupos] = useState([]);
-  const [campanas, setCampanas] = useState([]);
-  const [categorias, setCategorias] = useState([]);
-  const [estadisticasEncuestas, setEstadisticasEncuestas] = useState([]);
-
-  useEffect(() => {
-    const handlePopState = (event) => {
-      if (currentView === 'live-chat' || currentView === 'nueva-solicitud') {
-        event.preventDefault();
-        setCurrentView('solicitudes');
-      }
-    };
-    window.addEventListener('popstate', handlePopState);
-    return () => window.removeEventListener('popstate', handlePopState);
-  }, [currentView]);
-
-  const reproducirAlerta = (mensajeTexto) => {
-    setNotificaciones(prev => [{ id: Date.now() + Math.random(), texto: mensajeTexto, fecha: new Date(), leida: false }, ...prev].slice(0, 30));
-    const audio = new Audio('/Sonidos/minecraft_exp.mp3');
-    audio.play().catch(err => console.log("Audio bloqueado por el navegador:", err));
-    setAlertaVisual(mensajeTexto);
-    setTimeout(() => { setAlertaVisual(null); }, 4000);
-
-    if ("Notification" in window) {
-      if (Notification.permission === "granted") {
-        new Notification("CTI - Actualización", { body: mensajeTexto, icon: "/favicon.svg" });
-      } else if (Notification.permission !== "denied") {
-        Notification.requestPermission().then(permission => {
-          if (permission === "granted") {
-            new Notification("CTI - Actualización", { body: mensajeTexto, icon: "/favicon.svg" });
-          }
-        });
-      }
-    }
-  };
-
-  useEffect(() => {
-    if (!isLoggedIn) return;
-    if ("Notification" in window && Notification.permission !== "granted") {
-      Notification.requestPermission();
-    }
-
-    const cargarDatosIniciales = async () => {
-      try {
-        const resTickets = await fetch('/api/tickets');
-        const dataTickets = await resTickets.json();
-        
-        if (Array.isArray(dataTickets)) {
-          setTickets(prevTickets => {
-            if (prevTickets.length > 0) {
-              dataTickets.forEach(ticketNuevo => {
-                const anterior = prevTickets.find(t => t.folio === ticketNuevo.folio);
-                if (anterior) {
-                  if (anterior.estatus !== ticketNuevo.estatus) {
-                    reproducirAlerta(`Ticket #${ticketNuevo.folio} cambió a: ${ticketNuevo.estatus}`);
-                  } else if (anterior.tecnico !== ticketNuevo.tecnico) {
-                    reproducirAlerta(`Ticket #${ticketNuevo.folio} asignado a: ${ticketNuevo.tecnico}`);
-                  }
-                }
-              });
-            }
-            return dataTickets;
-          });
-        }
-      } catch (err) {
-        console.error("Error al actualizar datos:", err);
-      }
-    };
-
-    cargarDatosIniciales();
-
-    fetch('/api/usuarios').then(res => res.json()).then(data => { if (Array.isArray(data)) setUsuarios(data); });
-    fetch('/api/grupos').then(res => res.json()).then(data => { if (Array.isArray(data)) setGrupos(data); });
-    fetch('/api/campanas').then(res => res.json()).then(data => { if (Array.isArray(data)) setCampanas(data); });
-    fetch('/api/categorias').then(res => res.json()).then(data => { if (Array.isArray(data)) setCategorias(data); });
-    fetch('/api/encuestas/reporte').then(res => res.json()).then(data => { if (data && data.historial) setEstadisticasEncuestas(data.historial); });
-
-    // CONEXIÓN ESTABLE EN TIEMPO REAL CON SOCKET.IO
-    const socket = io();
-
-    socket.on('ticketActualizado', (data) => {
-      console.log("Actualización en tiempo real recibida:", data);
-      cargarDatosIniciales(); 
-    });
-
-    socket.on('nuevoMensajeChat', (data) => {
-      console.log("Nuevo mensaje de chat en tiempo real:", data);
-      cargarDatosIniciales();
-    });
-
-    // Aviso al autor de una sugerencia / reporte cuando el administrador la responde o cambia su estatus
-    socket.on('buzonRespondido', (data) => {
-      if (!data || !data.username || data.username !== userRef.current?.username) return;
-      reproducirAlerta(data.estatus === 'APLICADO'
-        ? '¡Tu sugerencia fue APLICADA! Gracias por ayudarnos a mejorar.'
-        : `Tu ${String(data.tipo || 'sugerencia').toLowerCase()} del Buzón fue ${data.conRespuesta ? 'respondida' : 'actualizada'} (${data.estatus}).`);
-    });
-
-    socket.on('nuevoFeedbackBuzon', (data) => {
-      reproducirAlerta(`Nuevo comentario en el Buzón (${data?.tipo || 'SUGERENCIA'}) de ${data?.usuario || 'Usuario'}`);
-    });
-
-    return () => {
-      socket.disconnect();
-    };
-  }, [isLoggedIn]);
-
-  // Alertas de SLA: avisa al equipo de soporte cuando un ticket abierto llega a 80% de su tiempo o se vence.
-  // Se avisa una sola vez por ticket y nivel; revisa cada minuto con los datos más recientes.
-  const userRef = useRef(null);
-  useEffect(() => { userRef.current = user; }, [user]);
-  const datosSlaRef = useRef({ tickets: [], categorias: [] });
-  const alertasSlaEnviadas = useRef({});
-  useEffect(() => { datosSlaRef.current = { tickets, categorias }; }, [tickets, categorias]);
-
-  useEffect(() => {
-    if (!isLoggedIn || user?.role !== 'support') return;
-    const revisarSla = () => {
-      const { tickets: lista, categorias: cats } = datosSlaRef.current;
-      lista.forEach(t => {
-        if (esTicketCerrado(t)) { delete alertasSlaEnviadas.current[t.folio]; return; }
-        const sla = calcularSLA(t, cats);
-        const nivelAlerta = sla.nivel === 'vencido' ? 'vencido' : (sla.critico ? 'critico' : null);
-        if (!nivelAlerta || alertasSlaEnviadas.current[t.folio] === nivelAlerta) return;
-        // Al primer chequeo tras iniciar sesión solo se registra el estado, para no avisar de todo el histórico a la vez
-        const primeraVez = alertasSlaEnviadas.current[t.folio] === undefined && alertasSlaEnviadas.current.__listo !== true;
-        alertasSlaEnviadas.current[t.folio] = nivelAlerta;
-        if (primeraVez) return;
-        reproducirAlerta(nivelAlerta === 'vencido'
-          ? `SLA VENCIDO: ticket #${t.folio}`
-          : `SLA por vencer (80%): ticket #${t.folio}`);
-      });
-      if (lista.length > 0) alertasSlaEnviadas.current.__listo = true;
-    };
-    const arranque = setTimeout(revisarSla, 5000);
-    const intervalo = setInterval(revisarSla, 60000);
-    return () => { clearTimeout(arranque); clearInterval(intervalo); alertasSlaEnviadas.current = {}; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isLoggedIn, user?.role]);
-
-  useEffect(() => {
-    if (!isLoggedIn) return;
-    const alTeclear = (e) => {
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
-        e.preventDefault();
-        setBuscadorAbierto(abierto => !abierto);
-      }
-    };
-    window.addEventListener('keydown', alTeclear);
-    return () => window.removeEventListener('keydown', alTeclear);
-  }, [isLoggedIn]);
 
   // Restaurar la sesión (cookie httpOnly) al recargar la página
   useEffect(() => {
@@ -248,7 +146,6 @@ function App() {
             campana: data.user.campana || '*111'
           });
           setIsLoggedIn(true);
-          setCurrentView('inicio');
         }
       })
       .catch(() => {});
@@ -435,7 +332,6 @@ function App() {
       });
        
       setIsLoggedIn(true);
-      setCurrentView('inicio');
       return true;
     } catch (error) {
       console.error('Error al iniciar sesión:', error);
@@ -524,11 +420,17 @@ function App() {
           onAbrirMenu={() => setMenuAbierto(true)}
           onAbrirBuscador={() => setBuscadorAbierto(true)}
           notificaciones={notificaciones}
-          onMarcarLeidas={() => setNotificaciones(prev => prev.map(n => ({ ...n, leida: true })))}
-          onLimpiarNotificaciones={() => setNotificaciones([])}
+          onMarcarLeidas={marcarLeidas}
+          onLimpiarNotificaciones={limpiarNotificaciones}
           
         user={user} 
-        onLogout={() => { fetch('/api/logout', { method: 'POST' }).catch(() => {}); setIsLoggedIn(false); setUser(null); }} 
+        onLogout={() => {
+          fetch('/api/logout', { method: 'POST' }).catch(() => {});
+          setIsLoggedIn(false);
+          setUser(null);
+          setCurrentView('inicio');
+          window.history.replaceState(null, '', window.location.pathname + window.location.search);
+        }} 
         isDarkMode={isDarkMode}
         onToggleTheme={toggleTheme}
       />
@@ -611,6 +513,7 @@ function App() {
             folio={folioChatActivo} 
             user={user} 
             ticket={tickets.find(t => String(t.folio) === String(folioChatActivo))}
+            senalActualizacion={senalChat}
             onTomarTicket={handleTomarTicket}
             onFinalizarChat={() => setCurrentView('solicitudes')} 
             onAbrirModalEdicion={(ticket) => {

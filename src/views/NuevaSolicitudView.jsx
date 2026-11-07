@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import AsistenteTipificacionView from './AsistenteTipificacionView';
+import { useAvisos } from '../components/Avisos';
 
 function NuevaSolicitudView({ user, usuarios = [], grupos = [], usuariosPorGrupo = {}, categorias = [], onVolver, onGuardar }) {
   const [estado, setEstado] = useState('ABIERTO');
@@ -42,6 +43,35 @@ function NuevaSolicitudView({ user, usuarios = [], grupos = [], usuariosPorGrupo
   const [modo] = useState('WEB');
   const [archivo, setArchivo] = useState(null);
   const [enviando, setEnviando] = useState(false); // <--- Candado anti-doble clic
+  const { confirmar } = useAvisos();
+  const [errores, setErrores] = useState({});
+  const asuntoRef = useRef(null);
+  const descripcionRef = useRef(null);
+
+  // Hay datos escritos que se perderían al salir
+  const hayCambiosSinGuardar = !enviando && (asunto.trim() !== '' || descripcion.trim() !== '' || equiposSeleccionados.length > 0 || !!archivo);
+
+  useEffect(() => {
+    if (!hayCambiosSinGuardar) return;
+    const avisarAlSalir = (e) => { e.preventDefault(); e.returnValue = ''; };
+    window.addEventListener('beforeunload', avisarAlSalir);
+    return () => window.removeEventListener('beforeunload', avisarAlSalir);
+  }, [hayCambiosSinGuardar]);
+
+  const cancelar = async () => {
+    if (hayCambiosSinGuardar && !(await confirmar('Tienes datos sin guardar. ¿Salir y descartarlos?', { textoConfirmar: 'Descartar y salir' }))) return;
+    onVolver();
+  };
+
+  const validar = () => {
+    const nuevos = {};
+    if (asunto.trim().length < 5) nuevos.asunto = 'Escribe un asunto de al menos 5 caracteres.';
+    if (descripcion.trim().length < 10) nuevos.descripcion = 'Describe el problema con al menos 10 caracteres para que el técnico pueda ayudarte.';
+    setErrores(nuevos);
+    if (nuevos.asunto) asuntoRef.current?.focus();
+    else if (nuevos.descripcion) descripcionRef.current?.focus();
+    return Object.keys(nuevos).length === 0;
+  };
 
   const tecnicosDisponibles = usuariosPorGrupo[grupo] || [];
 
@@ -99,6 +129,7 @@ function NuevaSolicitudView({ user, usuarios = [], grupos = [], usuariosPorGrupo
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (enviando) return; // Bloquear si ya se está enviando
+    if (!validar()) return;
     setEnviando(true);
 
     try {
@@ -201,7 +232,7 @@ function NuevaSolicitudView({ user, usuarios = [], grupos = [], usuariosPorGrupo
       )}
 
       <div className="bg-slate-800 rounded-2xl shadow-xl border border-slate-700 p-6">
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <form onSubmit={handleSubmit} noValidate className="space-y-6">
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-slate-900/60 p-6 rounded-xl border border-slate-700">
             <div className="space-y-4">
@@ -307,27 +338,39 @@ function NuevaSolicitudView({ user, usuarios = [], grupos = [], usuariosPorGrupo
 
           <div className="space-y-4 pt-2">
             <div>
-              <label className="block text-xs font-medium text-slate-300 mb-1.5">Asunto:</label>
+              <label htmlFor="asunto" className="block text-xs font-medium text-slate-300 mb-1.5">Asunto:</label>
               <input 
+                id="asunto"
+                name="asunto"
+                ref={asuntoRef}
                 type="text" 
-                required
+                autoComplete="off"
+                aria-invalid={!!errores.asunto}
+                aria-describedby={errores.asunto ? 'error-asunto' : undefined}
                 placeholder="Breve resumen del problema…"
                 value={asunto}
-                onChange={(e) => setAsunto(e.target.value)}
-                className="w-full px-3 py-2.5 rounded-lg bg-slate-900 border border-slate-700 text-white text-sm outline-none focus:border-indigo-500 transition-colors"
+                onChange={(e) => { setAsunto(e.target.value); if (errores.asunto) setErrores(prev => ({ ...prev, asunto: undefined })); }}
+                className="w-full px-3 py-2.5 rounded-lg bg-slate-900 border border-slate-700 text-white text-sm outline-none focus:border-indigo-500 transition-colors aria-invalid:border-red-500"
               />
+              {errores.asunto && <p id="error-asunto" role="alert" className="mt-1.5 text-xs text-red-400">{errores.asunto}</p>}
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-slate-300 mb-1.5">Descripción:</label>
+              <label htmlFor="descripcion" className="block text-xs font-medium text-slate-300 mb-1.5">Descripción:</label>
               <textarea 
+                id="descripcion"
+                name="descripcion"
+                ref={descripcionRef}
                 rows="3" 
-                required
+                autoComplete="off"
+                aria-invalid={!!errores.descripcion}
+                aria-describedby={errores.descripcion ? 'error-descripcion' : undefined}
                 placeholder="Detalla los síntomas o pasos para reproducir el fallo…"
                 value={descripcion}
-                onChange={(e) => setDescripcion(e.target.value)}
-                className="w-full px-3 py-2.5 rounded-lg bg-slate-900 border border-slate-700 text-white text-sm outline-none focus:border-indigo-500 resize-none transition-colors"
+                onChange={(e) => { setDescripcion(e.target.value); if (errores.descripcion) setErrores(prev => ({ ...prev, descripcion: undefined })); }}
+                className="w-full px-3 py-2.5 rounded-lg bg-slate-900 border border-slate-700 text-white text-sm outline-none focus:border-indigo-500 resize-none transition-colors aria-invalid:border-red-500"
               ></textarea>
+              {errores.descripcion && <p id="error-descripcion" role="alert" className="mt-1.5 text-xs text-red-400">{errores.descripcion}</p>}
             </div>
           </div>
 
@@ -376,7 +419,7 @@ function NuevaSolicitudView({ user, usuarios = [], grupos = [], usuariosPorGrupo
           <div className="flex justify-end gap-3 pt-6 border-t border-slate-700">
             <button 
               type="button" 
-              onClick={onVolver} 
+              onClick={cancelar} 
               className="bg-slate-700 hover:bg-slate-600 text-slate-200 px-5 py-2.5 rounded-xl font-bold text-sm transition-colors cursor-pointer"
             >
               Cancelar
@@ -386,7 +429,7 @@ function NuevaSolicitudView({ user, usuarios = [], grupos = [], usuariosPorGrupo
               disabled={enviando}
               className="bg-indigo-600 hover:bg-indigo-500 text-white px-6 py-2.5 rounded-xl font-bold text-sm transition-colors cursor-pointer disabled:opacity-50"
             >
-              {enviando ? 'Guardando...' : 'Guardar Solicitud'}
+              {enviando ? 'Guardando…' : 'Guardar solicitud'}
             </button>
           </div>
 

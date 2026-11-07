@@ -341,17 +341,19 @@ const rutasAdminEscritura = [
 app.use((req, res, next) => {
   const esApi = req.path.startsWith('/api/') || req.path.startsWith('/CTI/api/') ||
     /^\/(tickets|usuarios|grupos|categorias|subcategorias|elementos|campanas|centinela|chat|encuestas|kpis|buzon)(\/|$)/.test(req.path);
-  if (!esApi || req.path === '/api/login' || req.path === '/login' || req.path === '/api/logout' || req.path === '/logout') return next();
+  if (!esApi || req.path === '/api/login' || req.path === '/login' || req.path === '/api/logout' || req.path === '/logout' || req.path === '/api/me' || req.path === '/me') return next();
   const requiereAdmin = rutasAdminEscritura.some(r => r.metodo === req.method && r.ruta.test(req.path));
   return (requiereAdmin ? requireAdmin : requireAuth)(req, res, next);
 });
 
 // Sesión actual (permite restaurar la sesión al recargar la página)
+// Sin sesión responde 200 con user:null (así el navegador no registra un error 401 al abrir el login)
 app.get(['/api/me', '/me'], (req, res) => {
-  const s = req.sesion;
+  const s = leerSesion(req.cookies && req.cookies[COOKIE_NAME]);
+  if (!s) return res.json({ user: null });
   db.query('SELECT * FROM usuarios WHERE id = ? AND estatus = "ACTIVO" LIMIT 1', [s.id], (err, results) => {
     if (err) return res.status(500).json({ error: 'Error en el servidor' });
-    if (results.length === 0) return res.status(401).json({ error: 'Usuario inactivo.' });
+    if (results.length === 0) return res.json({ user: null });
     const u = results[0];
     const esAdmin = (u.nivel || '').toUpperCase().includes('ADMIN');
     res.json({ user: {

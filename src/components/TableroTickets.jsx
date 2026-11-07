@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { nombrePresentable } from '../utils/texto';
 import { calcularSLA, formatearDuracion } from '../utils/sla';
 import { tipoEstatus } from './EtiquetaEstatus';
 
@@ -93,12 +94,27 @@ function TableroTickets({ tickets, categorias, puedeMover, onAbrir, onMover }) {
                     </div>
                     <p className="text-sm text-white mt-1.5 line-clamp-2">{t.asunto || t.subcategoria || 'Sin asunto'}</p>
                     <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-2 text-xs text-slate-400">
-                      <span>{t.creador || 'Sin solicitante'}</span>
+                      <span>{nombrePresentable(t.creador) || 'Sin solicitante'}</span>
                       {t.equipo && t.equipo !== 'Ninguno' && <span className="font-mono">{t.equipo}</span>}
                     </div>
                     <p className="text-xs mt-2 text-slate-500">
-                      Técnico: <span className="text-slate-300">{t.tecnico || 'Sin asignar'}</span>
+                      Técnico: <span className="text-slate-300">{nombrePresentable(t.tecnico) || 'Sin asignar'}</span>
                     </p>
+                    {puedeMover && (
+                      <select
+                        aria-label={`Mover el ticket ${t.folio} a otro estatus`}
+                        value=""
+                        onClick={(e) => e.stopPropagation()}
+                        onKeyDown={(e) => e.stopPropagation()}
+                        onChange={(e) => { if (e.target.value) onMover(t, e.target.value); }}
+                        className="mt-3 w-full bg-slate-900 border border-slate-700 rounded-md px-2 py-1.5 text-xs text-slate-300 cursor-pointer"
+                      >
+                        <option value="">Mover a…</option>
+                        {COLUMNAS.filter(c => c.clave !== tipoEstatus(t.estatus) && !(c.clave === 'abierto' && tipoEstatus(t.estatus) === 'otro')).map(c => (
+                          <option key={c.clave} value={c.estatus}>{c.titulo}</option>
+                        ))}
+                      </select>
+                    )}
                   </article>
                 );
               })}
