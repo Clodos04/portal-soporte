@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Headset } from 'lucide-react';
 
-function LiveChatView({ folio, user, onFinalizarChat, onAbrirModalEdicion, ticket, onTomarTicket }) {
+function LiveChatView({ folio, user, onFinalizarChat, onAbrirModalEdicion, ticket, onTomarTicket, senalActualizacion = 0 }) {
   const [mensajes, setMensajes] = useState([]);
   const [nuevoMensaje, setNuevoMensaje] = useState('');
   const [conectado, setConectado] = useState(false);
@@ -37,13 +37,9 @@ function LiveChatView({ folio, user, onFinalizarChat, onAbrirModalEdicion, ticke
 
     const sincronizarChatYTicket = async () => {
       try {
-        const resTicket = await fetch('/api/tickets');
-        const tickets = await resTicket.json();
-        const ticketActual = (tickets || []).find(t => String(t.folio) === String(folio));
-
-        if (ticketActual && ticketActual.tecnico && ticketActual.tecnico !== 'Sin Asignar') {
+        if (ticket && ticket.tecnico && ticket.tecnico !== 'Sin Asignar') {
           setConectado(true);
-          setNombreTecnico(ticketActual.tecnico);
+          setNombreTecnico(ticket.tecnico);
         }
 
         const response = await fetch(`/api/chat/${folio}`);
@@ -65,9 +61,9 @@ function LiveChatView({ folio, user, onFinalizarChat, onAbrirModalEdicion, ticke
     };
 
     sincronizarChatYTicket();
-    const intervalo = setInterval(sincronizarChatYTicket, 2500);
-    return () => clearInterval(intervalo);
-  }, [folio, user, ticket]);
+    const respaldo = setInterval(sincronizarChatYTicket, 30000);
+    return () => clearInterval(respaldo);
+  }, [folio, user, ticket, senalActualizacion]);
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });

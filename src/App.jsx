@@ -68,6 +68,8 @@ function App() {
   const [alertaVisual, setAlertaVisual] = useState(null);
   const [filtroSolicitudesInicial, setFiltroSolicitudesInicial] = useState(null);
   const [menuAbierto, setMenuAbierto] = useState(false);
+  // Sube cada vez que llega un evento de chat o de ticket por Socket.io; el chat en vivo la usa para actualizarse al instante
+  const [senalChat, setSenalChat] = useState(0);
   const [buscadorAbierto, setBuscadorAbierto] = useState(false);
   // Historial de notificaciones de la sesión (campana del encabezado)
   const [notificaciones, setNotificaciones] = useState([]);
@@ -163,12 +165,12 @@ function App() {
     const socket = io();
 
     socket.on('ticketActualizado', (data) => {
-      console.log("Actualización en tiempo real recibida:", data);
+      setSenalChat(n => n + 1);
       cargarDatosIniciales(); 
     });
 
     socket.on('nuevoMensajeChat', (data) => {
-      console.log("Nuevo mensaje de chat en tiempo real:", data);
+      setSenalChat(n => n + 1);
       cargarDatosIniciales();
     });
 
@@ -611,6 +613,7 @@ function App() {
             folio={folioChatActivo} 
             user={user} 
             ticket={tickets.find(t => String(t.folio) === String(folioChatActivo))}
+            senalActualizacion={senalChat}
             onTomarTicket={handleTomarTicket}
             onFinalizarChat={() => setCurrentView('solicitudes')} 
             onAbrirModalEdicion={(ticket) => {
