@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { Headset } from 'lucide-react';
 
 function LiveChatView({ folio, user, onFinalizarChat, onAbrirModalEdicion, ticket, onTomarTicket }) {
   const [mensajes, setMensajes] = useState([]);
@@ -127,7 +128,7 @@ function LiveChatView({ folio, user, onFinalizarChat, onAbrirModalEdicion, ticke
         <div className="flex items-center gap-3">
           <div className="relative">
             <div className="w-10 h-10 rounded-2xl bg-indigo-600/30 border border-indigo-500/40 flex items-center justify-center text-indigo-300 font-bold">
-              
+              <Headset size={18} strokeWidth={1.75} />
             </div>
             <span className={`absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-slate-900 ${conectado ? 'bg-emerald-500' : 'bg-amber-500'}`}></span>
           </div>
