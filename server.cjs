@@ -31,7 +31,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 const db = mysql.createConnection({
   host: process.env.DB_HOST || 'sav_db-soporte',
   user: process.env.DB_USER || 'mysql',
-  password: process.env.DB_PASSWORD || 'db6f98fa1380ced73c0d',
+  password: process.env.DB_PASSWORD || 'c1L=y|;5U/4%',
   database: process.env.DB_NAME || 'sav',
   port: process.env.DB_PORT || 3306
 });
