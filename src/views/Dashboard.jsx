@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { EstadoVacio } from '../components/Estados';
 import EtiquetaEstatus from '../components/EtiquetaEstatus';
-import { Plus, CheckCircle2 } from 'lucide-react';
+import { Plus, CheckCircle2, AlertOctagon, Clock } from 'lucide-react';
+import { calcularSLA, esTicketCerrado } from '../utils/sla';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
-function Dashboard({ user, tickets = [], grupos = [], onIrANuevaSolicitud, onIrAEncuesta, onIrABuzon, estadisticasEncuestas = [], onTomarTicket, onAbrirChat }) {
+function Dashboard({ user, tickets = [], categorias = [], onIrASolicitudes, grupos = [], onIrANuevaSolicitud, onIrAEncuesta, onIrABuzon, estadisticasEncuestas = [], onTomarTicket, onAbrirChat }) {
   const safeTickets = Array.isArray(tickets) ? tickets : [];
   const [gruposBD, setGruposBD] = useState(Array.isArray(grupos) ? grupos : []);
   const [soloHoyGrafica, setSoloHoyGrafica] = useState(false);
@@ -218,8 +219,14 @@ function Dashboard({ user, tickets = [], grupos = [], onIrANuevaSolicitud, onIrA
     !(t.grupo || '').toUpperCase().includes('CENTINELA')
   );
 
-  const ticketsAtendidosSla = ticketsEstandar.filter(t => t.estatus && t.estatus.toLowerCase() !== 'abierto').length;
-  const porcentajeSla = ticketsEstandar.length > 0 ? Math.round((ticketsAtendidosSla / ticketsEstandar.length) * 100) : 100;
+  // SLA real: cerrados dentro de su tiempo / (cerrados + abiertos ya vencidos)
+  const estadosSla = safeTickets.map(t => calcularSLA(t, categorias));
+  const slaVencidos = estadosSla.filter(e => e.nivel === 'vencido').length;
+  const slaPorVencer = estadosSla.filter(e => e.nivel === 'riesgo' && e.critico).length;
+  const cerradosEnSla = estadosSla.filter(e => e.nivel === 'cerrado' && e.cumplido).length;
+  const cerradosTotal = estadosSla.filter(e => e.nivel === 'cerrado').length;
+  const baseCumplimiento = cerradosTotal + slaVencidos;
+  const porcentajeSla = baseCumplimiento > 0 ? Math.round((cerradosEnSla / baseCumplimiento) * 100) : null;
 
   const encuestasPorTecnico = (estadisticasEncuestas || []).reduce((acc, curr) => {
     if (!curr.tecnico) return acc;
@@ -239,36 +246,68 @@ function Dashboard({ user, tickets = [], grupos = [], onIrANuevaSolicitud, onIrA
 
   return (
     <div className="animate-fade-in space-y-6">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-semibold text-white tracking-tight">Panel de Control de Inicio</h1>
+      <div className="flex flex-wrap gap-3 justify-between items-center mb-2">
+        <h1 className="text-xl sm:text-2xl font-semibold text-white tracking-tight">Panel de Control de Inicio</h1>
         <button onClick={onIrANuevaSolicitud} className="bg-indigo-600 hover:bg-indigo-500 text-white px-5 py-2.5 rounded-xl shadow-lg font-bold text-sm transition-all cursor-pointer flex items-center gap-2">
           <Plus size={16} strokeWidth={2} /> Nueva solicitud
         </button>
       </div>
       
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+      {(slaVencidos > 0 || slaPorVencer > 0) ? (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <button
+            onClick={() => onIrASolicitudes && onIrASolicitudes('vencidos')}
+            disabled={slaVencidos === 0}
+            className="flex items-center gap-4 text-left bg-red-500/10 border border-red-500/25 rounded-2xl px-5 py-4 transition-colors enabled:hover:bg-red-500/15 enabled:cursor-pointer disabled:opacity-50"
+          >
+            <AlertOctagon size={22} strokeWidth={1.75} className="text-red-400 shrink-0" />
+            <div>
+              <p className="text-2xl font-semibold text-white leading-none">{slaVencidos}</p>
+              <p className="text-xs text-red-300 mt-1">{slaVencidos === 1 ? 'ticket con SLA vencido' : 'tickets con SLA vencido'}</p>
+            </div>
+          </button>
+          <button
+            onClick={() => onIrASolicitudes && onIrASolicitudes('por_vencer')}
+            disabled={slaPorVencer === 0}
+            className="flex items-center gap-4 text-left bg-amber-500/10 border border-amber-500/25 rounded-2xl px-5 py-4 transition-colors enabled:hover:bg-amber-500/15 enabled:cursor-pointer disabled:opacity-50"
+          >
+            <Clock size={22} strokeWidth={1.75} className="text-amber-400 shrink-0" />
+            <div>
+              <p className="text-2xl font-semibold text-white leading-none">{slaPorVencer}</p>
+              <p className="text-xs text-amber-300 mt-1">{slaPorVencer === 1 ? 'ticket por vencer (80% del tiempo)' : 'tickets por vencer (80% del tiempo)'}</p>
+            </div>
+          </button>
+        </div>
+      ) : (
+        <div className="flex items-center gap-3 bg-slate-800 border border-slate-700 rounded-2xl px-5 py-3">
+          <CheckCircle2 size={18} strokeWidth={1.75} className="text-emerald-400 shrink-0" />
+          <p className="text-sm text-slate-300">Sin tickets en riesgo de SLA en este momento.</p>
+        </div>
+      )}
+
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-6">
         <div className="bg-slate-800 rounded-2xl shadow-lg p-5 border border-slate-700 flex flex-col justify-between">
           <h3 className="text-xs font-medium text-slate-400 mb-4 text-center">Solicitudes Abiertas</h3>
-          <div className="flex justify-center items-center mb-4 px-2"><span className="text-5xl font-semibold text-white">{totalAbiertas}</span></div>
+          <div className="flex justify-center items-center mb-4 px-2"><span className="text-4xl sm:text-5xl font-semibold text-white">{totalAbiertas}</span></div>
           <div className="w-full bg-slate-700 rounded-full h-2"><div className="bg-indigo-500 h-2 rounded-full" style={{ width: `${Math.min(totalAbiertas * 10, 100)}%` }}></div></div>
         </div>
 
         <div className="bg-slate-800 rounded-2xl shadow-lg p-5 border border-slate-700 flex flex-col justify-between">
           <h3 className="text-xs font-medium text-slate-400 mb-4 text-center">En Proceso</h3>
-          <div className="flex justify-center items-center mb-4 px-2"><span className="text-5xl font-semibold text-white">{totalEnProceso}</span></div>
+          <div className="flex justify-center items-center mb-4 px-2"><span className="text-4xl sm:text-5xl font-semibold text-white">{totalEnProceso}</span></div>
           <div className="w-full bg-slate-700 rounded-full h-2"><div className="bg-indigo-500 h-2 rounded-full" style={{ width: `${Math.min(totalEnProceso * 10, 100)}%` }}></div></div>
         </div>
 
         <div className="bg-slate-800 rounded-2xl shadow-lg p-5 border border-slate-700 flex flex-col justify-between">
           <h3 className="text-xs font-medium text-slate-400 mb-4 text-center">Tickets Hoy ({fechaHoyMX})</h3>
-          <div className="flex justify-center items-center mb-4 px-2"><span className="text-5xl font-semibold text-white">{ticketsDeHoy.length}</span></div>
+          <div className="flex justify-center items-center mb-4 px-2"><span className="text-4xl sm:text-5xl font-semibold text-white">{ticketsDeHoy.length}</span></div>
           <div className="w-full bg-slate-700 rounded-full h-2"><div className="bg-indigo-500 h-2 rounded-full" style={{ width: `${Math.min(ticketsDeHoy.length * 10, 100)}%` }}></div></div>
         </div>
 
         <div className="bg-slate-800 rounded-2xl shadow-lg p-5 border border-slate-700 flex flex-col justify-between">
-          <h3 className="text-xs font-medium text-slate-400 mb-4 text-center">SLA de Respuesta</h3>
-          <div className="flex justify-center items-center mb-4 px-2"><span className="text-5xl font-semibold text-white">{porcentajeSla}%</span></div>
-          <div className="w-full bg-slate-700 rounded-full h-2"><div className="bg-indigo-600 h-2 rounded-full" style={{ width: `${porcentajeSla}%` }}></div></div>
+          <h3 className="text-xs font-medium text-slate-400 mb-4 text-center">Cumplimiento de SLA</h3>
+          <div className="flex justify-center items-center mb-4 px-2"><span className="text-4xl sm:text-5xl font-semibold text-white">{porcentajeSla === null ? '—' : `${porcentajeSla}%`}</span></div>
+          <div className="w-full bg-slate-700 rounded-full h-2"><div className="bg-indigo-600 h-2 rounded-full" style={{ width: `${porcentajeSla ?? 0}%` }}></div></div>
         </div>
       </div>
 

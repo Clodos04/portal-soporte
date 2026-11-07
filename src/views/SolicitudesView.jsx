@@ -18,12 +18,17 @@ function SolicitudesView({
   onEditarTicket,
   onAbrirChat,
   onIrAEncuestaSpecific,
+  filtroInicial,
+  onFiltroConsumido,
   estadisticasEncuestas = [] 
 }) {
   const { avisar } = useAvisos();
   const [busqueda, setBusqueda] = useState('');
-  const [filtroEstatus, setFiltroEstatus] = useState('activos');
+  const [filtroEstatus, setFiltroEstatus] = useState(filtroInicial || 'activos');
   const [, setTick] = useState(0);
+
+  // El filtro que llegó desde el panel de inicio se usa una sola vez
+  useEffect(() => { if (filtroInicial && onFiltroConsumido) onFiltroConsumido(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Actualizar el semáforo de SLA cada minuto automáticamente
   useEffect(() => {
@@ -143,7 +148,7 @@ function SolicitudesView({
           <p className="text-slate-400 text-sm mt-1">Gestión y control de tickets en tiempo real • Clodos TI Assist</p>
         </div>
 
-        <div className="flex items-center gap-3 w-full md:w-auto justify-end">
+        <div className="flex flex-wrap items-center gap-3 w-full md:w-auto md:justify-end">
           <button 
             onClick={onOpenCustomizer}
             className="bg-slate-700 hover:bg-slate-600 text-slate-200 px-4 py-2 rounded-lg font-bold text-sm shadow transition-colors flex items-center gap-2 border border-slate-600 cursor-pointer"
@@ -169,7 +174,7 @@ function SolicitudesView({
         </div>
       </div>
 
-      <div className="bg-slate-800 rounded-xl shadow-lg border border-slate-700 p-6 space-y-4">
+      <div className="bg-slate-800 rounded-xl shadow-lg border border-slate-700 p-4 sm:p-6 space-y-4">
         <div className="flex flex-col lg:flex-row justify-between items-stretch lg:items-center gap-4 border-b border-slate-700 pb-4">
           <div className="flex flex-wrap items-center gap-2">
             <button 
