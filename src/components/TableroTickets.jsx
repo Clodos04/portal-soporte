@@ -20,7 +20,7 @@ function textoSla(sla) {
   return null;
 }
 
-function TableroTickets({ tickets, categorias, puedeMover, onAbrir, onMover }) {
+function TableroTickets({ tickets, categorias, puedeMover, onAbrir, onMover, foliosNuevos }) {
   const [arrastrando, setArrastrando] = useState(null);
   const [columnaSobre, setColumnaSobre] = useState(null);
 
@@ -79,7 +79,7 @@ function TableroTickets({ tickets, categorias, puedeMover, onAbrir, onMover }) {
                     onClick={() => onAbrir(t)}
                     tabIndex={0}
                     onKeyDown={(e) => { if (e.key === 'Enter') onAbrir(t); }}
-                    className={`bg-slate-800 border border-slate-700 hover:border-slate-500 rounded-lg p-3 transition-colors cursor-pointer ${
+                    className={`animate-entrada bg-slate-800 border border-slate-700 hover:border-slate-500 rounded-lg p-3 transition-colors cursor-pointer ${foliosNuevos && foliosNuevos.has(String(t.folio)) ? 'animate-resaltar' : ''} ${
                       arrastrando === t.folio ? 'opacity-40' : ''
                     } ${puedeMover ? 'active:cursor-grabbing' : ''}`}
                   >

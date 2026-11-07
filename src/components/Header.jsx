@@ -14,7 +14,7 @@ const hace = (fecha) => {
 };
 
 function Header({
-  user, onLogout, isDarkMode, onToggleTheme, onAbrirMenu, onAbrirBuscador,
+  user, onLogout, isDarkMode, onToggleTheme, onAbrirMenu, onAbrirBuscador, enVivo = false,
   notificaciones = [], onMarcarLeidas, onLimpiarNotificaciones
 }) {
   const [panelAbierto, setPanelAbierto] = useState(false);
@@ -51,6 +51,17 @@ function Header({
       </div>
 
       <div className="flex items-center gap-1 sm:gap-2">
+        <span
+          className="hidden sm:flex items-center gap-2 mr-2 text-xs text-slate-400"
+          title={enVivo ? 'Conectado: los cambios aparecen al instante' : 'Sin conexión en tiempo real: se reintentará automáticamente'}
+        >
+          <span className="relative flex w-2 h-2">
+            {enVivo && <span className="absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-60 animate-ping" />}
+            <span className={`relative inline-flex w-2 h-2 rounded-full ${enVivo ? 'bg-emerald-400' : 'bg-slate-500'}`} />
+          </span>
+          {enVivo ? 'En vivo' : 'Sin conexión'}
+        </span>
+
         <div className="relative" ref={contenedorRef}>
           <button onClick={alternarPanel} aria-label={`Notificaciones${sinLeer ? `, ${sinLeer} sin leer` : ''}`} aria-expanded={panelAbierto} className={`relative ${botonIcono}`}>
             <Bell size={18} strokeWidth={1.75} />

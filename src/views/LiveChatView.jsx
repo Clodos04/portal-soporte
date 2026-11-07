@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Headset } from 'lucide-react';
+import RespuestasRapidas from '../components/RespuestasRapidas';
 import { sinEmojis, nombrePresentable, nombreSiEstaEnMayusculas } from '../utils/texto';
 
 function LiveChatView({ folio, user, onFinalizarChat, onAbrirModalEdicion, ticket, onTomarTicket, senalActualizacion = 0 }) {
@@ -235,6 +236,7 @@ function LiveChatView({ folio, user, onFinalizarChat, onAbrirModalEdicion, ticke
 
       {/* Barra de Escritura */}
       <form onSubmit={enviarMensaje} className="p-4 bg-slate-800 border-t border-slate-700 flex gap-3 shrink-0">
+        {esSoporte && <RespuestasRapidas onElegir={(texto) => setNuevoMensaje(texto)} />}
         <input aria-label="Escribe un mensaje" 
           type="text"
           placeholder="O escribe algún comentario adicional aquí…"

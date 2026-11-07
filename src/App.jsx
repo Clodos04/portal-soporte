@@ -29,6 +29,7 @@ import useNotificaciones from './hooks/useNotificaciones';
 import useDatosPortal from './hooks/useDatosPortal';
 import useAlertasSla from './hooks/useAlertasSla';
 import useAtajoBuscador from './hooks/useAtajoBuscador';
+import useTicketsNuevos from './hooks/useTicketsNuevos';
 import { construirHash, interpretarHash } from './utils/rutas';
 import { nombrePresentable } from './utils/texto';
 import { useAvisos } from './components/Avisos';
@@ -57,9 +58,13 @@ function App() {
   const { alertaVisual, notificaciones, reproducirAlerta, marcarLeidas, limpiarNotificaciones } = useNotificaciones();
   const {
     tickets, setTickets, usuarios, setUsuarios, grupos, setGrupos, campanas, setCampanas,
-    categorias, setCategorias, estadisticasEncuestas, setEstadisticasEncuestas, senalChat
+    categorias, setCategorias, estadisticasEncuestas, setEstadisticasEncuestas, senalChat, enVivo
   } = useDatosPortal({ isLoggedIn, user, reproducirAlerta });
   useAlertasSla({ isLoggedIn, user, tickets, categorias, reproducirAlerta });
+  const foliosNuevos = useTicketsNuevos(tickets);
+
+  // Al cambiar de pantalla se vuelve al inicio de la página (antes se conservaba el scroll anterior)
+  useEffect(() => { window.scrollTo(0, 0); }, [currentView]);
   const alternarBuscador = useCallback(() => setBuscadorAbierto(abierto => !abierto), []);
   useAtajoBuscador(isLoggedIn, alternarBuscador);
 
@@ -418,6 +423,7 @@ function App() {
 
       <div className="flex-1 min-w-0 flex flex-col">
       <Header
+          enVivo={enVivo}
           onAbrirMenu={() => setMenuAbierto(true)}
           onAbrirBuscador={() => setBuscadorAbierto(true)}
           notificaciones={notificaciones}
@@ -437,12 +443,13 @@ function App() {
       />
 
       <main id="contenido" tabIndex={-1} className="p-4 sm:p-6 pb-10 max-w-7xl w-full mx-auto relative z-0 outline-none">
+        <div key={currentView} className="animate-entrada">
         {currentView === 'inicio' && (
           <Dashboard 
             user={user} 
             tickets={tickets} 
             categorias={categorias}
-            onIrASolicitudes={(filtro) => { setFiltroSolicitudesInicial(filtro); setCurrentView('solicitudes'); }}
+            onIrASolicitudes={(filtro, busqueda = '') => { setFiltroSolicitudesInicial({ filtro, busqueda }); setCurrentView('solicitudes'); }}
             grupos={grupos}
             estadisticasEncuestas={estadisticasEncuestas}
             onTomarTicket={handleTomarTicket}
@@ -473,6 +480,7 @@ function App() {
         {currentView === 'solicitudes' && (
           <SolicitudesView 
             filtroInicial={filtroSolicitudesInicial}
+            foliosNuevos={foliosNuevos}
             onCambiarEstatus={handleCambiarEstatusTablero}
             onFiltroConsumido={() => setFiltroSolicitudesInicial(null)}
             tickets={tickets}
@@ -574,6 +582,7 @@ function App() {
         )}
 
         {currentView === 'guia-tickets' && <GuiaTicketsView />}
+        </div>
       </main>
       </div>
 

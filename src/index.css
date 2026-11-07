@@ -191,3 +191,26 @@ table, [class*="text-4xl"], [class*="text-5xl"], [class*="text-3xl"] {
 h1, h2, h3 {
   text-wrap: balance;
 }
+
+/* =========================================================
+   ANIMACIONES (sutiles; se desactivan con "reducir movimiento")
+   ========================================================= */
+@keyframes aparecer {
+  from { opacity: 0; transform: translateY(6px); }
+  /* "none" (no translateY(0)): una transformación activa crearía un bloque contenedor y rompería los modales fixed de adentro */
+  to   { opacity: 1; transform: none; }
+}
+/* Esta clase ya se usaba en muchas pantallas pero no estaba definida */
+.animate-fade-in { animation: aparecer 0.22s ease-out both; }
+.animate-entrada { animation: aparecer 0.25s ease-out both; }
+
+/* Un ticket nuevo se resalta unos segundos para que no pase desapercibido */
+@keyframes resaltar-nuevo {
+  0%   { background-color: rgba(94, 106, 210, 0.28); box-shadow: inset 3px 0 0 var(--color-indigo-500); }
+  100% { background-color: transparent; box-shadow: inset 3px 0 0 transparent; }
+}
+.animate-resaltar { animation: resaltar-nuevo 3s ease-out both; }
+
+/* Barras de gráficas y mapa de calor que "crecen" al aparecer */
+@keyframes crecer-ancho { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+.animate-crecer { transform-origin: left center; animation: crecer-ancho 0.7s cubic-bezier(0.22, 1, 0.36, 1) both; }

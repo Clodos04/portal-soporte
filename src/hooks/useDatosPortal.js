@@ -12,6 +12,8 @@ export default function useDatosPortal({ isLoggedIn, user, reproducirAlerta }) {
   const [estadisticasEncuestas, setEstadisticasEncuestas] = useState([]);
   // Sube cada vez que llega un evento de chat o de ticket por Socket.io; el chat en vivo la usa para actualizarse al instante
   const [senalChat, setSenalChat] = useState(0);
+  // true mientras Socket.io está conectado (indicador "En vivo" del encabezado)
+  const [enVivo, setEnVivo] = useState(false);
 
   const userRef = useRef(null);
   useEffect(() => { userRef.current = user; }, [user]);
@@ -26,6 +28,13 @@ export default function useDatosPortal({ isLoggedIn, user, reproducirAlerta }) {
       try {
         const resTickets = await fetch('/api/tickets');
         const dataTickets = await resTickets.json();
+
+        // Solo en desarrollo: con ?demo en la dirección se muestran tickets de ejemplo en lugar de los reales
+        if (import.meta.env.DEV && new URLSearchParams(window.location.search).has('demo')) {
+          const { generarTicketsDemo } = await import('../utils/datosDemo');
+          setTickets(generarTicketsDemo());
+          return;
+        }
 
         if (Array.isArray(dataTickets)) {
           setTickets(prevTickets => {
@@ -59,6 +68,9 @@ export default function useDatosPortal({ isLoggedIn, user, reproducirAlerta }) {
 
     // CONEXIÓN ESTABLE EN TIEMPO REAL CON SOCKET.IO
     const socket = io();
+    socket.on('connect', () => setEnVivo(true));
+    socket.on('disconnect', () => setEnVivo(false));
+    socket.on('connect_error', () => setEnVivo(false));
 
     socket.on('ticketActualizado', () => {
       setSenalChat(n => n + 1);
@@ -84,6 +96,7 @@ export default function useDatosPortal({ isLoggedIn, user, reproducirAlerta }) {
 
     return () => {
       socket.disconnect();
+      setEnVivo(false);
     };
   }, [isLoggedIn, reproducirAlerta]);
 
@@ -94,6 +107,6 @@ export default function useDatosPortal({ isLoggedIn, user, reproducirAlerta }) {
     campanas, setCampanas,
     categorias, setCategorias,
     estadisticasEncuestas, setEstadisticasEncuestas,
-    senalChat
+    senalChat, enVivo
   };
 }

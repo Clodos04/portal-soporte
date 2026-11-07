@@ -1,4 +1,5 @@
 import React from 'react';
+import { tipoEstatus } from '../utils/estatus';
 
 // Etiqueta de estatus única para todo el portal. Se calcula a partir del texto del estatus
 // (no del color guardado en la BD), así todas las pantallas se ven igual.
@@ -9,13 +10,8 @@ const ESTILOS = {
   otro:    { clase: 'bg-indigo-500/10 text-indigo-300 border-indigo-500/25', punto: 'bg-indigo-400' }
 };
 
-export const tipoEstatus = (estatus = '') => {
-  const e = String(estatus).toLowerCase();
-  if (e.includes('cerrado') || e.includes('resuelto')) return 'cerrado';
-  if (e.includes('proceso')) return 'proceso';
-  if (e.includes('abierto')) return 'abierto';
-  return 'otro';
-};
+// (la función vive en utils/estatus.js para poder usarla sin cargar React)
+export { tipoEstatus };
 
 export default function EtiquetaEstatus({ estatus }) {
   const estilo = ESTILOS[tipoEstatus(estatus)];
