@@ -1,8 +1,15 @@
+require('dotenv').config();
 const express = require('express');
 const mysql = require('mysql2');
 const cors = require('cors');
 const path = require('path');
 const http = require('http');
+const crypto = require('crypto');
+const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
+const cookieParser = require('cookie-parser');
+const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
 const { Server } = require('socket.io');
 
 // Importamos las respuestas automáticas y lógica de Centinela / Chat
@@ -12,42 +19,79 @@ const {
   evaluarSiguienteRespuestaChat
 } = require('./respuestasChat.cjs');
 
+// ============================================================================
+// CONFIGURACIÓN DE SEGURIDAD (variables de entorno, ver .env.example)
+// ============================================================================
+const requeridas = ['DB_HOST', 'DB_USER', 'DB_PASSWORD', 'DB_NAME', 'CENTINELA_HOST', 'CENTINELA_USER', 'CENTINELA_PASSWORD', 'CENTINELA_DB'];
+const faltantes = requeridas.filter(k => !process.env[k]);
+if (faltantes.length > 0) {
+  console.error(`Faltan variables de entorno obligatorias: ${faltantes.join(', ')}. Revisa .env.example`);
+  process.exit(1);
+}
+
+let JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET) {
+  JWT_SECRET = crypto.randomBytes(48).toString('hex');
+  console.warn('⚠️  JWT_SECRET no definido: se generó uno temporal (las sesiones se cierran al reiniciar el servidor).');
+}
+const COOKIE_NAME = 'cti_sesion';
+const SESSION_HORAS = Number(process.env.SESSION_HORAS) || 12;
+const COOKIE_OPTS = {
+  httpOnly: true,
+  sameSite: 'lax',
+  secure: process.env.COOKIE_SECURE === 'true',
+  maxAge: SESSION_HORAS * 60 * 60 * 1000
+};
+// Orígenes externos permitidos (el portal se sirve desde el mismo origen, por lo que normalmente queda vacío)
+const ORIGENES_PERMITIDOS = (process.env.CORS_ORIGIN || '').split(',').map(s => s.trim()).filter(Boolean);
+
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
-    origin: "*",
-    methods: ["GET", "POST", "PUT", "DELETE"]
+    origin: ORIGENES_PERMITIDOS.length > 0 ? ORIGENES_PERMITIDOS : false,
+    methods: ["GET", "POST", "PUT", "DELETE"],
+    credentials: true
   }
 });
 
-app.use(express.json());
-app.use(cors());
+app.disable('x-powered-by');
+app.use(helmet({ contentSecurityPolicy: false, crossOriginResourcePolicy: false, hsts: false }));
+app.use(express.json({ limit: '1mb' }));
+app.use(cookieParser());
+app.use(cors({ origin: ORIGENES_PERMITIDOS.length > 0 ? ORIGENES_PERMITIDOS : false, credentials: true }));
 
 // ESTO HACE QUE LA CARPETA PUBLIC SEA ACCESIBLE PÚBLICAMENTE (Soluciona el audio 404)
 app.use(express.static(path.join(__dirname, 'public')));
 
-// 1. Conexión principal para Tickets y lógica general (sav)
-const db = mysql.createConnection({
-  host: process.env.DB_HOST || 'sav_db-soporte',
-  user: process.env.DB_USER || 'mysql',
-  password: process.env.DB_PASSWORD || '***ELIMINADA***',
-  database: process.env.DB_NAME || 'sav',
-  port: process.env.DB_PORT || 3306
+// 1. Conexión principal para Tickets y lógica general (sav) – pool con reconexión automática
+const db = mysql.createPool({
+  host: process.env.DB_HOST,
+  user: process.env.DB_USER,
+  password: process.env.DB_PASSWORD,
+  database: process.env.DB_NAME,
+  port: process.env.DB_PORT || 3306,
+  waitForConnections: true,
+  connectionLimit: 10,
+  enableKeepAlive: true
 });
 
-// 2. Conexión dedicada para Centinela
-const dbCentinela = mysql.createConnection({
-  host: '192.168.240.103',
-  user: 'root',
-  password: '***ELIMINADA***',
-  database: 'Centinela',
-  port: 3306
+// 2. Conexión dedicada para Centinela (usar un usuario de SOLO LECTURA, no root)
+const dbCentinela = mysql.createPool({
+  host: process.env.CENTINELA_HOST,
+  user: process.env.CENTINELA_USER,
+  password: process.env.CENTINELA_PASSWORD,
+  database: process.env.CENTINELA_DB,
+  port: process.env.CENTINELA_PORT || 3306,
+  waitForConnections: true,
+  connectionLimit: 5,
+  enableKeepAlive: true
 });
 
-db.connect((err) => { 
+db.getConnection((err, conn) => {
+  if (conn) conn.release();
   if (err) {
-    console.error('Error BD Tickets:', err); 
+    console.error('Error BD Tickets:', err);
   } else {
     console.log('Conectado a BD Tickets (sav)');
     // Crear automáticamente la tabla buzon_sugerencias si no existe
@@ -71,12 +115,86 @@ db.connect((err) => {
   }
 });
 
-dbCentinela.connect((err) => { 
-  if (err) console.error('Error BD Centinela:', err); 
-  else console.log('Conectado a Servidor Centinela (Base de datos: Centinela)'); 
+dbCentinela.getConnection((err, conn) => {
+  if (conn) conn.release();
+  if (err) console.error('Error BD Centinela:', err);
+  else console.log('Conectado a Servidor Centinela (Base de datos: Centinela)');
 });
 
-// Configuración de conexiones de Socket.io en tiempo real
+// ============================================================================
+// AUTENTICACIÓN Y AUTORIZACIÓN (JWT en cookie httpOnly)
+// ============================================================================
+const emitirSesion = (res, usuario) => {
+  const token = jwt.sign(
+    { id: usuario.id, username: usuario.username, nivel: usuario.nivelNormalizado, nombre: usuario.nombreCompleto },
+    JWT_SECRET,
+    { expiresIn: `${SESSION_HORAS}h` }
+  );
+  res.cookie(COOKIE_NAME, token, COOKIE_OPTS);
+};
+
+const leerSesion = (token) => {
+  try { return jwt.verify(token, JWT_SECRET); } catch (e) { return null; }
+};
+
+const requireAuth = (req, res, next) => {
+  const sesion = leerSesion(req.cookies && req.cookies[COOKIE_NAME]);
+  if (!sesion) return res.status(401).json({ error: 'Sesión no válida o expirada. Inicia sesión de nuevo.' });
+  req.sesion = sesion;
+  next();
+};
+
+const requireAdmin = (req, res, next) => {
+  requireAuth(req, res, () => {
+    if (req.sesion.nivel !== 'ADMINISTRADOR') return res.status(403).json({ error: 'No tienes permisos para esta acción.' });
+    next();
+  });
+};
+
+const esHashBcrypt = (valor) => typeof valor === 'string' && /^\$2[aby]\$\d{2}\$/.test(valor);
+const hashPassword = (plano) => bcrypt.hashSync(String(plano), 10);
+
+// Nunca exponer la contraseña al cliente
+const sanitizarUsuario = (u) => {
+  const { password, ...resto } = u;
+  return resto;
+};
+
+const parseJsonSeguro = (v) => {
+  if (typeof v !== 'string') return v || [];
+  try { return JSON.parse(v || '[]'); } catch (e) { return []; }
+};
+
+// Evita "mass assignment": solo se escriben columnas que realmente existen en la tabla (y nunca `id`)
+const columnasTabla = {};
+['tickets', 'encuestas'].forEach(tabla => {
+  db.query(`SHOW COLUMNS FROM ${tabla}`, (err, cols) => {
+    if (err) return console.error(`No se pudieron leer columnas de ${tabla}:`, err.message);
+    columnasTabla[tabla] = new Set(cols.map(c => c.Field));
+  });
+});
+const filtrarColumnas = (tabla, datos) => {
+  const permitidas = columnasTabla[tabla];
+  if (!permitidas) return datos;
+  const limpio = {};
+  Object.keys(datos).forEach(k => { if (k !== 'id' && permitidas.has(k)) limpio[k] = datos[k]; });
+  return limpio;
+};
+
+// Configuración de conexiones de Socket.io en tiempo real (requiere sesión válida)
+io.use((socket, next) => {
+  const cookies = Object.fromEntries(
+    String(socket.handshake.headers.cookie || '').split(';').map(c => c.trim()).filter(Boolean).map(c => {
+      const i = c.indexOf('=');
+      return [c.slice(0, i), decodeURIComponent(c.slice(i + 1))];
+    })
+  );
+  const sesion = leerSesion(cookies[COOKIE_NAME]);
+  if (!sesion) return next(new Error('No autorizado'));
+  socket.data.sesion = sesion;
+  next();
+});
+
 io.on('connection', (socket) => {
   console.log(`🔌 Cliente conectado en tiempo real: ${socket.id}`);
 
@@ -107,14 +225,49 @@ const obtenerFechaHoraMexico = () => {
 const obtenerFechaMySQL = () => obtenerFechaHoraMexico().fechaHora;
 
 // Login (Soportando solo CLIENTE y ADMINISTRADOR)
+const limitadorLogin = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 10,
+  skipSuccessfulRequests: true,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Demasiados intentos fallidos. Espera 15 minutos e inténtalo de nuevo.' }
+});
+
 const handleLogin = (req, res) => {
-  const { username, password } = req.body;
-  db.query('SELECT * FROM usuarios WHERE username = ? AND password = ? AND estatus = "ACTIVO"', [username, password], (err, results) => {
+  const username = String((req.body && req.body.username) || '');
+  const password = String((req.body && req.body.password) || '');
+  if (!username || !password) return res.status(400).json({ error: 'Usuario y contraseña son obligatorios.' });
+
+  db.query('SELECT * FROM usuarios WHERE username = ? AND estatus = "ACTIVO" LIMIT 1', [username], (err, results) => {
     if (err) return res.status(500).json({ error: 'Error en el servidor' });
     if (results.length === 0) return res.status(401).json({ error: 'Credenciales incorrectas o usuario inactivo.' });
     const usuario = results[0];
+
+    // Compatibilidad: si la contraseña aún está en texto plano, se valida y se migra a bcrypt automáticamente.
+    let valida = false;
+    if (esHashBcrypt(usuario.password)) {
+      valida = bcrypt.compareSync(password, usuario.password);
+    } else {
+      const a = Buffer.from(String(usuario.password || ''));
+      const b = Buffer.from(password);
+      valida = a.length === b.length && crypto.timingSafeEqual(a, b);
+      if (valida) {
+        db.query('UPDATE usuarios SET password = ? WHERE id = ?', [hashPassword(password), usuario.id], (errMig) => {
+          if (errMig) console.error('No se pudo migrar la contraseña a bcrypt:', errMig.message);
+        });
+      }
+    }
+    if (!valida) return res.status(401).json({ error: 'Credenciales incorrectas o usuario inactivo.' });
+
     const nivelUpper = (usuario.nivel || '').toUpperCase();
     const rolNormalizado = nivelUpper.includes('ADMIN') ? 'support' : 'client';
+    emitirSesion(res, {
+      id: usuario.id,
+      username: usuario.username,
+      nivelNormalizado: nivelUpper.includes('ADMIN') ? 'ADMINISTRADOR' : 'CLIENTE',
+      nombreCompleto: `${usuario.nombre || ''} ${usuario.paterno || ''}`.trim()
+    });
 
     res.json({
       success: true,
@@ -133,7 +286,47 @@ const handleLogin = (req, res) => {
     });
   });
 };
-app.post(['/api/login', '/login'], handleLogin);
+app.post(['/api/login', '/login'], limitadorLogin, handleLogin);
+
+app.post(['/api/logout', '/logout'], (req, res) => {
+  res.clearCookie(COOKIE_NAME, { ...COOKIE_OPTS, maxAge: undefined });
+  res.json({ success: true });
+});
+
+// A partir de aquí TODA la API requiere sesión. Las rutas de escritura sensibles piden además rol ADMINISTRADOR.
+const rutasAdminEscritura = [
+  { metodo: 'POST', ruta: /^\/(api\/)?usuarios\/?$/ },
+  { metodo: 'PUT', ruta: /^\/(api\/)?usuarios\/[^/]+\/?$/ },
+  { metodo: 'DELETE', ruta: /^\/(api\/)?usuarios\/[^/]+\/?$/ },
+  { metodo: 'POST', ruta: /^\/(api\/)?grupos\/?$/ },
+  { metodo: 'DELETE', ruta: /^\/(api\/)?grupos\/[^/]+\/?$/ },
+  { metodo: 'POST', ruta: /^\/(api\/)?categorias\/sincronizar\/?$/ },
+  { metodo: 'PUT', ruta: /^\/(CTI\/)?(api\/)?buzon\/[^/]+\/?$/ },
+  { metodo: 'DELETE', ruta: /^\/(CTI\/)?(api\/)?buzon\/[^/]+\/?$/ }
+];
+app.use((req, res, next) => {
+  const esApi = req.path.startsWith('/api/') || req.path.startsWith('/CTI/api/') ||
+    /^\/(tickets|usuarios|grupos|categorias|subcategorias|elementos|campanas|centinela|chat|encuestas|kpis|buzon)(\/|$)/.test(req.path);
+  if (!esApi || req.path === '/api/login' || req.path === '/login' || req.path === '/api/logout' || req.path === '/logout') return next();
+  const requiereAdmin = rutasAdminEscritura.some(r => r.metodo === req.method && r.ruta.test(req.path));
+  return (requiereAdmin ? requireAdmin : requireAuth)(req, res, next);
+});
+
+// Sesión actual (permite restaurar la sesión al recargar la página)
+app.get(['/api/me', '/me'], (req, res) => {
+  const s = req.sesion;
+  db.query('SELECT * FROM usuarios WHERE id = ? AND estatus = "ACTIVO" LIMIT 1', [s.id], (err, results) => {
+    if (err) return res.status(500).json({ error: 'Error en el servidor' });
+    if (results.length === 0) return res.status(401).json({ error: 'Usuario inactivo.' });
+    const u = results[0];
+    const esAdmin = (u.nivel || '').toUpperCase().includes('ADMIN');
+    res.json({ user: {
+      id: u.id, username: u.username, name: `${u.nombre || ''} ${u.paterno || ''}`.trim(),
+      role: esAdmin ? 'support' : 'client', nivel: esAdmin ? 'ADMINISTRADOR' : 'CLIENTE',
+      campana: u.campana || 'General', nombre: u.nombre || '', paterno: u.paterno || '', materno: u.materno || ''
+    } });
+  });
+});
 
 // Tickets (CRUD)
 app.get(['/api/tickets', '/tickets'], (req, res) => {
@@ -141,7 +334,7 @@ app.get(['/api/tickets', '/tickets'], (req, res) => {
     if (err) return res.status(500).json({ error: err.message });
     res.json(results.map(t => ({
       ...t,
-      notas: typeof t.notas === 'string' ? JSON.parse(t.notas || '[]') : (t.notas || [])
+      notas: parseJsonSeguro(t.notas)
     })));
   });
 });
@@ -173,7 +366,7 @@ const continuarInsercionTicket = (ticketData, res) => {
     ticketData.fecha = fechaSolo;
     ticketData.created_at = fechaHora;
 
-    db.query('INSERT INTO tickets SET ?', ticketData, (err, result) => {
+    db.query('INSERT INTO tickets SET ?', filtrarColumnas('tickets', ticketData), (err, result) => {
       if (err) return res.status(500).json({ error: err.message });
       db.query('INSERT INTO mensajes_chat (folio, remitente, texto, hora) VALUES (?, ?, ?, ?)', [ticketData.folio, 'Sistema', primerMensaje, horaCorta], () => {
         io.emit('ticketActualizado', { folio: ticketData.folio });
@@ -252,7 +445,7 @@ app.post(['/api/tickets', '/tickets'], (req, res) => {
         ticketData.fecha = fechaSolo;
         ticketData.created_at = fechaHora;
 
-        db.query('INSERT INTO tickets SET ?', ticketData, (err, result) => {
+        db.query('INSERT INTO tickets SET ?', filtrarColumnas('tickets', ticketData), (err, result) => {
           if (err) return res.status(500).json({ error: err.message });
 
           const nuevoFolio = ticketData.folio;
@@ -287,7 +480,7 @@ app.put(['/api/tickets/:folio', '/tickets/:folio'], (req, res) => {
     }
   }
   ticketData.updated_at = obtenerFechaMySQL();
-  db.query('UPDATE tickets SET ? WHERE folio = ?', [ticketData, req.params.folio], (err, result) => {
+  db.query('UPDATE tickets SET ? WHERE folio = ?', [filtrarColumnas('tickets', ticketData), req.params.folio], (err, result) => {
     if (err) return res.status(500).json({ error: err.message });
     if (result.affectedRows === 0) return res.status(404).json({ error: 'No se encontró el ticket.' });
     
@@ -390,18 +583,40 @@ app.get(['/api/usuarios', '/usuarios'], (req, res) => {
       if (typeof grupos === 'string') {
         try { grupos = JSON.parse(grupos); } catch (e) { grupos = []; }
       }
-      return { ...u, gruposAsignados: grupos || [] };
+      return { ...sanitizarUsuario(u), gruposAsignados: grupos || [] };
     });
     res.json(usuariosFormateados);
   });
 });
 
+// Alta de usuario (solo ADMINISTRADOR, ver middleware global)
+app.post(['/api/usuarios', '/usuarios'], (req, res) => {
+  const { nombre, paterno, materno, campana, username, password, estatus, nivel, gruposAsignados } = req.body;
+  if (!username || !String(username).trim() || !password || !String(password).trim()) {
+    return res.status(400).json({ error: 'Usuario y contraseña son obligatorios.' });
+  }
+  const gruposStr = Array.isArray(gruposAsignados) ? JSON.stringify(gruposAsignados) : (gruposAsignados || '[]');
+  db.query(
+    'INSERT INTO usuarios (nombre, paterno, materno, campana, username, password, estatus, nivel, gruposAsignados) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+    [nombre, paterno, materno, campana, String(username).trim(), hashPassword(String(password).trim()), estatus || 'ACTIVO', nivel || 'CLIENTE', gruposStr],
+    (err, result) => {
+      if (err) return res.status(500).json({ error: err.message });
+      res.json({ message: 'Usuario creado', id: result.insertId });
+    }
+  );
+});
+
 app.put(['/api/usuarios/:id', '/usuarios/:id'], (req, res) => {
   const { id } = req.params;
-  const { nombre, paterno, materno, campana, username, estatus, nivel, gruposAsignados } = req.body;
+  const { nombre, paterno, materno, campana, username, estatus, nivel, gruposAsignados, password } = req.body;
   const gruposStr = Array.isArray(gruposAsignados) ? JSON.stringify(gruposAsignados) : (gruposAsignados || '[]');
-  db.query('UPDATE usuarios SET nombre = ?, paterno = ?, materno = ?, campana = ?, username = ?, estatus = ?, nivel = ?, gruposAsignados = ? WHERE id = ?', 
-    [nombre, paterno, materno, campana, username, estatus, nivel, gruposStr, id], (err, result) => {
+  // La contraseña solo se cambia si se envía una nueva (en blanco = conservar la actual)
+  const cambiarPass = typeof password === 'string' && password.trim() !== '';
+  const campos = 'nombre = ?, paterno = ?, materno = ?, campana = ?, username = ?, estatus = ?, nivel = ?, gruposAsignados = ?' + (cambiarPass ? ', password = ?' : '');
+  const valores = [nombre, paterno, materno, campana, username, estatus, nivel, gruposStr];
+  if (cambiarPass) valores.push(hashPassword(password.trim()));
+  valores.push(id);
+  db.query(`UPDATE usuarios SET ${campos} WHERE id = ?`, valores, (err, result) => {
     if (err) return res.status(500).json({ error: err.message });
     if (result.affectedRows === 0) return res.status(404).json({ error: 'No se encontró el usuario.' });
     res.json({ message: 'Usuario actualizado correctamente' });
@@ -538,7 +753,7 @@ app.post(['/api/encuestas', '/encuestas'], (req, res) => {
   }
   data.fecha_respuesta = obtenerFechaMySQL();
   const guardarEnBD = (datosFinales) => {
-    db.query('INSERT INTO encuestas SET ?', datosFinales, (err, result) => {
+    db.query('INSERT INTO encuestas SET ?', filtrarColumnas('encuestas', datosFinales), (err, result) => {
       if (err) return res.status(500).json({ error: err.message });
       res.json({ message: 'Encuesta guardada con éxito', id: result.insertId });
     });
@@ -556,7 +771,7 @@ app.post(['/api/encuestas', '/encuestas'], (req, res) => {
 app.get(['/api/encuestas/reporte', '/encuestas/reporte'], (req, res) => {
   db.query('SELECT * FROM encuestas', (err, results) => {
     if (err) return res.status(500).json({ error: err.message });
-    const encuestasFormateadas = results.map(e => ({ ...e, respuestas: typeof e.respuestas === 'string' ? JSON.parse(e.respuestas || '[]') : (e.respuestas || []) }));
+    const encuestasFormateadas = results.map(e => ({ ...e, respuestas: parseJsonSeguro(e.respuestas) }));
     let suma = 0;
     encuestasFormateadas.forEach(r => suma += (Number(r.calificacion) || 0));
     res.json({ estadisticas: { promedio: encuestasFormateadas.length > 0 ? (suma / encuestasFormateadas.length).toFixed(1) : 0, total: encuestasFormateadas.length }, historial: encuestasFormateadas });

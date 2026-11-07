@@ -104,6 +104,7 @@ function App() {
   };
 
   useEffect(() => {
+    if (!isLoggedIn) return;
     if ("Notification" in window && Notification.permission !== "granted") {
       Notification.requestPermission();
     }
@@ -163,6 +164,26 @@ function App() {
     return () => {
       socket.disconnect();
     };
+  }, [isLoggedIn]);
+
+  // Restaurar la sesión (cookie httpOnly) al recargar la página
+  useEffect(() => {
+    fetch('/api/me')
+      .then(res => (res.ok ? res.json() : null))
+      .then(data => {
+        if (data && data.user) {
+          setUser({
+            name: data.user.name || data.user.username,
+            role: data.user.role,
+            nivel: data.user.nivel,
+            username: data.user.username,
+            campana: data.user.campana || '*111'
+          });
+          setIsLoggedIn(true);
+          setCurrentView('inicio');
+        }
+      })
+      .catch(() => {});
   }, []);
 
   const handleTomarTicket = async (folio) => {
@@ -397,7 +418,7 @@ function App() {
 
       <Header 
         user={user} 
-        onLogout={() => { setIsLoggedIn(false); setUser(null); }} 
+        onLogout={() => { fetch('/api/logout', { method: 'POST' }).catch(() => {}); setIsLoggedIn(false); setUser(null); }} 
         isDarkMode={isDarkMode}
         onToggleTheme={toggleTheme}
       />
