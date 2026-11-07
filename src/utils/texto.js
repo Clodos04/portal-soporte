@@ -25,3 +25,15 @@ export const nombreSiEstaEnMayusculas = (texto = '') => {
   const t = String(texto ?? '');
   return t !== '' && t === t.toUpperCase() ? nombrePresentable(t) : t;
 };
+
+// Compara sin importar mayúsculas ni acentos ("Soporte Técnico" = "SOPORTE TECNICO").
+export const normalizarTexto = (texto = '') =>
+  String(texto ?? '').normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase().trim();
+
+// Un ticket pertenece a un grupo si coincide su nombre; Centinela también incluye los tickets de ese tipo.
+// Es la MISMA regla para contar en la gráfica y para filtrar el listado, así las cifras siempre concuerdan.
+export const perteneceAGrupo = (ticket, nombreGrupo) => {
+  const grupo = normalizarTexto(nombreGrupo);
+  if (grupo === 'CENTINELA' && ticket.tipo_solicitud === 'CENTINELA') return true;
+  return normalizarTexto(ticket.grupo) === grupo;
+};

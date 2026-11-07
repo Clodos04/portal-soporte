@@ -1,5 +1,5 @@
 import React, { useState, useEffect, lazy, Suspense } from 'react';
-import { nombrePresentable } from '../utils/texto';
+import { nombrePresentable, perteneceAGrupo } from '../utils/texto';
 import { EstadoVacio, Esqueleto } from '../components/Estados';
 import EtiquetaEstatus from '../components/EtiquetaEstatus';
 import { Plus, CheckCircle2, AlertOctagon, Clock } from 'lucide-react';
@@ -50,10 +50,6 @@ function Dashboard({ user, tickets = [], categorias = [], onIrASolicitudes, grup
       }
     }
     return String(t.fecha || '').slice(0, 10) === fechaHoyMX;
-  };
-
-  const normalizarTexto = (str) => {
-    return String(str || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase().trim();
   };
 
   const rolUsuario = (user?.role || user?.nivel || '').toLowerCase();
@@ -213,14 +209,7 @@ function Dashboard({ user, tickets = [], categorias = [], onIrASolicitudes, grup
   const baseTicketsGrafica = soloHoyGrafica ? ticketsDeHoy : safeTickets;
 
   const datosGrupos = listaNombresGrupos.map(nombreGrupo => {
-    const grupoNorm = normalizarTexto(nombreGrupo);
-    const cantidad = baseTicketsGrafica.filter(t => {
-      const ticketGrupoNorm = normalizarTexto(t.grupo);
-      if (grupoNorm === 'CENTINELA') {
-        return t.tipo_solicitud === 'CENTINELA' || ticketGrupoNorm === 'CENTINELA';
-      }
-      return ticketGrupoNorm === grupoNorm;
-    }).length;
+    const cantidad = baseTicketsGrafica.filter(t => perteneceAGrupo(t, nombreGrupo)).length;
     return { nombre: nombreGrupo, tickets: cantidad };
   });
 
@@ -398,7 +387,7 @@ function Dashboard({ user, tickets = [], categorias = [], onIrASolicitudes, grup
 
           <div className="h-80 w-full">
             <Suspense fallback={<Esqueleto className="h-full w-full" />}>
-              <GraficaGrupos datosGrupos={datosGrupos} onSeleccionar={(grupo) => onIrASolicitudes && onIrASolicitudes('todos', grupo)} />
+              <GraficaGrupos datosGrupos={datosGrupos} onSeleccionar={(grupo) => onIrASolicitudes && onIrASolicitudes('todos', '', grupo)} />
             </Suspense>
           </div>
         </div>

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { nombrePresentable } from '../utils/texto';
+import { nombrePresentable, normalizarTexto, perteneceAGrupo } from '../utils/texto';
 import { EstadoVacio } from '../components/Estados';
 import EtiquetaEstatus from '../components/EtiquetaEstatus';
 import { useAvisos } from '../components/Avisos';
@@ -29,8 +29,9 @@ function SolicitudesView({
 }) {
   const { avisar } = useAvisos();
   // El panel de inicio puede mandar un filtro (texto) o un filtro con búsqueda ({ filtro, busqueda })
-  const inicial = typeof filtroInicial === 'object' && filtroInicial ? filtroInicial : { filtro: filtroInicial, busqueda: '' };
+  const inicial = typeof filtroInicial === 'object' && filtroInicial ? filtroInicial : { filtro: filtroInicial, busqueda: '', grupo: '' };
   const [busqueda, setBusqueda] = useState(inicial.busqueda || '');
+  const [grupo, setGrupo] = useState(inicial.grupo || '');
   const [vista, setVista] = useState('lista');
   const [filtroEstatus, setFiltroEstatus] = useState(inicial.filtro || 'activos');
   const [, setTick] = useState(0);
@@ -97,23 +98,12 @@ function SolicitudesView({
   const conteoPorVencer = ticketsBase.filter(t => nivelSLA(t) === 'riesgo').length;
 
   const coincideBusqueda = (t) => {
-    const query = busqueda.toLowerCase().trim();
+    if (grupo && !perteneceAGrupo(t, grupo)) return false;
+    const query = normalizarTexto(busqueda);
     if (!query) return true;
 
-    return (
-      (t.folio && String(t.folio).toLowerCase().includes(query)) ||
-      (t.asunto && t.asunto.toLowerCase().includes(query)) ||
-      (t.creador && t.creador.toLowerCase().includes(query)) ||
-      (t.solicitante && t.solicitante.toLowerCase().includes(query)) ||
-      (t.estatus && t.estatus.toLowerCase().includes(query)) ||
-      (t.equipo && t.equipo.toLowerCase().includes(query)) ||
-      (t.campana && t.campana.toLowerCase().includes(query)) ||
-      (t.categoria && t.categoria.toLowerCase().includes(query)) ||
-      (t.grupo && t.grupo.toLowerCase().includes(query)) ||
-      (t.subcategoria && t.subcategoria.toLowerCase().includes(query)) ||
-      (t.tecnico && t.tecnico.toLowerCase().includes(query)) ||
-      (t.asignado && t.asignado.toLowerCase().includes(query))
-    );
+    return [t.folio, t.asunto, t.creador, t.solicitante, t.estatus, t.equipo, t.campana, t.categoria, t.grupo, t.subcategoria, t.tecnico, t.asignado]
+      .some(campo => campo && normalizarTexto(campo).includes(query));
   };
 
   const ticketsFiltrados = ticketsBase.filter(t => {
@@ -292,7 +282,7 @@ function SolicitudesView({
             <VistasGuardadas
               usuario={user?.username}
               actual={{ filtroEstatus, busqueda, vista }}
-              onAplicar={(v) => { setFiltroEstatus(v.filtroEstatus || 'activos'); setBusqueda(v.busqueda || ''); setVista(v.vista || 'lista'); }}
+              onAplicar={(v) => { setGrupo(''); setFiltroEstatus(v.filtroEstatus || 'activos'); setBusqueda(v.busqueda || ''); setVista(v.vista || 'lista'); }}
             />
           </div>
 
@@ -319,6 +309,11 @@ function SolicitudesView({
         <div className={`${vista === 'tablero' ? 'hidden' : 'flex'} justify-between items-center text-xs text-slate-400 pt-1`}>
           <span>
             Filtro activo: <strong className="text-white">{filtroEstatus.replace('_', ' ')}</strong>
+            {grupo && (
+              <> • Grupo: <strong className="text-indigo-300">{grupo}</strong>{' '}
+                <button type="button" onClick={() => setGrupo('')} className="text-slate-400 hover:text-white cursor-pointer" aria-label="Quitar filtro de grupo">✕</button>
+              </>
+            )}
             {busqueda && <> • Buscando: <strong className="text-green-400">"{busqueda}"</strong></>}
           </span>
           <span>Mostrando: <strong className="text-white">{ticketsFiltrados.length}</strong> registros</span>
