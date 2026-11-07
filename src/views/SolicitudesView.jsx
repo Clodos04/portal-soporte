@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useAvisos } from '../components/Avisos';
 import { Plus, Search, StickyNote } from 'lucide-react';
 import { calcularSLA as calcularEstadoSLA, formatearDuracion } from '../utils/sla';
 import { exportarCSV } from '../utils/exportar';
@@ -17,6 +18,7 @@ function SolicitudesView({
   onIrAEncuestaSpecific,
   estadisticasEncuestas = [] 
 }) {
+  const { avisar } = useAvisos();
   const [busqueda, setBusqueda] = useState('');
   const [filtroEstatus, setFiltroEstatus] = useState('activos');
   const [, setTick] = useState(0);
@@ -109,7 +111,7 @@ function SolicitudesView({
   });
 
   const exportarListado = () => {
-    if (ticketsFiltrados.length === 0) { alert('No hay solicitudes para exportar con el filtro actual.'); return; }
+    if (ticketsFiltrados.length === 0) { avisar('No hay solicitudes para exportar con el filtro actual.', 'info'); return; }
     const textoNivel = { ok: 'En tiempo', riesgo: 'Por vencer', vencido: 'Vencido', sin_fecha: '—' };
     exportarCSV(ticketsFiltrados, [
       { titulo: 'Folio', valor: t => t.folio },

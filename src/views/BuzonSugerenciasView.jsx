@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
+import { useAvisos } from '../components/Avisos';
 import { Trash2 } from 'lucide-react';
 
 function BuzonSugerenciasView({ user }) {
+  const { confirmar } = useAvisos();
   const [registros, setRegistros] = useState([]);
   const [tipo, setTipo] = useState('SUGERENCIA');
   const [mensaje, setMensaje] = useState('');
@@ -79,7 +81,7 @@ function BuzonSugerenciasView({ user }) {
   };
 
   const eliminarRegistro = async (id) => {
-    if (!window.confirm('¿Eliminar este comentario del buzón?')) return;
+    if (!await confirmar('¿Eliminar este comentario del buzón?')) return;
     try {
       await fetch(`/api/buzon/${id}`, { method: 'DELETE' });
       setRegistros(registros.filter(r => r.id !== id));

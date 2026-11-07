@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useAvisos } from '../components/Avisos';
 import { Pencil, Trash2 } from 'lucide-react';
 
 const listaCampanas = [
@@ -9,6 +10,7 @@ const listaCampanas = [
 ];
 
 function AdminUsuariosView({ grupos: gruposProp = [], usuarios = [], setUsuarios }) {
+  const { avisar, confirmar } = useAvisos();
   const [modo, setModo] = useState('lista');
   const [usuarioActual, setUsuarioActual] = useState(null);
   const [gruposDisponibles, setGruposDisponibles] = useState(gruposProp);
@@ -66,7 +68,7 @@ function AdminUsuariosView({ grupos: gruposProp = [], usuarios = [], setUsuarios
   };
 
   const eliminarUsuario = async (id) => {
-    if (window.confirm('¿Estás seguro de eliminar este usuario?')) {
+    if (await confirmar('¿Estás seguro de eliminar este usuario?')) {
       try {
         await fetch(`/api/usuarios/${id}`, { method: 'DELETE' });
         setUsuarios(usuarios.filter(u => u.id !== id));
@@ -121,7 +123,7 @@ function AdminUsuariosView({ grupos: gruposProp = [], usuarios = [], setUsuarios
       setModo('lista');
     } catch (error) {
       console.error('Error al guardar usuario:', error);
-      alert('Hubo un error al guardar en la base de datos.');
+      avisar('Hubo un error al guardar en la base de datos.', 'error');
     }
   };
 

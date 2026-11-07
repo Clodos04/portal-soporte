@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
+import { useAvisos } from '../components/Avisos';
 import { Pencil, Trash2 } from 'lucide-react';
 
 function AdminCategoriasView({ categorias = [], setCategorias, user, onVerSubcategorias }) {
+  const { confirmar } = useAvisos();
   const [modo, setModo] = useState('lista'); // 'lista', 'form'
   const [categoriaActual, setCategoriaActual] = useState(null);
   
@@ -60,8 +62,8 @@ function AdminCategoriasView({ categorias = [], setCategorias, user, onVerSubcat
     setModo('lista');
   };
 
-  const eliminarCategoria = (id) => {
-    if (window.confirm('¿Estás seguro de eliminar esta categoría?')) {
+  const eliminarCategoria = async (id) => {
+    if (await confirmar('¿Estás seguro de eliminar esta categoría?')) {
       setCategorias(categorias.filter(c => c.id !== id));
     }
   };

@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
+import { useAvisos } from './Avisos';
 
 function EditarSolicitudModal({ ticket = {}, user, usuarios = [], grupos = [], usuariosPorGrupo = {}, categorias = [], onClose, onActualizar, onAbrirChat }) {
+  const { avisar } = useAvisos();
   const esCentinela = ticket.tipo_solicitud === 'CENTINELA' || (ticket.categoria || '').toUpperCase().includes('CENTINELA') || (ticket.asunto || '').toUpperCase().includes('CENTINELA');
 
   const listaGrupos = Array.isArray(grupos) ? grupos : [];
@@ -172,7 +174,7 @@ function EditarSolicitudModal({ ticket = {}, user, usuarios = [], grupos = [], u
       onClose();
     } catch (error) {
       console.error('Error al guardar:', error);
-      alert('No se pudo guardar el cambio en la base de datos.');
+      avisar('No se pudo guardar el cambio en la base de datos.', 'error');
     } finally {
       setCargando(false);
     }

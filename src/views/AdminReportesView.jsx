@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
+import { useAvisos } from '../components/Avisos';
 import { exportarCSV } from '../utils/exportar';
 
 export default function AdminReportesView({ tickets = [], campanas = [], estadisticasEncuestas = [], user, onIrACentinela }) {
+  const { avisar } = useAvisos();
   const [filtroCampana, setFiltroCampana] = useState('Todas');
   const [filtroEstatus, setFiltroEstatus] = useState('Todos');
   
@@ -106,7 +108,7 @@ export default function AdminReportesView({ tickets = [], campanas = [], estadis
   ).sort();
 
   const exportarExcelSimulado = () => {
-    if (ticketsFiltrados.length === 0) { alert('No hay tickets para exportar con los filtros seleccionados.'); return; }
+    if (ticketsFiltrados.length === 0) { avisar('No hay tickets para exportar con los filtros seleccionados.', 'info'); return; }
     exportarCSV(ticketsFiltrados, [
       { titulo: 'Folio', valor: t => t.folio },
       { titulo: 'Fecha', valor: t => t.fecha },
