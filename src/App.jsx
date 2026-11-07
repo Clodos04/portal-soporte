@@ -30,6 +30,7 @@ import useDatosPortal from './hooks/useDatosPortal';
 import useAlertasSla from './hooks/useAlertasSla';
 import useAtajoBuscador from './hooks/useAtajoBuscador';
 import { construirHash, interpretarHash } from './utils/rutas';
+import { nombrePresentable } from './utils/texto';
 import { useAvisos } from './components/Avisos';
 
 function App() {
@@ -196,7 +197,7 @@ function App() {
         body: JSON.stringify({
           folio: folio,
           remitente: 'Sistema',
-          texto: `El técnico ${nombreTecnico} ha tomado tu solicitud y se encuentra en camino a tu posición.`,
+          texto: `El técnico ${nombrePresentable(nombreTecnico)} ha tomado tu solicitud y se encuentra en camino a tu posición.`,
           hora: horaActual
         })
       });

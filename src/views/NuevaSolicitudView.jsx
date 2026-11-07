@@ -198,7 +198,7 @@ function NuevaSolicitudView({ user, usuarios = [], grupos = [], usuariosPorGrupo
             onClick={() => { cargarDatosCentinela(); setIsAsistenteOpen(true); }} 
             className="bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-500 hover:to-blue-500 text-white px-4 py-2.5 rounded-xl font-medium text-xs transition-colors flex items-center gap-2 cursor-pointer"
           >
-            Abrir Asistente Guiado
+            Abrir asistente guiado
           </button>
           <button 
             type="button" 
@@ -274,7 +274,7 @@ function NuevaSolicitudView({ user, usuarios = [], grupos = [], usuariosPorGrupo
                   onClick={() => { cargarDatosCentinela(); setIsAsistenteOpen(true); }}
                   className="bg-indigo-600/20 hover:bg-indigo-600 text-indigo-300 hover:text-white px-3 py-1.5 rounded-xl text-xs font-bold transition-colors border border-indigo-500/40 flex items-center gap-1.5 shadow cursor-pointer"
                 >
-                  Abrir Asistente Guiado
+                  Abrir asistente guiado
                 </button>
               </div>
 

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Headset } from 'lucide-react';
+import { sinEmojis, nombrePresentable, nombreSiEstaEnMayusculas } from '../utils/texto';
 
 function LiveChatView({ folio, user, onFinalizarChat, onAbrirModalEdicion, ticket, onTomarTicket, senalActualizacion = 0 }) {
   const [mensajes, setMensajes] = useState([]);
@@ -28,7 +29,7 @@ function LiveChatView({ folio, user, onFinalizarChat, onAbrirModalEdicion, ticke
     audio.play().catch(err => console.log("Audio bloqueado por el navegador:", err));
 
     if ("Notification" in window && Notification.permission === "granted") {
-      new Notification(`Nuevo mensaje de ${remitente}`, { body: textoLimpio, icon: "/favicon.ico" });
+      new Notification(`Nuevo mensaje de ${remitente}`, { body: sinEmojis(textoLimpio), icon: "/favicon.svg" });
     }
   };
 
@@ -131,7 +132,7 @@ function LiveChatView({ folio, user, onFinalizarChat, onAbrirModalEdicion, ticke
           <div>
             <h2 className="text-sm font-medium text-white">Sala de Atención en Vivo - Folio #{folio || 'S/N'}</h2>
             <p className="text-xs text-slate-400">
-              {conectado ? `Conectado con Soporte Técnico (${nombreTecnico})` : 'Diagnóstico interactivo en curso / En espera de técnico...'}
+              {conectado ? `Conectado con Soporte Técnico (${nombrePresentable(nombreTecnico)})` : 'Diagnóstico interactivo en curso / En espera de técnico…'}
             </p>
           </div>
         </div>
@@ -143,7 +144,7 @@ function LiveChatView({ folio, user, onFinalizarChat, onAbrirModalEdicion, ticke
               onClick={() => onTomarTicket(ticket.folio)}
               className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-bold shadow-lg transition-colors cursor-pointer flex items-center gap-1.5"
             >
-              Tomar Ticket
+              Tomar ticket
             </button>
           )}
 
@@ -153,7 +154,7 @@ function LiveChatView({ folio, user, onFinalizarChat, onAbrirModalEdicion, ticke
               onClick={() => onAbrirModalEdicion(ticket)}
               className="px-4 py-2 bg-red-600/20 hover:bg-red-600 text-red-400 hover:text-white rounded-xl text-xs font-bold border border-red-500/30 transition-colors cursor-pointer"
             >
-              Cerrar Ticket
+              Cerrar ticket
             </button>
           )}
 
@@ -162,7 +163,7 @@ function LiveChatView({ folio, user, onFinalizarChat, onAbrirModalEdicion, ticke
             onClick={onFinalizarChat}
             className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white rounded-xl text-xs font-bold border border-slate-700 transition-colors cursor-pointer"
           >
-            Finalizar y Salir
+            Finalizar y salir
           </button>
         </div>
       </div>
@@ -178,9 +179,9 @@ function LiveChatView({ folio, user, onFinalizarChat, onAbrirModalEdicion, ticke
             <div key={idx} className={`flex flex-col ${esCliente ? 'items-end' : 'items-start'}`}>
               <div className="flex items-center gap-2 mb-1">
                 <span className="text-[11px] font-bold text-slate-400">
-                  {esSistema ? 'Asistente TI (Sistema)' : m.remitente}
+                  {esSistema ? 'Asistente TI (Sistema)' : nombreSiEstaEnMayusculas(m.remitente)}
                 </span>
-                <span className="text-[10px] text-slate-500">{m.hora}</span>
+                <span className="text-[10px] text-slate-400">{m.hora}</span>
               </div>
               <div className={`p-4 rounded-2xl max-w-2xl text-sm shadow-md whitespace-pre-line leading-relaxed ${
                 esCliente 
@@ -189,7 +190,7 @@ function LiveChatView({ folio, user, onFinalizarChat, onAbrirModalEdicion, ticke
                     ? 'bg-slate-800/95 text-indigo-200 border border-indigo-500/40 rounded-tl-none' 
                     : 'bg-slate-800 text-slate-200 border border-slate-700 rounded-tl-none'
               }`}>
-                {textoLimpio}
+                {sinEmojis(textoLimpio)}
               </div>
             </div>
           );
@@ -222,7 +223,7 @@ function LiveChatView({ folio, user, onFinalizarChat, onAbrirModalEdicion, ticke
                 onClick={() => enviarTextoAlChat(opcion)}
                 className="w-full p-3 rounded-xl bg-slate-800 hover:bg-indigo-600/30 text-slate-200 hover:text-white border border-slate-700 hover:border-indigo-500 text-left text-xs font-semibold transition-colors flex items-center justify-between group cursor-pointer shadow-sm disabled:opacity-50"
               >
-                <span>{opcion}</span>
+                <span>{sinEmojis(opcion)}</span>
                 <span className="text-indigo-400 group-hover:translate-x-1 transition-transform font-bold ml-2 shrink-0">
                   Elegir ➔
                 </span>

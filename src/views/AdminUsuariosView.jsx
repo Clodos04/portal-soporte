@@ -140,7 +140,7 @@ function AdminUsuariosView({ grupos: gruposProp = [], usuarios = [], setUsuarios
               onClick={abrirNuevo}
               className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg font-bold text-sm shadow transition-colors flex items-center gap-2 cursor-pointer"
             >
-              Nuevo Usuario
+              Nuevo usuario
             </button>
           </div>
 
@@ -202,7 +202,7 @@ function AdminUsuariosView({ grupos: gruposProp = [], usuarios = [], setUsuarios
     <div className="animate-fade-in max-w-3xl mx-auto bg-slate-800 rounded-xl shadow-2xl border border-slate-700 text-slate-200 overflow-hidden">
       <div className="bg-slate-700 py-4 px-6 text-center border-b border-slate-600">
         <h2 className="text-xl font-semibold tracking-tight text-white tracking-tight">
-          {!usuarioActual ? 'Registrar Nuevo Usuario' : 'Editar Usuario'}
+          {!usuarioActual ? 'Registrar nuevo usuario' : 'Editar usuario'}
         </h2>
       </div>
 
@@ -275,7 +275,7 @@ function AdminUsuariosView({ grupos: gruposProp = [], usuarios = [], setUsuarios
             Cancelar
           </button>
           <button type="submit" className="bg-blue-600 hover:bg-blue-500 text-white px-8 py-2 rounded-lg shadow-lg font-bold transition-colors text-sm cursor-pointer">
-            Guardar Usuario
+            Guardar usuario
           </button>
         </div>
       </form>

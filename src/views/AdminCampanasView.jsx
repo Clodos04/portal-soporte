@@ -65,7 +65,7 @@ function AdminCampanasView({ campanas = [], setCampanas }) {
             type="submit"
             className="bg-indigo-600 hover:bg-indigo-500 text-white px-6 py-2.5 rounded-lg font-bold text-sm transition-colors"
           >
-            Agregar Campaña
+            Agregar campaña
           </button>
         </form>
 
