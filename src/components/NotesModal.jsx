@@ -36,11 +36,11 @@ function NotesModal({ folio, ticket, onClose, onSaveNote }) {
             )}
           </div>
           <div>
-            <textarea 
+            <textarea aria-label="Texto de la nota" 
               value={nuevaNotaTexto} 
               onChange={(e) => setNuevaNotaTexto(e.target.value)} 
               className="w-full h-24 px-4 py-3 rounded-lg bg-slate-700 border border-slate-600 text-white placeholder-slate-400 outline-none resize-none" 
-              placeholder="Escribe tu nota aquí..." 
+              placeholder="Escribe tu nota aquí…" 
             />
           </div>
         </div>

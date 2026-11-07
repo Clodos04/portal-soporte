@@ -163,7 +163,7 @@ export default function AdminReportesView({ tickets = [], campanas = [], estadis
             </button>
           )}
 
-          <select 
+          <select aria-label="Filtrar por campaña" 
             value={filtroCampana} 
             onChange={(e) => setFiltroCampana(e.target.value)}
             className="bg-slate-900 border border-slate-700 text-slate-200 text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-blue-500"
@@ -174,7 +174,7 @@ export default function AdminReportesView({ tickets = [], campanas = [], estadis
             ))}
           </select>
 
-          <select 
+          <select aria-label="Filtrar por estatus" 
             value={filtroEstatus} 
             onChange={(e) => setFiltroEstatus(e.target.value)}
             className="bg-slate-900 border border-slate-700 text-slate-200 text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-blue-500"
@@ -376,9 +376,9 @@ export default function AdminReportesView({ tickets = [], campanas = [], estadis
           </div>
 
           <div className="flex items-center gap-2 w-full md:w-auto">
-            <input 
+            <input aria-label="Escribir el nombre de un nodo" 
               type="text"
-              placeholder="Escribe nodo (ej. B-02)..."
+              placeholder="Escribe nodo (ej. B-02)…"
               value={busquedaNodoTexto}
               onChange={(e) => {
                 setBusquedaNodoTexto(e.target.value);
@@ -386,7 +386,7 @@ export default function AdminReportesView({ tickets = [], campanas = [], estadis
               }}
               className="bg-slate-900 border border-slate-700 text-slate-200 text-sm rounded-xl px-3 py-2 outline-none focus:border-indigo-500 font-mono w-full md:w-48"
             />
-            <select
+            <select aria-label="Seleccionar un nodo"
               value={nodoSeleccionadoHistorial}
               onChange={(e) => {
                 setNodoSeleccionadoHistorial(e.target.value);

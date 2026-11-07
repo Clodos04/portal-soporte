@@ -212,7 +212,7 @@ function AdminCategoriasView({ categorias = [], setCategorias, user, onVerSubcat
                   key={hrs}
                   type="button"
                   onClick={() => setFormSla(hrs)}
-                  className={`px-2.5 py-1 rounded text-xs font-bold transition-all cursor-pointer border ${
+                  className={`px-2.5 py-1 rounded text-xs font-bold transition-colors cursor-pointer border ${
                     Number(formSla) === hrs 
                       ? 'bg-blue-600 text-white border-blue-500 shadow' 
                       : 'bg-slate-800 text-slate-400 hover:text-white border-slate-700'

@@ -164,7 +164,7 @@ function CentinelaDetallesView({ tickets = [], onVolver, onEditarTicket }) {
                             {onEditarTicket && (
                               <button
                                 onClick={() => onEditarTicket(rep)}
-                                className="bg-indigo-600/20 hover:bg-indigo-600 text-indigo-300 hover:text-white px-3 py-1 rounded-lg text-xs font-bold transition-all border border-indigo-500/40 cursor-pointer"
+                                className="bg-indigo-600/20 hover:bg-indigo-600 text-indigo-300 hover:text-white px-3 py-1 rounded-lg text-xs font-bold transition-colors border border-indigo-500/40 cursor-pointer"
                               >
                                 Gestionar
                               </button>

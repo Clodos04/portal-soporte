@@ -158,3 +158,36 @@ summary:focus-visible {
     scroll-behavior: auto !important;
   }
 }
+
+/* =========================================================
+   AJUSTES DE REVISIÓN (guías de interfaz web)
+   ========================================================= */
+/* Foco visible también en campos de texto (varios usan outline-none sin reemplazo) */
+input:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid var(--color-indigo-400);
+  outline-offset: 1px;
+}
+
+/* Táctil: sin retraso de doble toque y sin parpadeo gris al tocar */
+button, a, select, input, textarea, [role="button"] {
+  touch-action: manipulation;
+}
+html {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Las áreas con scroll propio (modales, listas) no arrastran el scroll de la página */
+.overflow-y-auto, .overflow-auto {
+  overscroll-behavior: contain;
+}
+
+/* Números alineados en tablas y tarjetas de métricas */
+table, [class*="text-4xl"], [class*="text-5xl"], [class*="text-3xl"] {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Títulos equilibrados (evita palabras sueltas en la última línea) */
+h1, h2, h3 {
+  text-wrap: balance;
+}
