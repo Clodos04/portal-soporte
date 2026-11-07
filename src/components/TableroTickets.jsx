@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { nombrePresentable } from '../utils/texto';
 import { calcularSLA, formatearDuracion } from '../utils/sla';
 import { tipoEstatus } from './EtiquetaEstatus';
 
@@ -93,11 +94,11 @@ function TableroTickets({ tickets, categorias, puedeMover, onAbrir, onMover }) {
                     </div>
                     <p className="text-sm text-white mt-1.5 line-clamp-2">{t.asunto || t.subcategoria || 'Sin asunto'}</p>
                     <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-2 text-xs text-slate-400">
-                      <span>{t.creador || 'Sin solicitante'}</span>
+                      <span>{nombrePresentable(t.creador) || 'Sin solicitante'}</span>
                       {t.equipo && t.equipo !== 'Ninguno' && <span className="font-mono">{t.equipo}</span>}
                     </div>
                     <p className="text-xs mt-2 text-slate-500">
-                      Técnico: <span className="text-slate-300">{t.tecnico || 'Sin asignar'}</span>
+                      Técnico: <span className="text-slate-300">{nombrePresentable(t.tecnico) || 'Sin asignar'}</span>
                     </p>
                   </article>
                 );

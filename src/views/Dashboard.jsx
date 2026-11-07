@@ -1,4 +1,5 @@
 import React, { useState, useEffect, lazy, Suspense } from 'react';
+import { nombrePresentable } from '../utils/texto';
 import { EstadoVacio, Esqueleto } from '../components/Estados';
 import EtiquetaEstatus from '../components/EtiquetaEstatus';
 import { Plus, CheckCircle2, AlertOctagon, Clock } from 'lucide-react';
@@ -76,7 +77,7 @@ function Dashboard({ user, tickets = [], categorias = [], onIrASolicitudes, grup
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/20 border border-indigo-500/40 text-indigo-300 text-xs font-medium">
               Centro de Asistencia Inteligente
             </div>
-            <h1 className="text-2xl font-semibold text-white tracking-tight">¡Hola, {(user?.name || 'Cliente').toLowerCase().replace(/(^|\s)\S/g, (l) => l.toUpperCase())}! </h1>
+            <h1 className="text-2xl font-semibold text-white tracking-tight">¡Hola, {nombrePresentable(user?.name) || 'Cliente'}! </h1>
             <p className="text-slate-300 text-sm max-w-xl">Utiliza nuestro asistente guiado para reportar tus incidencias rápidamente y recibir atención especializada en tiempo real.</p>
           </div>
           <div className="relative z-10 w-full md:w-auto">
@@ -333,7 +334,7 @@ function Dashboard({ user, tickets = [], categorias = [], onIrASolicitudes, grup
                     <span className="text-[10px] text-slate-400 font-normal">{t.fecha}</span>
                   </div>
                   <p className="font-bold text-white text-sm line-clamp-1">{t.asunto || t.subcategoria}</p>
-                  <p className="text-xs text-slate-400 mt-0.5">{t.creador || 'Cliente'} | {t.equipo || 'Nodo General'}</p>
+                  <p className="text-xs text-slate-400 mt-0.5">{nombrePresentable(t.creador) || 'Cliente'} | {t.equipo || 'Nodo General'}</p>
                 </div>
                 <div className="flex items-center gap-2 pt-2 border-t border-slate-800">
                   <button
