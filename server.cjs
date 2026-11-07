@@ -341,9 +341,27 @@ const rutasAdminEscritura = [
 app.use((req, res, next) => {
   const esApi = req.path.startsWith('/api/') || req.path.startsWith('/CTI/api/') ||
     /^\/(tickets|usuarios|grupos|categorias|subcategorias|elementos|campanas|centinela|chat|encuestas|kpis|buzon)(\/|$)/.test(req.path);
-  if (!esApi || req.path === '/api/login' || req.path === '/login' || req.path === '/api/logout' || req.path === '/logout' || req.path === '/api/me' || req.path === '/me') return next();
+  if (!esApi || req.path === '/api/login' || req.path === '/login' || req.path === '/api/logout' || req.path === '/logout' || req.path === '/api/me' || req.path === '/me' || req.path === '/api/health') return next();
   const requiereAdmin = rutasAdminEscritura.some(r => r.metodo === req.method && r.ruta.test(req.path));
   return (requiereAdmin ? requireAdmin : requireAuth)(req, res, next);
+});
+
+// Estado de salud para monitoreo (UptimeRobot, Uptime Kuma, Easypanel…). Sin sesión y sin datos sensibles:
+// solo dice si el portal y sus bases de datos responden. Devuelve 503 si la BD principal falla.
+const limitadorSalud = rateLimit({ windowMs: 60 * 1000, limit: 60, standardHeaders: true, legacyHeaders: false });
+const probarBD = (pool) => new Promise((resolve) => {
+  const limite = setTimeout(() => resolve(false), 3000);
+  pool.query('SELECT 1', (err) => { clearTimeout(limite); resolve(!err); });
+});
+app.get('/api/health', limitadorSalud, async (req, res) => {
+  const [principal, centinela] = await Promise.all([probarBD(db), probarBD(dbCentinela)]);
+  const estado = principal ? (centinela ? 'ok' : 'degradado') : 'caido';
+  res.status(principal ? 200 : 503).json({
+    estado,
+    baseDatos: principal ? 'ok' : 'error',
+    centinela: centinela ? 'ok' : 'error',
+    tiempoActivoSegundos: Math.round(process.uptime())
+  });
 });
 
 // Sesión actual (permite restaurar la sesión al recargar la página)

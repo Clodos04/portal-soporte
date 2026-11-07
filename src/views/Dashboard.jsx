@@ -4,7 +4,17 @@ import { EstadoVacio, Esqueleto } from '../components/Estados';
 import EtiquetaEstatus from '../components/EtiquetaEstatus';
 import { Plus, CheckCircle2, AlertOctagon, Clock } from 'lucide-react';
 import { calcularSLA, esTicketCerrado } from '../utils/sla';
+import useContarHasta from '../hooks/useContarHasta';
+import { ticketsPorDia, cumplimientoSlaSemanal } from '../utils/metricas';
 const GraficaGrupos = lazy(() => import('../components/GraficaGrupos'));
+const Sparkline = lazy(() => import('../components/analitica/Sparkline'));
+const PanelAnalitica = lazy(() => import('../components/analitica/PanelAnalitica'));
+
+// Cifra que "cuenta" hasta su valor al cargar (respeta "reducir movimiento")
+function Numero({ valor, sufijo = '' }) {
+  const mostrado = useContarHasta(valor);
+  return <>{mostrado}{sufijo}</>;
+}
 
 function Dashboard({ user, tickets = [], categorias = [], onIrASolicitudes, grupos = [], onIrANuevaSolicitud, onIrAEncuesta, onIrABuzon, estadisticasEncuestas = [], onTomarTicket, onAbrirChat }) {
   const safeTickets = Array.isArray(tickets) ? tickets : [];
@@ -220,6 +230,9 @@ function Dashboard({ user, tickets = [], categorias = [], onIrASolicitudes, grup
     !(t.grupo || '').toUpperCase().includes('CENTINELA')
   );
 
+  const tendenciaCreados = ticketsPorDia(safeTickets, 7);
+  const tendenciaSla = cumplimientoSlaSemanal(safeTickets, categorias, 6);
+
   // SLA real: cerrados dentro de su tiempo / (cerrados + abiertos ya vencidos)
   const estadosSla = safeTickets.map(t => calcularSLA(t, categorias));
   const slaVencidos = estadosSla.filter(e => e.nivel === 'vencido').length;
@@ -289,25 +302,33 @@ function Dashboard({ user, tickets = [], categorias = [], onIrASolicitudes, grup
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-6">
         <div className="bg-slate-800 rounded-2xl shadow-lg p-5 border border-slate-700 flex flex-col justify-between">
           <h3 className="text-xs font-medium text-slate-400 mb-4 text-center">Solicitudes Abiertas</h3>
-          <div className="flex justify-center items-center mb-4 px-2"><span className="text-4xl sm:text-5xl font-semibold text-white">{totalAbiertas}</span></div>
+          <div className="flex justify-center items-center mb-4 px-2"><span className="text-4xl sm:text-5xl font-semibold text-white"><Numero valor={totalAbiertas} /></span></div>
           <div className="w-full bg-slate-700 rounded-full h-2"><div className="bg-indigo-500 h-2 rounded-full" style={{ width: `${Math.min(totalAbiertas * 10, 100)}%` }}></div></div>
         </div>
 
         <div className="bg-slate-800 rounded-2xl shadow-lg p-5 border border-slate-700 flex flex-col justify-between">
           <h3 className="text-xs font-medium text-slate-400 mb-4 text-center">En Proceso</h3>
-          <div className="flex justify-center items-center mb-4 px-2"><span className="text-4xl sm:text-5xl font-semibold text-white">{totalEnProceso}</span></div>
+          <div className="flex justify-center items-center mb-4 px-2"><span className="text-4xl sm:text-5xl font-semibold text-white"><Numero valor={totalEnProceso} /></span></div>
           <div className="w-full bg-slate-700 rounded-full h-2"><div className="bg-indigo-500 h-2 rounded-full" style={{ width: `${Math.min(totalEnProceso * 10, 100)}%` }}></div></div>
         </div>
 
         <div className="bg-slate-800 rounded-2xl shadow-lg p-5 border border-slate-700 flex flex-col justify-between">
           <h3 className="text-xs font-medium text-slate-400 mb-4 text-center">Tickets Hoy ({fechaHoyMX})</h3>
-          <div className="flex justify-center items-center mb-4 px-2"><span className="text-4xl sm:text-5xl font-semibold text-white">{ticketsDeHoy.length}</span></div>
+          <div className="flex justify-center items-center mb-4 px-2"><span className="text-4xl sm:text-5xl font-semibold text-white"><Numero valor={ticketsDeHoy.length} /></span></div>
+          <div className="-mt-2 mb-2">
+            <Suspense fallback={<div className="h-9" />}><Sparkline datos={tendenciaCreados} clave="creados" /></Suspense>
+            <p className="text-[10px] text-slate-500 text-center mt-0.5">creados · últimos 7 días</p>
+          </div>
           <div className="w-full bg-slate-700 rounded-full h-2"><div className="bg-indigo-500 h-2 rounded-full" style={{ width: `${Math.min(ticketsDeHoy.length * 10, 100)}%` }}></div></div>
         </div>
 
         <div className="bg-slate-800 rounded-2xl shadow-lg p-5 border border-slate-700 flex flex-col justify-between">
           <h3 className="text-xs font-medium text-slate-400 mb-4 text-center">Cumplimiento de SLA</h3>
-          <div className="flex justify-center items-center mb-4 px-2"><span className="text-4xl sm:text-5xl font-semibold text-white">{porcentajeSla === null ? '—' : `${porcentajeSla}%`}</span></div>
+          <div className="flex justify-center items-center mb-4 px-2"><span className="text-4xl sm:text-5xl font-semibold text-white">{porcentajeSla === null ? '—' : <Numero valor={porcentajeSla} sufijo="%" />}</span></div>
+          <div className="-mt-2 mb-2">
+            <Suspense fallback={<div className="h-9" />}><Sparkline datos={tendenciaSla} clave="cumplimiento" color="#34d399" /></Suspense>
+            <p className="text-[10px] text-slate-500 text-center mt-0.5">por semana · últimas 6</p>
+          </div>
           <div className="w-full bg-slate-700 rounded-full h-2"><div className="bg-indigo-600 h-2 rounded-full" style={{ width: `${porcentajeSla ?? 0}%` }}></div></div>
         </div>
       </div>
@@ -377,7 +398,7 @@ function Dashboard({ user, tickets = [], categorias = [], onIrASolicitudes, grup
 
           <div className="h-80 w-full">
             <Suspense fallback={<Esqueleto className="h-full w-full" />}>
-              <GraficaGrupos datosGrupos={datosGrupos} />
+              <GraficaGrupos datosGrupos={datosGrupos} onSeleccionar={(grupo) => onIrASolicitudes && onIrASolicitudes('todos', grupo)} />
             </Suspense>
           </div>
         </div>
@@ -407,6 +428,14 @@ function Dashboard({ user, tickets = [], categorias = [], onIrASolicitudes, grup
           </div>
         </div>
       </div>
+
+      <Suspense fallback={<div className="grid grid-cols-1 xl:grid-cols-3 gap-4"><Esqueleto className="h-72 xl:col-span-2" /><Esqueleto className="h-72" /></div>}>
+        <PanelAnalitica
+          tickets={safeTickets}
+          categorias={categorias}
+          onFiltrar={(filtro, busqueda) => onIrASolicitudes && onIrASolicitudes(filtro, busqueda)}
+        />
+      </Suspense>
     </div>
   );
 }

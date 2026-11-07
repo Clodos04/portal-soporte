@@ -5,6 +5,7 @@ import EtiquetaEstatus from '../components/EtiquetaEstatus';
 import { useAvisos } from '../components/Avisos';
 import { Plus, Search, StickyNote, Inbox, List, Columns3 } from 'lucide-react';
 import TableroTickets from '../components/TableroTickets';
+import VistasGuardadas from '../components/VistasGuardadas';
 import { calcularSLA as calcularEstadoSLA, formatearDuracion } from '../utils/sla';
 import { exportarCSV } from '../utils/exportar';
 
@@ -21,14 +22,17 @@ function SolicitudesView({
   onAbrirChat,
   onIrAEncuestaSpecific,
   filtroInicial,
+  foliosNuevos,
   onCambiarEstatus,
   onFiltroConsumido,
   estadisticasEncuestas = [] 
 }) {
   const { avisar } = useAvisos();
-  const [busqueda, setBusqueda] = useState('');
+  // El panel de inicio puede mandar un filtro (texto) o un filtro con búsqueda ({ filtro, busqueda })
+  const inicial = typeof filtroInicial === 'object' && filtroInicial ? filtroInicial : { filtro: filtroInicial, busqueda: '' };
+  const [busqueda, setBusqueda] = useState(inicial.busqueda || '');
   const [vista, setVista] = useState('lista');
-  const [filtroEstatus, setFiltroEstatus] = useState(filtroInicial || 'activos');
+  const [filtroEstatus, setFiltroEstatus] = useState(inicial.filtro || 'activos');
   const [, setTick] = useState(0);
 
   // El filtro que llegó desde el panel de inicio se usa una sola vez
@@ -105,6 +109,7 @@ function SolicitudesView({
       (t.equipo && t.equipo.toLowerCase().includes(query)) ||
       (t.campana && t.campana.toLowerCase().includes(query)) ||
       (t.categoria && t.categoria.toLowerCase().includes(query)) ||
+      (t.grupo && t.grupo.toLowerCase().includes(query)) ||
       (t.subcategoria && t.subcategoria.toLowerCase().includes(query)) ||
       (t.tecnico && t.tecnico.toLowerCase().includes(query)) ||
       (t.asignado && t.asignado.toLowerCase().includes(query))
@@ -119,6 +124,7 @@ function SolicitudesView({
     if (filtroEstatus === 'cerrados' && !esCerrado) return false;
     if (filtroEstatus === 'sin_asignar' && (esCerrado || !estaSinAsignar(t))) return false;
     if (filtroEstatus === 'mios' && (esCerrado || !esMiTicket(t))) return false;
+    // 'todos' no excluye nada: útil cuando se llega desde una gráfica
     if (filtroEstatus === 'vencidos' && nivelSLA(t) !== 'vencido') return false;
     if (filtroEstatus === 'por_vencer' && nivelSLA(t) !== 'riesgo') return false;
 
@@ -204,6 +210,16 @@ function SolicitudesView({
         <div className="flex flex-col lg:flex-row justify-between items-stretch lg:items-center gap-4 border-b border-slate-700 pb-4">
           <div className={`flex flex-wrap items-center gap-2 ${vista === 'tablero' ? 'invisible hidden lg:flex lg:invisible' : ''}`}>
             <button 
+              onClick={() => setFiltroEstatus('todos')}
+              className={`px-3.5 py-2 rounded-lg font-medium text-xs transition-colors cursor-pointer flex items-center gap-2 ${filtroEstatus === 'todos' ? 'bg-indigo-600 text-white' : 'bg-slate-900/60 text-slate-400 hover:text-white border border-slate-700'}`}
+            >
+              <span>Todos</span>
+              <span className={`px-1.5 py-0.5 rounded-full text-[10px] ${filtroEstatus === 'todos' ? 'bg-black/20 text-white' : 'bg-slate-800 text-slate-300'}`}>
+                {ticketsBase.length}
+              </span>
+            </button>
+
+            <button 
               onClick={() => setFiltroEstatus('activos')}
               className={`px-3.5 py-2 rounded-lg font-bold text-xs transition-colors cursor-pointer flex items-center gap-2 ${filtroEstatus === 'activos' ? 'bg-indigo-600 text-white' : 'bg-slate-900/60 text-slate-400 hover:text-white border border-slate-700'}`}
             >
@@ -272,6 +288,14 @@ function SolicitudesView({
             </button>
           </div>
 
+          <div className="lg:ml-auto lg:mr-3">
+            <VistasGuardadas
+              usuario={user?.username}
+              actual={{ filtroEstatus, busqueda, vista }}
+              onAplicar={(v) => { setFiltroEstatus(v.filtroEstatus || 'activos'); setBusqueda(v.busqueda || ''); setVista(v.vista || 'lista'); }}
+            />
+          </div>
+
           <div className="relative w-full lg:w-80">
             <Search size={15} strokeWidth={1.75} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none" />
                         <input 
@@ -307,6 +331,7 @@ function SolicitudesView({
             puedeMover={!esCliente && !!onCambiarEstatus}
             onAbrir={onEditarTicket}
             onMover={onCambiarEstatus}
+            foliosNuevos={foliosNuevos}
           />
         )}
 
@@ -349,7 +374,7 @@ function SolicitudesView({
                   const infoSLA = calcularSLA(ticket);
 
                   return (
-                    <tr key={ticket.folio} className="hover:bg-slate-700/50 transition-colors">
+                    <tr key={ticket.folio} className={`hover:bg-slate-700/50 transition-colors ${foliosNuevos && foliosNuevos.has(String(ticket.folio)) ? 'animate-resaltar' : ''}`}>
                       <td className="px-4 py-3 font-bold text-white">#{ticket.folio}</td>
 
                       <td className="px-4 py-3 text-center">
