@@ -45,7 +45,7 @@ function EncuestaView({ tickets, user, ticketEspecifico, onRegresar, onGuardarEn
   return (
     <div className="animate-fade-in max-w-4xl mx-auto bg-slate-800 rounded-xl shadow-2xl border border-slate-700 text-slate-200 p-8 my-6">
       <div className="text-center mb-8 border-b border-slate-700 pb-6">
-        <h1 className="text-3xl font-light text-white uppercase tracking-wider">Encuesta TI</h1>
+        <h1 className="text-2xl font-semibold text-white tracking-tight">Encuesta TI</h1>
         <p className="text-sm text-slate-400 mt-2 max-w-2xl mx-auto">
           Evalúa la atención brindada por <span className="text-indigo-300 font-bold">{tecnicoNombre}</span> 
           {ticketActivo && <span className="text-slate-500 block text-xs mt-1">Ticket Folio: {ticketActivo.folio}</span>}
@@ -119,7 +119,7 @@ function EncuestaView({ tickets, user, ticketEspecifico, onRegresar, onGuardarEn
 
           <div className="flex justify-between items-center pt-6 border-t border-slate-700">
             <button type="button" onClick={onRegresar} className="bg-blue-600 hover:bg-blue-500 text-white font-bold px-6 py-2.5 rounded-lg shadow transition-colors text-sm">Regresar</button>
-            <button type="submit" className="bg-green-600 hover:bg-green-500 text-white font-bold px-8 py-2.5 rounded-lg shadow-lg transition-colors text-sm">Guardar</button>
+            <button type="submit" className="bg-indigo-600 hover:bg-indigo-500 text-white font-bold px-8 py-2.5 rounded-lg shadow-lg transition-colors text-sm">Guardar</button>
           </div>
         </form>
       )}

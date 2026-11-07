@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Pencil, Trash2 } from 'lucide-react';
 
 function AdminCategoriasView({ categorias = [], setCategorias, user, onVerSubcategorias }) {
   const [modo, setModo] = useState('lista'); // 'lista', 'form'
@@ -70,21 +71,21 @@ function AdminCategoriasView({ categorias = [], setCategorias, user, onVerSubcat
       <div className="animate-fade-in max-w-7xl mx-auto space-y-6 text-slate-200">
         <div className="bg-slate-800 p-6 rounded-xl border border-slate-700 shadow-lg flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div>
-            <h1 className="text-3xl font-light text-white tracking-wide uppercase">Administración de Categorías</h1>
+            <h1 className="text-2xl font-semibold text-white tracking-tight">Administración de Categorías</h1>
             <p className="text-slate-400 text-sm mt-1">Configuración de catálogo y tiempos máximos de resolución (SLA)</p>
           </div>
           <button 
             onClick={abrirNueva}
             className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg font-bold text-sm shadow transition-colors flex items-center gap-2 cursor-pointer"
           >
-            📄 Nueva Categoría
+            Nueva Categoría
           </button>
         </div>
 
         <div className="bg-slate-800 rounded-xl shadow-lg border border-slate-700 p-6 space-y-4">
           <div className="overflow-x-auto border border-slate-700 rounded-lg">
             <table className="w-full text-left text-sm text-slate-300">
-              <thead className="bg-slate-700 text-slate-200 uppercase text-xs">
+              <thead className="bg-slate-700 text-slate-200 text-xs">
                 <tr>
                   <th className="px-4 py-3">ID</th>
                   <th className="px-4 py-3">Categoría</th>
@@ -124,7 +125,7 @@ function AdminCategoriasView({ categorias = [], setCategorias, user, onVerSubcat
                         </td>
                         <td className="px-4 py-3">
                           <span className={`px-2.5 py-1 rounded-md text-xs font-bold border inline-flex items-center gap-1.5 ${colorSla}`}>
-                            ⏱️ {slaHrs} {slaHrs === 1 ? 'hora' : 'horas'}
+                            {slaHrs} {slaHrs === 1 ? 'hora' : 'horas'}
                           </span>
                         </td>
                         <td className="px-4 py-3">
@@ -136,11 +137,11 @@ function AdminCategoriasView({ categorias = [], setCategorias, user, onVerSubcat
                         <td className="px-4 py-3 text-slate-300">{cat.usuario || 'SISTEMA'}</td>
                         <td className="px-4 py-3 text-center flex justify-center gap-2">
                           <button onClick={() => abrirEdicion(cat)} className="p-1.5 bg-blue-600/20 text-blue-400 hover:bg-blue-600 hover:text-white rounded transition-colors cursor-pointer" title="Editar Categoría y SLA">
-                            ✏️
-                          </button>
+<Pencil size={15} strokeWidth={1.75} />
+</button>
                           <button onClick={() => eliminarCategoria(cat.id)} className="p-1.5 bg-red-600/20 text-red-400 hover:bg-red-600 hover:text-white rounded transition-colors cursor-pointer" title="Eliminar">
-                            🗑️
-                          </button>
+<Trash2 size={15} strokeWidth={1.75} />
+</button>
                         </td>
                       </tr>
                     );
@@ -157,7 +158,7 @@ function AdminCategoriasView({ categorias = [], setCategorias, user, onVerSubcat
   return (
     <div className="animate-fade-in max-w-2xl mx-auto bg-slate-800 rounded-xl shadow-2xl border border-slate-700 text-slate-200 overflow-hidden">
       <div className="bg-slate-700 py-4 px-6 text-center border-b border-slate-600">
-        <h2 className="text-xl font-bold tracking-tight text-white uppercase">
+        <h2 className="text-xl font-semibold tracking-tight text-white tracking-tight">
           {!categoriaActual ? 'Registrar Nueva Categoría' : 'Editar Categoría'}
         </h2>
       </div>
@@ -172,7 +173,7 @@ function AdminCategoriasView({ categorias = [], setCategorias, user, onVerSubcat
               value={formNombre} 
               onChange={(e) => setFormNombre(e.target.value)} 
               placeholder="Ej. DISPOSITIVOS"
-              className="w-full px-4 py.5 rounded bg-slate-900 border border-slate-700 text-white outline-none uppercase text-sm focus:border-blue-500 transition-colors" 
+              className="w-full px-4 py.5 rounded bg-slate-900 border border-slate-700 text-white outline-none text-sm focus:border-blue-500 transition-colors" 
             />
           </div>
 
@@ -181,7 +182,7 @@ function AdminCategoriasView({ categorias = [], setCategorias, user, onVerSubcat
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
               <div>
                 <label className="block text-sm font-bold text-slate-200">
-                  ⏱️ Tiempo Máximo de Resolución (SLA):
+                  Tiempo Máximo de Resolución (SLA):
                 </label>
                 <p className="text-xs text-slate-400">
                   Si un ticket supera estas horas sin cerrarse, el semáforo marcará <strong className="text-red-400">Vencido</strong>.

@@ -137,8 +137,8 @@ function SupervisorPanel({ user, onVerDetallesCentinela }) {
     <div className="animate-fade-in max-w-7xl mx-auto space-y-6 text-slate-200 pb-12">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-slate-800 p-6 rounded-2xl border border-slate-700 shadow-xl">
         <div>
-          <h1 className="text-3xl font-bold text-white tracking-wide uppercase flex items-center gap-3">
-            📊 Panel de Control y Supervisión
+          <h1 className="text-2xl font-semibold text-white flex items-center gap-3 tracking-tight">
+            Panel de Control y Supervisión
           </h1>
           <p className="text-slate-400 text-sm mt-1">
             Monitoreo en tiempo real de KPIs, SLAs, cargas de trabajo y satisfacción del cliente (CSAT).
@@ -153,8 +153,8 @@ function SupervisorPanel({ user, onVerDetallesCentinela }) {
       <div className="bg-gradient-to-r from-purple-950/50 to-slate-800 border border-purple-500/40 rounded-2xl p-6 shadow-xl space-y-4">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
           <div>
-            <h2 className="text-lg font-bold text-purple-300 uppercase flex items-center gap-2">
-              🛡️ Requisiciones de Compra por Periférico (5+ Centinelas)
+            <h2 className="text-lg font-semibold text-purple-300 flex items-center gap-2 tracking-tight">
+              Requisiciones de Compra por Periférico (5+ Centinelas)
             </h2>
             <p className="text-xs text-slate-300 mt-1">
               Control independiente por componente (Teclados, Diademas, Mouses, Monitores) con 5 o más reportes por nodo.
@@ -171,7 +171,7 @@ function SupervisorPanel({ user, onVerDetallesCentinela }) {
                 onClick={onVerDetallesCentinela}
                 className="bg-purple-600 hover:bg-purple-500 text-white px-4 py-2 rounded-xl text-xs font-extrabold shadow-lg transition-all cursor-pointer whitespace-nowrap flex items-center gap-2"
               >
-                <span>📋</span> Ver Más Detalles
+                Ver Más Detalles
               </button>
             )}
           </div>
@@ -192,7 +192,7 @@ function SupervisorPanel({ user, onVerDetallesCentinela }) {
                     </span>
                   </div>
                   <div>
-                    <span className="text-[10px] text-slate-400 block uppercase font-bold">Nodo:</span>
+                    <span className="text-[10px] text-slate-400 block font-bold">Nodo:</span>
                     <span className="text-sm font-mono font-extrabold text-white">{item.nodo}</span>
                   </div>
                 </div>
@@ -209,7 +209,7 @@ function SupervisorPanel({ user, onVerDetallesCentinela }) {
 
       <div className="bg-slate-800 p-5 rounded-xl border border-slate-700 grid grid-cols-1 md:grid-cols-3 gap-4 shadow-lg">
         <div>
-          <label className="block text-xs font-bold text-slate-300 uppercase mb-1">Filtrar por Campaña:</label>
+          <label className="block text-xs font-medium text-slate-300 mb-1">Filtrar por Campaña:</label>
           <select 
             value={filtroCampana} 
             onChange={(e) => setFiltroCampana(e.target.value)}
@@ -223,7 +223,7 @@ function SupervisorPanel({ user, onVerDetallesCentinela }) {
         </div>
 
         <div>
-          <label className="block text-xs font-bold text-slate-300 uppercase mb-1">Filtrar por Técnico / Asesor:</label>
+          <label className="block text-xs font-medium text-slate-300 mb-1">Filtrar por Técnico / Asesor:</label>
           <select 
             value={filtroTecnico} 
             onChange={(e) => setFiltroTecnico(e.target.value)}
@@ -237,7 +237,7 @@ function SupervisorPanel({ user, onVerDetallesCentinela }) {
         </div>
 
         <div>
-          <label className="block text-xs font-bold text-slate-300 uppercase mb-1">Buscar por Folio o Asunto:</label>
+          <label className="block text-xs font-medium text-slate-300 mb-1">Buscar por Folio o Asunto:</label>
           <input 
             type="text" 
             placeholder="Ej. TICKET-001 o impresora..." 
@@ -250,7 +250,7 @@ function SupervisorPanel({ user, onVerDetallesCentinela }) {
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="bg-slate-800 border border-slate-700 rounded-xl p-5 shadow-lg flex flex-col justify-between">
-          <span className="text-xs font-bold text-slate-400 uppercase">Total Tickets Filtrados</span>
+          <span className="text-xs font-medium text-slate-400">Total Tickets Filtrados</span>
           <div className="flex items-baseline justify-between mt-3">
             <span className="text-3xl font-extrabold text-white">{totalTickets}</span>
             <span className="text-xs text-indigo-400 font-semibold">{abiertosCount} abiertos</span>
@@ -258,7 +258,7 @@ function SupervisorPanel({ user, onVerDetallesCentinela }) {
         </div>
 
         <div className="bg-slate-800 border border-slate-700 rounded-xl p-5 shadow-lg flex flex-col justify-between">
-          <span className="text-xs font-bold text-slate-400 uppercase">Tiempo Promedio Resolución</span>
+          <span className="text-xs font-medium text-slate-400">Tiempo Promedio Resolución</span>
           <div className="flex items-baseline justify-between mt-3">
             <span className="text-3xl font-extrabold text-green-400 font-mono">
               {tiempoPromedioMinutos} <span className="text-sm font-normal text-slate-400">min</span>
@@ -268,7 +268,7 @@ function SupervisorPanel({ user, onVerDetallesCentinela }) {
         </div>
 
         <div className="bg-slate-800 border border-slate-700 rounded-xl p-5 shadow-lg flex flex-col justify-between">
-          <span className="text-xs font-bold text-slate-400 uppercase">Tickets Cerrados</span>
+          <span className="text-xs font-medium text-slate-400">Tickets Cerrados</span>
           <div className="flex items-baseline justify-between mt-3">
             <span className="text-3xl font-extrabold text-blue-400">{cerradosCount}</span>
             <span className="text-xs text-slate-400">{totalTickets > 0 ? Math.round((cerradosCount / totalTickets) * 100) : 0}% del total</span>
@@ -276,7 +276,7 @@ function SupervisorPanel({ user, onVerDetallesCentinela }) {
         </div>
 
         <div className="bg-slate-800 border border-slate-700 rounded-xl p-5 shadow-lg flex flex-col justify-between">
-          <span className="text-xs font-bold text-slate-400 uppercase">Satisfacción Cliente (CSAT)</span>
+          <span className="text-xs font-medium text-slate-400">Satisfacción Cliente (CSAT)</span>
           <div className="flex items-baseline justify-between mt-3">
             <span className="text-3xl font-extrabold text-yellow-400">
               {promedioCSAT} <span className="text-lg text-slate-400">/ 5.0</span>
@@ -288,15 +288,15 @@ function SupervisorPanel({ user, onVerDetallesCentinela }) {
 
       <div className="bg-slate-800 rounded-xl shadow-lg border border-slate-700 p-6 space-y-4">
         <div className="flex justify-between items-center border-b border-slate-700 pb-3">
-          <h2 className="text-lg font-bold text-white uppercase tracking-wider">
-            📋 Auditoría de Tickets y Resultados de Encuestas
+          <h2 className="text-lg font-semibold text-white tracking-tight">
+            Auditoría de Tickets y Resultados de Encuestas
           </h2>
           <span className="text-xs text-slate-400">Mostrando {ticketsFiltrados.length} registros</span>
         </div>
 
         <div className="overflow-x-auto border border-slate-700 rounded-lg">
           <table className="w-full text-left text-sm text-slate-300">
-            <thead className="bg-slate-700 text-slate-200 uppercase text-xs">
+            <thead className="bg-slate-700 text-slate-200 text-xs">
               <tr>
                 <th className="px-4 py-3">Folio</th>
                 <th className="px-4 py-3">Asunto</th>
@@ -366,11 +366,11 @@ function SupervisorPanel({ user, onVerDetallesCentinela }) {
       </div>
 
       {encuestaModal && (
-        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm flex justify-center items-center z-50 p-4">
+        <div className="fixed inset-0 bg-slate-950/80 flex justify-center items-center z-50 p-4">
           <div className="bg-slate-800 border border-slate-700 rounded-2xl shadow-2xl max-w-lg w-full overflow-hidden text-slate-200 p-6 space-y-4 animate-fade-in">
             <div className="flex justify-between items-center border-b border-slate-700 pb-3">
-              <h3 className="text-lg font-bold text-white uppercase flex items-center gap-2">
-                💬 Resultados de Encuesta - {encuestaModal.folio}
+              <h3 className="text-lg font-semibold text-white flex items-center gap-2 tracking-tight">
+                Resultados de Encuesta - {encuestaModal.folio}
               </h3>
               <button onClick={() => setEncuestaModal(null)} className="text-slate-400 hover:text-white font-bold text-lg">✕</button>
             </div>
@@ -385,7 +385,7 @@ function SupervisorPanel({ user, onVerDetallesCentinela }) {
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Comentarios o Nota del Ticket:</label>
+                <label className="block text-xs font-medium text-slate-400 mb-1">Comentarios o Nota del Ticket:</label>
                 <div className="bg-slate-900 p-4 rounded-xl border border-slate-700 text-slate-200 italic min-h-[80px]">
                   {encuestaModal.comentarios && encuestaModal.comentarios.trim() !== '' 
                     ? `"${encuestaModal.comentarios}"` 

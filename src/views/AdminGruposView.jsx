@@ -12,7 +12,7 @@ function AdminGruposView({ grupos, onAgregarGrupo, onEliminarGrupo }) {
 
   return (
     <div className="animate-fade-in max-w-4xl mx-auto space-y-6">
-      <h1 className="text-2xl font-bold text-white uppercase tracking-wide">Administración de Grupos</h1>
+      <h1 className="text-2xl font-semibold text-white tracking-tight">Administración de Grupos</h1>
       
       <form onSubmit={handleAdd} className="bg-slate-800 p-6 rounded-xl border border-slate-700 flex gap-4">
         <input 
@@ -22,14 +22,14 @@ function AdminGruposView({ grupos, onAgregarGrupo, onEliminarGrupo }) {
           placeholder="Nombre del nuevo grupo..." 
           className="flex-grow px-4 py-2.5 rounded-lg bg-slate-900 border border-slate-700 text-white outline-none focus:ring-2 focus:ring-indigo-500"
         />
-        <button type="submit" className="bg-green-600 hover:bg-green-500 text-white px-6 py-2.5 rounded-lg font-bold transition-colors">
+        <button type="submit" className="bg-indigo-600 hover:bg-indigo-500 text-white px-6 py-2.5 rounded-lg font-bold transition-colors">
           + Agregar Grupo
         </button>
       </form>
 
       <div className="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden shadow-lg">
         <table className="w-full text-left text-sm">
-          <thead className="bg-slate-700 text-slate-300 uppercase text-xs">
+          <thead className="bg-slate-700 text-slate-300 text-xs">
             <tr>
               <th className="px-6 py-4">Nombre del Grupo</th>
               <th className="px-6 py-4 text-center">Acciones</th>

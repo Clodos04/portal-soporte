@@ -127,14 +127,14 @@ function LiveChatView({ folio, user, onFinalizarChat, onAbrirModalEdicion, ticke
         <div className="flex items-center gap-3">
           <div className="relative">
             <div className="w-10 h-10 rounded-2xl bg-indigo-600/30 border border-indigo-500/40 flex items-center justify-center text-indigo-300 font-bold">
-              🎧
+              
             </div>
-            <span className={`absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-slate-900 ${conectado ? 'bg-emerald-500' : 'bg-amber-500 animate-pulse'}`}></span>
+            <span className={`absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-slate-900 ${conectado ? 'bg-emerald-500' : 'bg-amber-500'}`}></span>
           </div>
           <div>
-            <h2 className="text-sm font-bold text-white uppercase tracking-wider">Sala de Atención en Vivo - Folio #{folio || 'S/N'}</h2>
+            <h2 className="text-sm font-medium text-white">Sala de Atención en Vivo - Folio #{folio || 'S/N'}</h2>
             <p className="text-xs text-slate-400">
-              {conectado ? `🟢 Conectado con Soporte Técnico (${nombreTecnico})` : '🤖 Diagnóstico interactivo en curso / En espera de técnico...'}
+              {conectado ? `Conectado con Soporte Técnico (${nombreTecnico})` : 'Diagnóstico interactivo en curso / En espera de técnico...'}
             </p>
           </div>
         </div>
@@ -144,9 +144,9 @@ function LiveChatView({ folio, user, onFinalizarChat, onAbrirModalEdicion, ticke
             <button 
               type="button"
               onClick={() => onTomarTicket(ticket.folio)}
-              className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold shadow-lg transition-all cursor-pointer flex items-center gap-1.5 animate-pulse"
+              className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-bold shadow-lg transition-all cursor-pointer flex items-center gap-1.5"
             >
-              <span>🙋‍♂️</span> Tomar Ticket
+              Tomar Ticket
             </button>
           )}
 
@@ -181,7 +181,7 @@ function LiveChatView({ folio, user, onFinalizarChat, onAbrirModalEdicion, ticke
             <div key={idx} className={`flex flex-col ${esCliente ? 'items-end' : 'items-start'}`}>
               <div className="flex items-center gap-2 mb-1">
                 <span className="text-[11px] font-bold text-slate-400">
-                  {esSistema ? '🤖 Asistente TI (Sistema)' : m.remitente}
+                  {esSistema ? 'Asistente TI (Sistema)' : m.remitente}
                 </span>
                 <span className="text-[10px] text-slate-500">{m.hora}</span>
               </div>
@@ -203,16 +203,16 @@ function LiveChatView({ folio, user, onFinalizarChat, onAbrirModalEdicion, ticke
       {opcionesActivas.length > 0 && (
         <div className="p-4 bg-slate-900/95 border-t border-indigo-500/30 space-y-2 shrink-0 animate-fade-in">
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-indigo-400">
-              👆 Selecciona una opción para continuar:
+            <span className="text-[11px] font-bold text-indigo-400">
+              Selecciona una opción para continuar:
             </span>
             <button
               type="button"
               disabled={enviandoOpcion}
-              onClick={() => enviarTextoAlChat('🎉 ¡Ya quedó solucionado, muchas gracias!')}
+              onClick={() => enviarTextoAlChat('¡Ya quedó solucionado, muchas gracias!')}
               className="text-[11px] font-bold text-emerald-400 hover:text-emerald-300 underline cursor-pointer"
             >
-              🎉 ¿Ya se solucionó el problema? Clic aquí
+              ¿Ya se solucionó el problema? Clic aquí
             </button>
           </div>
 
@@ -247,7 +247,7 @@ function LiveChatView({ folio, user, onFinalizarChat, onAbrirModalEdicion, ticke
         <button 
           type="submit"
           disabled={enviandoOpcion}
-          className="px-6 py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs uppercase tracking-wider rounded-xl shadow-lg transition-all cursor-pointer disabled:opacity-50"
+          className="px-6 py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-medium text-xs rounded-xl shadow-lg transition-all cursor-pointer disabled:opacity-50"
         >
           Enviar ➔
         </button>

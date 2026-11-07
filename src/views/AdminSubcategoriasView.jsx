@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Pencil, Trash2 } from 'lucide-react';
 
 function AdminSubcategoriasView({ categoria, categorias, setCategorias, user, onBack }) {
   // Estado de navegación
@@ -206,7 +207,7 @@ function AdminSubcategoriasView({ categoria, categorias, setCategorias, user, on
         {/* ENCABEZADO IDÉNTICO */}
         <div className="flex justify-between items-start">
           <div>
-            <h1 className="text-3xl font-bold text-white tracking-wide uppercase">
+            <h1 className="text-2xl font-semibold text-white tracking-tight">
               SUBCATEGORÍA: <span className="font-light text-indigo-400">{subcatActiva.nombre}</span>
             </h1>
             <p className="text-slate-400 text-sm mt-1">Administración de elementos y SLA</p>
@@ -224,23 +225,23 @@ function AdminSubcategoriasView({ categoria, categorias, setCategorias, user, on
             onClick={abrirNuevoElemento}
             className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2.5 rounded-lg font-bold text-sm shadow transition-colors flex items-center gap-2 w-fit"
           >
-            📄 Nuevo Elemento
+            Nuevo Elemento
           </button>
 
           {isElementoModalOpen && (
-            <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm flex justify-center items-center z-50 p-4">
+            <div className="fixed inset-0 bg-slate-950/80 flex justify-center items-center z-50 p-4">
               <div className="bg-slate-800 border border-slate-700 rounded-2xl shadow-2xl max-w-md w-full overflow-hidden text-slate-200 p-6 space-y-4">
                 <div className="flex justify-between items-center border-b border-slate-700 pb-3">
-                  <h3 className="text-lg font-bold text-white uppercase">{elementoActual ? 'Editar Elemento' : 'Nuevo Elemento'}</h3>
+                  <h3 className="text-lg font-semibold text-white tracking-tight">{elementoActual ? 'Editar Elemento' : 'Nuevo Elemento'}</h3>
                   <button onClick={() => setIsElementoModalOpen(false)} className="text-slate-400 hover:text-white font-bold">✕</button>
                 </div>
                 <form onSubmit={guardarElemento} className="space-y-4">
                   <div>
-                    <label className="block text-xs font-bold text-slate-300 uppercase mb-1">Nombre del Elemento:</label>
-                    <input type="text" required value={nombreElemento} onChange={(e) => setNombreElemento(e.target.value)} className="w-full px-3 py-2 rounded-lg bg-slate-900 border border-slate-700 text-white text-sm outline-none focus:border-green-500 uppercase" />
+                    <label className="block text-xs font-medium text-slate-300 mb-1">Nombre del Elemento:</label>
+                    <input type="text" required value={nombreElemento} onChange={(e) => setNombreElemento(e.target.value)} className="w-full px-3 py-2 rounded-lg bg-slate-900 border border-slate-700 text-white text-sm outline-none focus:border-green-500" />
                   </div>
                   <div>
-                    <label className="block text-xs font-bold text-slate-300 uppercase mb-1">Prioridad:</label>
+                    <label className="block text-xs font-medium text-slate-300 mb-1">Prioridad:</label>
                     <select value={prioridad} onChange={(e) => setPrioridad(e.target.value)} className="w-full px-3 py-2 rounded-lg bg-slate-900 border border-slate-700 text-white text-sm outline-none focus:border-green-500">
                       <option value="BAJA">BAJA</option>
                       <option value="MEDIA">MEDIA</option>
@@ -248,7 +249,7 @@ function AdminSubcategoriasView({ categoria, categorias, setCategorias, user, on
                     </select>
                   </div>
                   <div>
-                    <label className="block text-xs font-bold text-slate-300 uppercase mb-1">Impacto:</label>
+                    <label className="block text-xs font-medium text-slate-300 mb-1">Impacto:</label>
                     <select value={impacto} onChange={(e) => setImpacto(e.target.value)} className="w-full px-3 py-2 rounded-lg bg-slate-900 border border-slate-700 text-white text-sm outline-none focus:border-green-500">
                       <option value="MENOR">MENOR</option>
                       <option value="GENERAL">GENERAL</option>
@@ -257,11 +258,11 @@ function AdminSubcategoriasView({ categoria, categorias, setCategorias, user, on
                     </select>
                   </div>
                   <div>
-                    <label className="block text-xs font-bold text-slate-300 uppercase mb-1">SLA en Minutos:</label>
+                    <label className="block text-xs font-medium text-slate-300 mb-1">SLA en Minutos:</label>
                     <input type="number" required value={sla} onChange={(e) => setSla(e.target.value)} className="w-full px-3 py-2 rounded-lg bg-slate-900 border border-slate-700 text-white text-sm outline-none focus:border-green-500" />
                   </div>
                   <div className="flex items-center gap-6 bg-slate-900/50 p-3 rounded-lg border border-slate-700">
-                    <span className="text-xs font-bold uppercase">Estatus:</span>
+                    <span className="text-xs font-medium">Estatus:</span>
                     <label className="flex items-center gap-2 cursor-pointer">
                       <input type="radio" name="elemEstatus" value="ACTIVO" checked={elemEstatus === 'ACTIVO'} onChange={() => setElemEstatus('ACTIVO')} className="accent-green-500" />
                       <span className="text-xs font-semibold text-green-400">ACTIVO</span>
@@ -282,7 +283,7 @@ function AdminSubcategoriasView({ categoria, categorias, setCategorias, user, on
 
           <div className="overflow-x-auto border border-slate-700 rounded-lg">
             <table className="w-full text-left text-sm text-slate-300">
-              <thead className="bg-slate-700 text-slate-200 uppercase text-xs">
+              <thead className="bg-slate-700 text-slate-200 text-xs">
                 <tr>
                   <th className="px-4 py-3">ID</th>
                   <th className="px-4 py-3">Categoría / Elemento</th>
@@ -305,7 +306,7 @@ function AdminSubcategoriasView({ categoria, categorias, setCategorias, user, on
                     <tr key={elem.id} className="hover:bg-slate-700/50 transition-colors">
                       <td className="px-4 py-3 font-bold">{elem.id}</td>
                       <td className="px-4 py-3 font-semibold text-white flex items-center gap-2">
-                        <span className="text-slate-400">📄</span> 
+                        
                         <span>{elem.nombre}</span>
                       </td>
                       <td className="px-4 py-3">
@@ -320,11 +321,11 @@ function AdminSubcategoriasView({ categoria, categorias, setCategorias, user, on
                       <td className="px-4 py-3 font-mono text-green-400 font-bold">{elem.sla}</td>
                       <td className="px-4 py-3 text-center flex justify-center gap-2">
                         <button onClick={() => abrirEdicionElemento(elem)} className="p-1.5 bg-blue-600/20 text-blue-400 hover:bg-blue-600 hover:text-white rounded transition-colors" title="Editar">
-                          ✏️
-                        </button>
+<Pencil size={15} strokeWidth={1.75} />
+</button>
                         <button onClick={() => eliminarElemento(elem.id)} className="p-1.5 bg-red-600/20 text-red-400 hover:bg-red-600 hover:text-white rounded transition-colors" title="Eliminar">
-                          🗑️
-                        </button>
+<Trash2 size={15} strokeWidth={1.75} />
+</button>
                       </td>
                     </tr>
                   ))
@@ -344,7 +345,7 @@ function AdminSubcategoriasView({ categoria, categorias, setCategorias, user, on
     return (
       <div className="animate-fade-in max-w-2xl mx-auto bg-slate-800 rounded-xl shadow-2xl border border-slate-700 text-slate-200 overflow-hidden">
         <div className="bg-slate-700 py-4 px-6 text-center border-b border-slate-600">
-          <h2 className="text-xl font-bold tracking-tight text-white uppercase">
+          <h2 className="text-xl font-semibold tracking-tight text-white tracking-tight">
             {!subcatActual ? 'Registrar Nueva Subcategoría' : 'Editar Subcategoría'}
           </h2>
         </div>
@@ -352,7 +353,7 @@ function AdminSubcategoriasView({ categoria, categorias, setCategorias, user, on
           <div className="space-y-4">
             <div>
               <label className="block text-sm font-bold text-slate-300 mb-2">Nombre de la Subcategoría:</label>
-              <input type="text" required value={formNombre} onChange={(e) => setFormNombre(e.target.value)} placeholder="Ej. DIADEMA" className="w-full px-4 py-2.5 rounded bg-slate-900 border border-slate-700 text-white outline-none uppercase text-sm" />
+              <input type="text" required value={formNombre} onChange={(e) => setFormNombre(e.target.value)} placeholder="Ej. DIADEMA" className="w-full px-4 py-2.5 rounded bg-slate-900 border border-slate-700 text-white outline-none text-sm" />
             </div>
             <div className="flex items-center gap-6 bg-slate-900/50 p-4 rounded-lg border border-slate-700">
               <span className="text-sm font-bold">Estatus:</span>
@@ -384,7 +385,7 @@ function AdminSubcategoriasView({ categoria, categorias, setCategorias, user, on
       {/* ENCABEZADO IDÉNTICO */}
       <div className="flex justify-between items-start">
         <div>
-          <h1 className="text-3xl font-bold text-white tracking-wide uppercase">
+          <h1 className="text-2xl font-semibold text-white tracking-tight">
             CATEGORÍA: <span className="font-light text-indigo-400">{catActual.nombre}</span>
           </h1>
           <p className="text-slate-400 text-sm mt-1">Administración de Subcategorías</p>
@@ -403,12 +404,12 @@ function AdminSubcategoriasView({ categoria, categorias, setCategorias, user, on
           onClick={abrirNuevaSubcat}
           className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2.5 rounded-lg font-bold text-sm shadow transition-colors flex items-center gap-2 w-fit"
         >
-          📄 Nueva Subcategoría
+          Nueva Subcategoría
         </button>
 
         <div className="overflow-x-auto border border-slate-700 rounded-lg">
           <table className="w-full text-left text-sm text-slate-300">
-            <thead className="bg-slate-700 text-slate-200 uppercase text-xs">
+            <thead className="bg-slate-700 text-slate-200 text-xs">
               <tr>
                 <th className="px-4 py-3">ID</th>
                 <th className="px-4 py-3">Subcategoría</th>
@@ -447,11 +448,11 @@ function AdminSubcategoriasView({ categoria, categorias, setCategorias, user, on
                     <td className="px-4 py-3 text-slate-300">{sub.usuario || 'SISTEMA'}</td>
                     <td className="px-4 py-3 text-center flex justify-center gap-2">
                       <button onClick={() => abrirEdicionSubcat(sub)} className="p-1.5 bg-blue-600/20 text-blue-400 hover:bg-blue-600 hover:text-white rounded transition-colors" title="Editar">
-                        ✏️
-                      </button>
+<Pencil size={15} strokeWidth={1.75} />
+</button>
                       <button onClick={() => eliminarSubcategoria(sub.id)} className="p-1.5 bg-red-600/20 text-red-400 hover:bg-red-600 hover:text-white rounded transition-colors" title="Eliminar">
-                        🗑️
-                      </button>
+<Trash2 size={15} strokeWidth={1.75} />
+</button>
                     </td>
                   </tr>
                 ))

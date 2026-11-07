@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Plus, Search, StickyNote } from 'lucide-react';
 import { calcularSLA as calcularEstadoSLA, formatearDuracion } from '../utils/sla';
 import { exportarCSV } from '../utils/exportar';
 
@@ -55,23 +56,23 @@ function SolicitudesView({
     const sla = calcularEstadoSLA(ticket, categorias);
     const base = { sla };
     if (sla.nivel === 'sin_fecha') {
-      return { ...base, texto: ticket.fecha || '—', color: 'bg-slate-700/50 text-slate-400 border-slate-600', icono: '📅' };
+      return { ...base, texto: ticket.fecha || '—', color: 'bg-slate-700/50 text-slate-400 border-slate-600', punto: 'bg-slate-500' };
     }
     if (sla.nivel === 'cerrado') {
       return {
         ...base,
         texto: `Resuelto (${formatearDuracion(sla.transcurridoMin)})${sla.cumplido ? ' • En SLA' : ' • Fuera de SLA'}`,
         color: 'bg-slate-800 text-slate-400 border-slate-700',
-        icono: sla.cumplido ? '✔️' : '⚠️'
+        punto: sla.cumplido ? 'bg-slate-500' : 'bg-red-400'
       };
     }
     if (sla.nivel === 'ok') {
-      return { ...base, texto: `Vence en ${formatearDuracion(sla.restanteMin)}`, color: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30', icono: '🟢' };
+      return { ...base, texto: `Vence en ${formatearDuracion(sla.restanteMin)}`, color: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30', punto: 'bg-emerald-400' };
     }
     if (sla.nivel === 'riesgo') {
-      return { ...base, texto: `Por vencer • ${formatearDuracion(sla.restanteMin)}`, color: 'bg-amber-500/10 text-amber-400 border-amber-500/30', icono: '🟡' };
+      return { ...base, texto: `Por vencer • ${formatearDuracion(sla.restanteMin)}`, color: 'bg-amber-500/10 text-amber-400 border-amber-500/30', punto: 'bg-amber-400' };
     }
-    return { ...base, texto: `Vencido hace ${formatearDuracion(-sla.restanteMin)}`, color: 'bg-red-500/15 text-red-400 border-red-500/40 animate-pulse', icono: '🔴' };
+    return { ...base, texto: `Vencido hace ${formatearDuracion(-sla.restanteMin)}`, color: 'bg-red-500/10 text-red-400 border-red-500/30', punto: 'bg-red-400' };
   };
 
   const nivelSLA = (t) => calcularEstadoSLA(t, categorias).nivel;
@@ -134,7 +135,7 @@ function SolicitudesView({
     <div className="animate-fade-in max-w-7xl mx-auto space-y-6 text-slate-200">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-slate-800 p-6 rounded-xl border border-slate-700 shadow-lg">
         <div>
-          <h1 className="text-3xl font-light text-white tracking-wide uppercase">Listado de Solicitudes</h1>
+          <h1 className="text-2xl font-semibold text-white tracking-tight">Listado de Solicitudes</h1>
           <p className="text-slate-400 text-sm mt-1">Gestión y control de tickets en tiempo real • Clodos TI Assist</p>
         </div>
 
@@ -143,23 +144,23 @@ function SolicitudesView({
             onClick={onOpenCustomizer}
             className="bg-slate-700 hover:bg-slate-600 text-slate-200 px-4 py-2 rounded-lg font-bold text-sm shadow transition-colors flex items-center gap-2 border border-slate-600 cursor-pointer"
           >
-            ⚙️ Columnas
+            Columnas
           </button>
 
           {!esCliente && (
             <button
               onClick={exportarListado}
-              className="bg-emerald-700 hover:bg-emerald-600 text-white px-4 py-2 rounded-lg font-bold text-sm shadow transition-colors flex items-center gap-2 border border-emerald-600 cursor-pointer"
+              className="bg-slate-800 hover:bg-slate-700 text-slate-200 px-4 py-2 rounded-lg font-bold text-sm shadow transition-colors flex items-center gap-2 border border-slate-700 cursor-pointer"
             >
-              📥 Exportar
+              Exportar
             </button>
           )}
           
           <button 
             onClick={onNuevaSolicitud}
-            className="bg-green-600 hover:bg-green-500 text-white px-4 py-2 rounded-lg font-bold text-sm shadow transition-colors flex items-center gap-2 cursor-pointer"
+            className="bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-lg font-bold text-sm shadow transition-colors flex items-center gap-2 cursor-pointer"
           >
-            + NUEVA SOLICITUD
+            <Plus size={16} strokeWidth={2} /> Nueva solicitud
           </button>
         </div>
       </div>
@@ -169,9 +170,9 @@ function SolicitudesView({
           <div className="flex flex-wrap items-center gap-2">
             <button 
               onClick={() => setFiltroEstatus('activos')}
-              className={`px-3.5 py-2 rounded-lg font-bold text-xs transition-all cursor-pointer flex items-center gap-2 ${filtroEstatus === 'activos' ? 'bg-green-600 text-white shadow-md' : 'bg-slate-900/60 text-slate-400 hover:text-white border border-slate-700'}`}
+              className={`px-3.5 py-2 rounded-lg font-bold text-xs transition-all cursor-pointer flex items-center gap-2 ${filtroEstatus === 'activos' ? 'bg-indigo-600 text-white' : 'bg-slate-900/60 text-slate-400 hover:text-white border border-slate-700'}`}
             >
-              <span>🔥 Abiertos / En Proceso</span>
+              <span>Abiertos / En Proceso</span>
               <span className={`px-1.5 py-0.5 rounded-full text-[10px] ${filtroEstatus === 'activos' ? 'bg-black/20 text-white' : 'bg-slate-800 text-slate-300'}`}>
                 {conteoActivos}
               </span>
@@ -181,9 +182,9 @@ function SolicitudesView({
               <>
                 <button 
                   onClick={() => setFiltroEstatus('sin_asignar')}
-                  className={`px-3.5 py-2 rounded-lg font-bold text-xs transition-all cursor-pointer flex items-center gap-2 ${filtroEstatus === 'sin_asignar' ? 'bg-amber-600 text-white shadow-md' : 'bg-slate-900/60 text-slate-400 hover:text-white border border-slate-700'}`}
+                  className={`px-3.5 py-2 rounded-lg font-bold text-xs transition-all cursor-pointer flex items-center gap-2 ${filtroEstatus === 'sin_asignar' ? 'bg-indigo-600 text-white' : 'bg-slate-900/60 text-slate-400 hover:text-white border border-slate-700'}`}
                 >
-                  <span>🚨 Sin Asignar</span>
+                  <span>Sin Asignar</span>
                   <span className={`px-1.5 py-0.5 rounded-full text-[10px] ${filtroEstatus === 'sin_asignar' ? 'bg-black/20 text-white' : 'bg-slate-800 text-amber-400'}`}>
                     {conteoSinAsignar}
                   </span>
@@ -193,7 +194,7 @@ function SolicitudesView({
                   onClick={() => setFiltroEstatus('mios')}
                   className={`px-3.5 py-2 rounded-lg font-bold text-xs transition-all cursor-pointer flex items-center gap-2 ${filtroEstatus === 'mios' ? 'bg-indigo-600 text-white shadow-md' : 'bg-slate-900/60 text-slate-400 hover:text-white border border-slate-700'}`}
                 >
-                  <span>👤 Mis Tickets</span>
+                  <span>Mis Tickets</span>
                   <span className={`px-1.5 py-0.5 rounded-full text-[10px] ${filtroEstatus === 'mios' ? 'bg-black/20 text-white' : 'bg-slate-800 text-indigo-400'}`}>
                     {conteoMios}
                   </span>
@@ -205,9 +206,9 @@ function SolicitudesView({
               <>
                 <button 
                   onClick={() => setFiltroEstatus('vencidos')}
-                  className={`px-3.5 py-2 rounded-lg font-bold text-xs transition-all cursor-pointer flex items-center gap-2 ${filtroEstatus === 'vencidos' ? 'bg-red-600 text-white shadow-md' : 'bg-slate-900/60 text-slate-400 hover:text-white border border-slate-700'}`}
+                  className={`px-3.5 py-2 rounded-lg font-bold text-xs transition-all cursor-pointer flex items-center gap-2 ${filtroEstatus === 'vencidos' ? 'bg-indigo-600 text-white' : 'bg-slate-900/60 text-slate-400 hover:text-white border border-slate-700'}`}
                 >
-                  <span>🔴 SLA Vencido</span>
+                  <span>SLA Vencido</span>
                   <span className={`px-1.5 py-0.5 rounded-full text-[10px] ${filtroEstatus === 'vencidos' ? 'bg-black/20 text-white' : 'bg-slate-800 text-red-400'}`}>
                     {conteoVencidos}
                   </span>
@@ -215,9 +216,9 @@ function SolicitudesView({
 
                 <button 
                   onClick={() => setFiltroEstatus('por_vencer')}
-                  className={`px-3.5 py-2 rounded-lg font-bold text-xs transition-all cursor-pointer flex items-center gap-2 ${filtroEstatus === 'por_vencer' ? 'bg-amber-600 text-white shadow-md' : 'bg-slate-900/60 text-slate-400 hover:text-white border border-slate-700'}`}
+                  className={`px-3.5 py-2 rounded-lg font-bold text-xs transition-all cursor-pointer flex items-center gap-2 ${filtroEstatus === 'por_vencer' ? 'bg-indigo-600 text-white' : 'bg-slate-900/60 text-slate-400 hover:text-white border border-slate-700'}`}
                 >
-                  <span>🟡 Por Vencer</span>
+                  <span>Por Vencer</span>
                   <span className={`px-1.5 py-0.5 rounded-full text-[10px] ${filtroEstatus === 'por_vencer' ? 'bg-black/20 text-white' : 'bg-slate-800 text-amber-400'}`}>
                     {conteoPorVencer}
                   </span>
@@ -227,9 +228,9 @@ function SolicitudesView({
 
             <button 
               onClick={() => setFiltroEstatus('cerrados')}
-              className={`px-3.5 py-2 rounded-lg font-bold text-xs transition-all cursor-pointer flex items-center gap-2 ${filtroEstatus === 'cerrados' ? 'bg-slate-600 text-white shadow-md' : 'bg-slate-900/60 text-slate-400 hover:text-white border border-slate-700'}`}
+              className={`px-3.5 py-2 rounded-lg font-bold text-xs transition-all cursor-pointer flex items-center gap-2 ${filtroEstatus === 'cerrados' ? 'bg-indigo-600 text-white' : 'bg-slate-900/60 text-slate-400 hover:text-white border border-slate-700'}`}
             >
-              <span>🔒 Cerrados</span>
+              <span>Cerrados</span>
               <span className={`px-1.5 py-0.5 rounded-full text-[10px] ${filtroEstatus === 'cerrados' ? 'bg-black/20 text-white' : 'bg-slate-800 text-slate-400'}`}>
                 {conteoCerrados}
               </span>
@@ -237,10 +238,8 @@ function SolicitudesView({
           </div>
 
           <div className="relative w-full lg:w-80">
-            <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400 pointer-events-none">
-              🔍
-            </span>
-            <input 
+            <Search size={15} strokeWidth={1.75} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none" />
+                        <input 
               type="text"
               placeholder="Folio, equipo, campaña, usuario..."
               value={busqueda}
@@ -260,7 +259,7 @@ function SolicitudesView({
 
         <div className="flex justify-between items-center text-xs text-slate-400 pt-1">
           <span>
-            Filtro activo: <strong className="text-white uppercase">{filtroEstatus.replace('_', ' ')}</strong>
+            Filtro activo: <strong className="text-white">{filtroEstatus.replace('_', ' ')}</strong>
             {busqueda && <> • Buscando: <strong className="text-green-400">"{busqueda}"</strong></>}
           </span>
           <span>Mostrando: <strong className="text-white">{ticketsFiltrados.length}</strong> registros</span>
@@ -268,7 +267,7 @@ function SolicitudesView({
 
         <div className="overflow-x-auto border border-slate-700 rounded-lg">
           <table className="w-full text-left text-sm text-slate-300 whitespace-nowrap">
-            <thead className="bg-slate-700 text-slate-200 uppercase text-xs">
+            <thead className="bg-slate-700 text-slate-200 text-xs">
               <tr>
                 <th className="px-4 py-3">Folio</th>
                 <th className="px-4 py-3">Notas</th>
@@ -308,9 +307,9 @@ function SolicitudesView({
                           className="relative p-2 bg-slate-900/60 hover:bg-slate-700 rounded-lg text-slate-300 hover:text-white transition-colors border border-slate-700 inline-flex items-center justify-center cursor-pointer"
                           title="Ver Notas"
                         >
-                          📄
+                          <StickyNote size={15} strokeWidth={1.75} />
                           {ticket.notas && ticket.notas.length > 0 && (
-                            <span className="absolute -top-1.5 -right-1.5 bg-green-600 text-white text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center shadow">
+                            <span className="absolute -top-1.5 -right-1.5 bg-indigo-600 text-white text-[10px] font-semibold w-4 h-4 rounded-full flex items-center justify-center shadow">
                               {ticket.notas.length}
                             </span>
                           )}
@@ -325,7 +324,7 @@ function SolicitudesView({
 
                       <td className="px-4 py-3 whitespace-nowrap">
                         <span className={`px-2.5 py-1 rounded-md text-xs font-semibold inline-flex items-center gap-1.5 border ${infoSLA.color}`}>
-                          <span>{infoSLA.icono}</span>
+                          <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${infoSLA.punto}`} />
                           <span>{infoSLA.texto}</span>
                         </span>
                       </td>
@@ -344,7 +343,7 @@ function SolicitudesView({
                               className="px-3 py-1.5 bg-emerald-600/20 text-emerald-400 hover:bg-emerald-600 hover:text-white rounded-lg font-semibold text-xs transition-colors border border-emerald-500/30 cursor-pointer"
                               title="Abrir Chat en Vivo"
                             >
-                              💬 Chat
+                              Chat
                             </button>
                           )}
 
@@ -358,7 +357,7 @@ function SolicitudesView({
                           {(ticket.estatus === 'Cerrado' || ticket.estatus === 'CERRADO') && user?.role === 'client' && (
                             yaEncuestado ? (
                               <span className="px-3 py-1.5 bg-slate-700 text-slate-400 rounded-lg font-semibold text-xs border border-slate-600">
-                                Calificado ⭐
+                                Calificado 
                               </span>
                             ) : (
                               <button 

@@ -130,7 +130,7 @@ export default function AdminReportesView({ tickets = [], campanas = [], estadis
       <div className="bg-slate-800 border border-slate-700 p-6 rounded-xl shadow-lg flex flex-col md:flex-row justify-between items-center gap-4">
         <div>
           <h2 className="text-2xl font-bold text-white flex items-center gap-2">
-            📊 REPORTES Y ANALÍTICAS
+            REPORTES Y ANALÍTICAS
           </h2>
           <p className="text-slate-400 text-sm mt-1">
             Métricas de rendimiento, productividad de técnicos, tiempos, categorías e historial de nodos.
@@ -143,7 +143,7 @@ export default function AdminReportesView({ tickets = [], campanas = [], estadis
               onClick={onIrACentinela}
               className="bg-purple-600 hover:bg-purple-500 text-white font-bold text-sm px-4 py-2 rounded-lg transition shadow flex items-center gap-2 cursor-pointer"
             >
-              🛡️ Panel Centinela
+              Panel Centinela
             </button>
           )}
 
@@ -171,9 +171,9 @@ export default function AdminReportesView({ tickets = [], campanas = [], estadis
 
           <button 
             onClick={exportarExcelSimulado}
-            className="bg-emerald-600 hover:bg-emerald-500 text-white font-medium text-sm px-4 py-2 rounded-lg transition shadow flex items-center gap-2 cursor-pointer"
+            className="bg-indigo-600 hover:bg-indigo-500 text-white font-medium text-sm px-4 py-2 rounded-lg transition shadow flex items-center gap-2 cursor-pointer"
           >
-            📥 Exportar Excel
+            Exportar Excel
           </button>
         </div>
       </div>
@@ -181,24 +181,24 @@ export default function AdminReportesView({ tickets = [], campanas = [], estadis
       {/* TARJETAS DE MÉTRICAS PRINCIPALES */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
         <div className="bg-slate-800 border border-slate-700 p-5 rounded-xl shadow">
-          <p className="text-slate-400 text-xs font-semibold uppercase">Total de Tickets</p>
+          <p className="text-slate-400 text-xs font-semibold">Total de Tickets</p>
           <p className="text-3xl font-extrabold text-white mt-2">{totalTickets}</p>
         </div>
         <div className="bg-slate-800 border border-slate-700 p-5 rounded-xl shadow">
-          <p className="text-slate-400 text-xs font-semibold uppercase">Abiertos</p>
+          <p className="text-slate-400 text-xs font-semibold">Abiertos</p>
           <p className="text-3xl font-extrabold text-blue-400 mt-2">{abiertos}</p>
         </div>
         <div className="bg-slate-800 border border-slate-700 p-5 rounded-xl shadow">
-          <p className="text-slate-400 text-xs font-semibold uppercase">En Proceso</p>
+          <p className="text-slate-400 text-xs font-semibold">En Proceso</p>
           <p className="text-3xl font-extrabold text-amber-400 mt-2">{enProceso}</p>
         </div>
         <div className="bg-slate-800 border border-slate-700 p-5 rounded-xl shadow">
-          <p className="text-slate-400 text-xs font-semibold uppercase">Cerrados / Resueltos</p>
+          <p className="text-slate-400 text-xs font-semibold">Cerrados / Resueltos</p>
           <p className="text-3xl font-extrabold text-emerald-400 mt-2">{cerrados}</p>
         </div>
         <div className="bg-slate-800 border border-slate-700 p-5 rounded-xl shadow">
-          <p className="text-slate-400 text-xs font-semibold uppercase">Satisfacción Promedio</p>
-          <p className="text-3xl font-extrabold text-purple-400 mt-2">{promedioSatisfaccion} ⭐</p>
+          <p className="text-slate-400 text-xs font-semibold">Satisfacción Promedio</p>
+          <p className="text-3xl font-extrabold text-purple-400 mt-2">{promedioSatisfaccion} </p>
         </div>
       </div>
 
@@ -209,7 +209,7 @@ export default function AdminReportesView({ tickets = [], campanas = [], estadis
         <div className="bg-slate-800 border border-slate-700 p-6 rounded-xl shadow flex flex-col justify-between">
           <div>
             <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
-              👨‍💻 Productividad por Técnico
+              Productividad por Técnico
             </h3>
             {Object.keys(productividadTecnicos).length === 0 ? (
               <p className="text-slate-500 text-sm italic">No hay registros suficientes</p>
@@ -224,7 +224,7 @@ export default function AdminReportesView({ tickets = [], campanas = [], estadis
                         <span className="text-slate-400">{item.count} tickets ({porcentaje}%)</span>
                       </div>
                       <div className="w-full bg-slate-900 rounded-full h-2">
-                        <div className="bg-blue-500 h-2 rounded-full" style={{ width: `${porcentaje}%` }}></div>
+                        <div className="bg-indigo-500 h-2 rounded-full" style={{ width: `${porcentaje}%` }}></div>
                       </div>
                     </div>
                   );
@@ -241,7 +241,7 @@ export default function AdminReportesView({ tickets = [], campanas = [], estadis
         <div className="bg-slate-800 border border-slate-700 p-6 rounded-xl shadow flex flex-col justify-between">
           <div>
             <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
-              📂 Tickets por Categoría
+              Tickets por Categoría
             </h3>
             {Object.keys(porCategoria).length === 0 ? (
               <p className="text-slate-500 text-sm italic">No hay registros suficientes</p>
@@ -273,7 +273,7 @@ export default function AdminReportesView({ tickets = [], campanas = [], estadis
         <div className="bg-slate-800 border border-slate-700 p-6 rounded-xl shadow flex flex-col justify-between">
           <div>
             <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
-              🎯 Distribución por Campaña
+              Distribución por Campaña
             </h3>
             {Object.keys(porCampana).length === 0 ? (
               <p className="text-slate-500 text-sm italic">No hay registros suficientes</p>
@@ -308,7 +308,7 @@ export default function AdminReportesView({ tickets = [], campanas = [], estadis
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
           <div>
             <h3 className="text-lg font-bold text-white flex items-center gap-2">
-              <span>📋</span> Expediente e Historial de Nodos (Últimos 3 Meses)
+              Expediente e Historial de Nodos (Últimos 3 Meses)
             </h3>
             <p className="text-slate-400 text-xs mt-0.5">
               Selecciona un nodo con reportes previos o escribe cualquier nombre de nodo para consultar sus incidencias en los últimos 90 días.
@@ -344,7 +344,7 @@ export default function AdminReportesView({ tickets = [], campanas = [], estadis
 
         {nodoActivo && (
           <div className="bg-slate-900/80 border border-slate-700/80 p-5 rounded-2xl space-y-3 mt-4 animate-fade-in">
-            <h4 className="text-sm font-bold text-indigo-400 uppercase tracking-wider">
+            <h4 className="text-sm font-medium text-indigo-400">
               Resultados para el nodo: <span className="text-white font-mono">{nodoActivo}</span> ({historialNodoReporte.length} incidencias en 3 meses)
             </h4>
 
@@ -361,8 +361,8 @@ export default function AdminReportesView({ tickets = [], campanas = [], estadis
                       <span className="text-slate-400">{t.fecha || t.created_at}</span>
                     </div>
                     <p className="font-bold text-white text-sm">{t.asunto || t.subcategoria}</p>
-                    <p className="text-xs text-slate-300">👤 Reportado por: {t.creador} | 🛠️ Técnico: {t.tecnico || 'Sin asignar'} | Estatus: <span className="text-amber-400 font-bold">{t.estatus}</span></p>
-                    {t.resolucion && <p className="text-xs text-emerald-400 mt-1">✔ Resolución: {t.resolucion}</p>}
+                    <p className="text-xs text-slate-300">Reportado por: {t.creador} | Técnico: {t.tecnico || 'Sin asignar'} | Estatus: <span className="text-amber-400 font-bold">{t.estatus}</span></p>
+                    {t.resolucion && <p className="text-xs text-emerald-400 mt-1">Resolución: {t.resolucion}</p>}
                   </div>
                 ))}
               </div>

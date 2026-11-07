@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import logoContactus from '../assets/logo.png'; // Asegúrate de que la ruta coincida con la ubicación de tu carpeta assets
+import logoContactus from '../assets/logo.png';
 
 function Login({ onLogin }) {
   const [username, setUsername] = useState('');
@@ -22,12 +22,12 @@ function Login({ onLogin }) {
 
       if (response.ok && (data.success || data.user)) {
         const usuarioValido = data.user || data;
-        onLogin(usuarioValido.username, passToSend); // Pasamos al App.jsx
+        onLogin(usuarioValido.username, passToSend);
       } else {
         setError(data.error || 'Usuario o contraseña incorrectos.');
       }
     } catch (err) {
-      setError('Error de conexión con el servidor');
+      setError('No se pudo conectar con el servidor.');
     } finally {
       setLoading(false);
     }
@@ -35,107 +35,76 @@ function Login({ onLogin }) {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    ejecutarLogin(username, password);
+    if (loading) return;
+    ejecutarLogin(username.trim(), password);
   };
 
-  return (
-    <div className="min-h-screen w-full flex items-center justify-center bg-slate-950 relative overflow-hidden">
-      <div className="absolute -top-32 -left-32 w-96 h-96 bg-indigo-600/20 rounded-full blur-3xl pointer-events-none"></div>
-      <div className="absolute -bottom-32 -right-32 w-96 h-96 bg-blue-600/20 rounded-full blur-3xl pointer-events-none"></div>
+  const inputClase =
+    'w-full px-3.5 py-2.5 bg-slate-900 border border-slate-700 rounded-lg text-slate-50 text-sm placeholder-slate-500 ' +
+    'focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-colors';
 
-      <div className="relative z-10 w-full max-w-md p-8 mx-4 bg-slate-900/80 backdrop-blur-xl rounded-3xl border border-slate-800 shadow-2xl shadow-indigo-950/40">
-        
-        {/* LOGOTIPO Y NUEVA IDENTIDAD */}
-        <div className="flex flex-col items-center mb-8">
-          <div className="px-4 py-3 rounded-2xl bg-indigo-600/10 border border-indigo-500/20 mb-3 shadow-inner flex items-center justify-center">
-            <img 
-              src={logoContactus} 
-              alt="Clodos TI Assist" 
-              className="h-10 w-auto object-contain brightness-0 invert" 
-            />
-          </div>
-          <h1 className="text-sm font-black text-white tracking-wider uppercase">
-            Clodos TI Assist <span className="text-indigo-400 font-mono text-xs">(CTI)</span>
-          </h1>
-          <p className="text-[11px] font-semibold text-slate-400 tracking-widest uppercase mt-1">
-            Plataforma de Operaciones e Incidencias
-          </p>
+  return (
+    <div className="min-h-screen w-full flex flex-col items-center justify-center bg-slate-950 px-4">
+      <div className="w-full max-w-sm">
+        <div className="mb-8">
+          <img
+            src={logoContactus}
+            alt="Contactus Contact Center"
+            className="h-9 w-auto object-contain brightness-0 invert mb-6"
+          />
+          <h1 className="text-2xl font-semibold text-white tracking-tight">Inicia sesión en CTI</h1>
+          <p className="text-sm text-slate-400 mt-1.5">Clodos TI Assist · Soporte técnico y control de infraestructura</p>
         </div>
 
-        {error && (
-          <div className="mb-6 p-3 bg-red-500/10 border border-red-500/30 rounded-xl text-red-400 text-xs text-center font-medium animate-pulse">
-            {error}
-          </div>
-        )}
-
-        <form onSubmit={handleSubmit} className="space-y-5">
+        <form onSubmit={handleSubmit} className="space-y-4" noValidate>
           <div>
-            <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-2">Usuario</label>
-            <div className="relative">
-              <span className="absolute inset-y-0 left-0 flex items-center pl-3.5 text-slate-500">👤</span>
-              <input
-                type="text"
-                required
-                placeholder="Ej. christopher"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                className="w-full pl-11 pr-4 py-3 bg-slate-950/60 border border-slate-700/70 rounded-xl text-white text-sm placeholder-slate-500 focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-all"
-              />
-            </div>
+            <label htmlFor="usuario" className="block text-sm font-medium text-slate-300 mb-1.5">Usuario</label>
+            <input
+              id="usuario"
+              type="text"
+              required
+              autoFocus
+              autoComplete="username"
+              placeholder="tu.usuario"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              className={inputClase}
+            />
           </div>
 
           <div>
-            <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-2">Contraseña</label>
-            <div className="relative">
-              <span className="absolute inset-y-0 left-0 flex items-center pl-3.5 text-slate-500">🔒</span>
-              <input
-                type="password"
-                required
-                placeholder="••••••••"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="w-full pl-11 pr-4 py-3 bg-slate-950/60 border border-slate-700/70 rounded-xl text-white text-sm placeholder-slate-500 focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-all"
-              />
-            </div>
+            <label htmlFor="contrasena" className="block text-sm font-medium text-slate-300 mb-1.5">Contraseña</label>
+            <input
+              id="contrasena"
+              type="password"
+              required
+              autoComplete="current-password"
+              placeholder="••••••••"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className={inputClase}
+            />
           </div>
+
+          {error && (
+            <p role="alert" className="text-sm text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2">
+              {error}
+            </p>
+          )}
 
           <button
             type="submit"
-            disabled={loading}
-            className="w-full mt-2 py-3.5 px-4 bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-500 hover:to-blue-500 text-white font-bold text-sm uppercase tracking-wider rounded-xl shadow-lg shadow-indigo-600/30 transition-all transform active:scale-[0.98] disabled:opacity-50 cursor-pointer"
+            disabled={loading || !username.trim() || !password}
+            className="w-full py-2.5 px-4 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-medium text-sm rounded-lg transition-colors cursor-pointer"
           >
-            {loading ? 'Accediendo...' : 'Entrar al Sistema'}
+            {loading ? 'Entrando…' : 'Entrar'}
           </button>
         </form>
-
-        <div className="mt-8 pt-6 border-t border-slate-800/80 text-center">
-          <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-3">
-            Accesos rápidos para pruebas:
-          </p>
-          <div className="flex justify-center gap-3">
-            <button
-              type="button"
-              onClick={() => ejecutarLogin('chris', 'Clodos04')}
-              className="px-3.5 py-2 bg-slate-800/80 hover:bg-indigo-600/20 text-slate-300 hover:text-indigo-300 rounded-xl text-xs font-medium border border-slate-700/60 hover:border-indigo-500/40 transition-all flex items-center gap-1.5 cursor-pointer"
-            >
-              <span>🛡️</span> Admin (Christopher)
-            </button>
-            <button
-              type="button"
-              onClick={() => ejecutarLogin('valeria', '123')}
-              className="px-3.5 py-2 bg-slate-800/80 hover:bg-blue-600/20 text-slate-300 hover:text-blue-300 rounded-xl text-xs font-medium border border-slate-700/60 hover:border-blue-500/40 transition-all flex items-center gap-1.5 cursor-pointer"
-            >
-              <span>💬</span> Cliente (Valeria)
-            </button>
-          </div>
-        </div>
       </div>
 
-      {/* FOOTER DISCRETO Y CORPORATIVO */}
-      <div className="absolute bottom-4 left-0 right-0 text-center text-slate-500 text-[11px] tracking-wider uppercase font-mono select-none px-4">
-        Christopher Osorio • Clodos TI Assist (CTI) <br/>
-        <span className="text-slate-600">Architected & Powered by</span> <span className="text-indigo-400/80 font-semibold tracking-widest">Area de Soporte Tecnico</span>
-      </div>
+      <p className="absolute bottom-6 text-xs text-slate-500 select-none">
+        Área de Soporte Técnico · Contactus
+      </p>
     </div>
   );
 }

@@ -235,8 +235,8 @@ function AsistenteTipificacionView({ categorias = [], campanas = [], equipos = [
       
       <div className="bg-slate-800/90 py-4 px-6 text-center border-b border-slate-700 flex justify-between items-center shrink-0">
         <div></div>
-        <h2 className="text-lg font-black tracking-wider text-white uppercase flex items-center gap-2">
-          <span>🤖</span> ASISTENTE DE TIPIFICACIÓN GUIADA
+        <h2 className="text-lg font-semibold text-white flex items-center gap-2 tracking-tight">
+          ASISTENTE DE TIPIFICACIÓN GUIADA
         </h2>
         {onCancelar && (
           <button type="button" onClick={onCancelar} className="text-slate-400 hover:text-white font-bold text-lg cursor-pointer">
@@ -258,8 +258,8 @@ function AsistenteTipificacionView({ categorias = [], campanas = [], equipos = [
                 onClick={() => setTipoReporte('REPORTE')}
                 className="p-5 rounded-2xl bg-slate-800 border-2 border-slate-700 hover:border-indigo-500 text-left transition-all group cursor-pointer shadow-lg space-y-2"
               >
-                <div className="text-2xl">🛠️</div>
-                <div className="font-bold text-white text-sm uppercase">Reporte de Soporte / Falla</div>
+                <div className="text-2xl"></div>
+                <div className="font-medium text-white text-sm">Reporte de Soporte / Falla</div>
                 <div className="text-xs text-slate-400">Incidencia técnica general o problema operativo cotidiano.</div>
               </button>
 
@@ -277,8 +277,8 @@ function AsistenteTipificacionView({ categorias = [], campanas = [], equipos = [
                 }}
                 className="p-5 rounded-2xl bg-purple-950/40 border-2 border-purple-800/60 hover:border-purple-500 text-left transition-all group cursor-pointer shadow-lg space-y-2"
               >
-                <div className="text-2xl">🛡️</div>
-                <div className="font-bold text-purple-300 text-sm uppercase">Reporte Centinela</div>
+                <div className="text-2xl"></div>
+                <div className="font-medium text-purple-300 text-sm">Reporte Centinela</div>
                 <div className="text-xs text-slate-400">Árbol rápido para periféricos y dispositivos dañados.</div>
               </button>
             </div>
@@ -288,7 +288,7 @@ function AsistenteTipificacionView({ categorias = [], campanas = [], equipos = [
             {paso < 5 && (
               <div className="flex items-center justify-between mb-2 px-4">
                 <div className="text-xs font-semibold text-indigo-400 bg-indigo-950/60 px-3 py-1 rounded-full border border-indigo-800">
-                  Modo: {tipoReporte === 'CENTINELA' ? '🛡️ CENTINELA' : '🛠️ REPORTE NORMAL'}
+                  Modo: {tipoReporte === 'CENTINELA' ? 'CENTINELA' : 'REPORTE NORMAL'}
                 </div>
                 <button type="button" onClick={reiniciar} className="text-xs font-bold text-slate-400 hover:text-white underline cursor-pointer">
                   « Cambiar tipo
@@ -314,7 +314,7 @@ function AsistenteTipificacionView({ categorias = [], campanas = [], equipos = [
                         className="p-4 rounded-xl bg-slate-800/80 border border-slate-700 hover:border-indigo-500 transition-all text-left flex items-center justify-between group cursor-pointer shadow-md"
                       >
                         <div className="pr-3">
-                          <div className="font-bold text-white text-sm uppercase tracking-wide">{cat.nombre}</div>
+                          <div className="font-medium text-white text-sm">{cat.nombre}</div>
                           {cat.descripcion && (
                             <div className="text-[11px] text-slate-400 mt-1 leading-snug">{cat.descripcion}</div>
                           )}
@@ -331,7 +331,7 @@ function AsistenteTipificacionView({ categorias = [], campanas = [], equipos = [
             {paso === 2 && categoriaSeleccionada && (
               <div className="space-y-4 animate-fade-in">
                 <div className="flex justify-between items-center bg-slate-800/50 p-3 rounded-xl border border-slate-700">
-                  <span className="text-xs text-slate-300">Área: <strong className="text-indigo-400 uppercase">{categoriaSeleccionada.nombre}</strong></span>
+                  <span className="text-xs text-slate-300">Área: <strong className="text-indigo-400">{categoriaSeleccionada.nombre}</strong></span>
                   <button type="button" onClick={() => setPaso(1)} className="text-xs font-bold text-indigo-400 hover:underline cursor-pointer">« Cambiar área</button>
                 </div>
                 <h4 className="text-sm font-bold text-white text-center">¿En qué módulo o dispositivo ocurre el problema?</h4>
@@ -352,7 +352,7 @@ function AsistenteTipificacionView({ categorias = [], campanas = [], equipos = [
                           className="p-4 rounded-xl bg-slate-800/80 border border-slate-700 hover:border-indigo-500 text-left flex items-center justify-between group cursor-pointer transition-all shadow-sm"
                         >
                           <div className="pr-3">
-                            <div className="font-bold text-white text-xs uppercase tracking-wide">{sub.nombre}</div>
+                            <div className="font-medium text-white text-xs">{sub.nombre}</div>
                             {sub.descripcion && (
                               <div className="text-[11px] text-slate-400 mt-1 leading-relaxed font-normal">
                                 {sub.descripcion}
@@ -371,7 +371,7 @@ function AsistenteTipificacionView({ categorias = [], campanas = [], equipos = [
             {paso === 2.5 && perifericoCentinela && (
               <div className="space-y-4 animate-fade-in max-w-xl mx-auto">
                 <div className="flex justify-between items-center bg-slate-800/50 p-3 rounded-xl border border-slate-700">
-                  <span className="text-xs text-slate-300">Componente: <strong className="text-purple-400 uppercase">{perifericoCentinela}</strong></span>
+                  <span className="text-xs text-slate-300">Componente: <strong className="text-purple-400">{perifericoCentinela}</strong></span>
                   <button type="button" onClick={() => setPaso(2)} className="text-xs font-bold text-indigo-400 hover:underline cursor-pointer">« Cambiar componente</button>
                 </div>
 
@@ -384,7 +384,7 @@ function AsistenteTipificacionView({ categorias = [], campanas = [], equipos = [
                         key={idx}
                         type="button"
                         onClick={() => { setSubFallaCentinela(op); setPaso(4); }}
-                        className="p-3.5 rounded-xl bg-slate-800 border border-slate-700 hover:border-purple-500 text-left font-semibold text-xs text-white uppercase flex justify-between items-center group cursor-pointer"
+                        className="p-3.5 rounded-xl bg-slate-800 border border-slate-700 hover:border-purple-500 text-left font-semibold text-xs text-white flex justify-between items-center group cursor-pointer"
                       >
                         <span>{op}</span>
                         <span className="text-purple-400 group-hover:translate-x-1 transition-transform">→</span>
@@ -400,7 +400,7 @@ function AsistenteTipificacionView({ categorias = [], campanas = [], equipos = [
                         key={idx}
                         type="button"
                         onClick={() => { setSubFallaCentinela(op); setPaso(4); }}
-                        className="p-3.5 rounded-xl bg-slate-800 border border-slate-700 hover:border-purple-500 text-left font-semibold text-xs text-white uppercase flex justify-between items-center group cursor-pointer"
+                        className="p-3.5 rounded-xl bg-slate-800 border border-slate-700 hover:border-purple-500 text-left font-semibold text-xs text-white flex justify-between items-center group cursor-pointer"
                       >
                         <span>{op}</span>
                         <span className="text-purple-400 group-hover:translate-x-1 transition-transform">→</span>
@@ -416,7 +416,7 @@ function AsistenteTipificacionView({ categorias = [], campanas = [], equipos = [
                         key={idx}
                         type="button"
                         onClick={() => { setSubFallaCentinela(op); setPaso(4); }}
-                        className="p-3.5 rounded-xl bg-slate-800 border border-slate-700 hover:border-purple-500 text-left font-semibold text-xs text-white uppercase flex justify-between items-center group cursor-pointer"
+                        className="p-3.5 rounded-xl bg-slate-800 border border-slate-700 hover:border-purple-500 text-left font-semibold text-xs text-white flex justify-between items-center group cursor-pointer"
                       >
                         <span>{op}</span>
                         <span className="text-purple-400 group-hover:translate-x-1 transition-transform">→</span>
@@ -432,7 +432,7 @@ function AsistenteTipificacionView({ categorias = [], campanas = [], equipos = [
                         <button
                           type="button"
                           onClick={() => { setSubFallaCentinela('Falso contacto'); setPaso(4); }}
-                          className="p-3.5 rounded-xl bg-slate-800 border border-slate-700 hover:border-purple-500 text-left font-semibold text-xs text-white uppercase flex justify-between items-center group cursor-pointer"
+                          className="p-3.5 rounded-xl bg-slate-800 border border-slate-700 hover:border-purple-500 text-left font-semibold text-xs text-white flex justify-between items-center group cursor-pointer"
                         >
                           <span>Falso contacto</span>
                           <span className="text-purple-400">→</span>
@@ -440,7 +440,7 @@ function AsistenteTipificacionView({ categorias = [], campanas = [], equipos = [
                         <button
                           type="button"
                           onClick={() => { setSubFallaCentinela('Volumen bajo'); setPaso(4); }}
-                          className="p-3.5 rounded-xl bg-slate-800 border border-slate-700 hover:border-purple-500 text-left font-semibold text-xs text-white uppercase flex justify-between items-center group cursor-pointer"
+                          className="p-3.5 rounded-xl bg-slate-800 border border-slate-700 hover:border-purple-500 text-left font-semibold text-xs text-white flex justify-between items-center group cursor-pointer"
                         >
                           <span>Volumen bajo</span>
                           <span className="text-purple-400">→</span>
@@ -448,15 +448,15 @@ function AsistenteTipificacionView({ categorias = [], campanas = [], equipos = [
                         <button
                           type="button"
                           onClick={() => { setSubFallaCentinela('DAÑO FÍSICO'); }}
-                          className="p-3.5 rounded-xl bg-purple-950/40 border border-purple-700/60 hover:border-purple-500 text-left font-semibold text-xs text-purple-200 uppercase flex justify-between items-center group cursor-pointer"
+                          className="p-3.5 rounded-xl bg-purple-950/40 border border-purple-700/60 hover:border-purple-500 text-left font-semibold text-xs text-purple-200 flex justify-between items-center group cursor-pointer"
                         >
-                          <span>🛡️ Daño Físico (Desplegar opciones)</span>
+                          <span>Daño Físico (Desplegar opciones)</span>
                           <span className="text-purple-400">↓</span>
                         </button>
                         <button
                           type="button"
                           onClick={() => { setSubFallaCentinela('Cable pelado'); setPaso(4); }}
-                          className="p-3.5 rounded-xl bg-slate-800 border border-slate-700 hover:border-purple-500 text-left font-semibold text-xs text-white uppercase flex justify-between items-center group cursor-pointer"
+                          className="p-3.5 rounded-xl bg-slate-800 border border-slate-700 hover:border-purple-500 text-left font-semibold text-xs text-white flex justify-between items-center group cursor-pointer"
                         >
                           <span>Cable pelado</span>
                           <span className="text-purple-400">→</span>
@@ -464,7 +464,7 @@ function AsistenteTipificacionView({ categorias = [], campanas = [], equipos = [
                       </div>
                     ) : (
                       <div className="space-y-3 bg-slate-800/70 p-4 rounded-xl border border-purple-500/40">
-                        <div className="text-xs text-purple-300 font-bold uppercase">Selecciona el tipo de Daño Físico:</div>
+                        <div className="text-xs text-purple-300 font-medium">Selecciona el tipo de Daño Físico:</div>
                         <div className="grid grid-cols-1 gap-2">
                           {[
                             'Sin almohadilla',
@@ -475,7 +475,7 @@ function AsistenteTipificacionView({ categorias = [], campanas = [], equipos = [
                               key={i}
                               type="button"
                               onClick={() => { setSubFallaCentinela(`Daño Físico: ${dano}`); setPaso(4); }}
-                              className="p-3 rounded-lg bg-slate-900 border border-slate-700 hover:border-purple-500 text-left text-xs font-bold text-white uppercase cursor-pointer"
+                              className="p-3 rounded-lg bg-slate-900 border border-slate-700 hover:border-purple-500 text-left text-xs font-medium text-white cursor-pointer"
                             >
                               • {dano}
                             </button>
@@ -495,7 +495,7 @@ function AsistenteTipificacionView({ categorias = [], campanas = [], equipos = [
             {paso === 3 && subcatSeleccionada && (
               <div className="space-y-4 animate-fade-in">
                 <div className="flex justify-between items-center bg-slate-800/50 p-3 rounded-xl border border-slate-700">
-                  <span className="text-xs text-slate-300">Módulo: <strong className="text-indigo-400 uppercase">{subcatSeleccionada.nombre}</strong></span>
+                  <span className="text-xs text-slate-300">Módulo: <strong className="text-indigo-400">{subcatSeleccionada.nombre}</strong></span>
                   <button type="button" onClick={() => setPaso(2)} className="text-xs font-bold text-indigo-400 hover:underline cursor-pointer">« Cambiar módulo</button>
                 </div>
                 <h4 className="text-sm font-bold text-white text-center">Selecciona la falla o requerimiento específico:</h4>
@@ -516,7 +516,7 @@ function AsistenteTipificacionView({ categorias = [], campanas = [], equipos = [
                           className="p-4 rounded-xl bg-slate-800/80 border border-slate-700 hover:border-indigo-500 text-left flex items-center justify-between group cursor-pointer transition-all shadow-sm"
                         >
                           <div className="pr-3">
-                            <div className="font-bold text-white text-xs uppercase tracking-wide">{elem.nombre}</div>
+                            <div className="font-medium text-white text-xs">{elem.nombre}</div>
                             {elem.descripcion && (
                               <div className="text-[11px] text-slate-400 mt-1 leading-relaxed font-normal">
                                 {elem.descripcion}
@@ -537,21 +537,21 @@ function AsistenteTipificacionView({ categorias = [], campanas = [], equipos = [
                 <div className="w-12 h-12 bg-emerald-500/20 text-emerald-400 rounded-xl flex items-center justify-center mx-auto text-xl border border-emerald-500/30">
                   ✓
                 </div>
-                <h3 className="text-base font-black text-white uppercase">Tipificación Detectada</h3>
+                <h3 className="text-base font-semibold text-white tracking-tight">Tipificación Detectada</h3>
                 
                 <div className="bg-slate-800/90 p-3.5 rounded-xl border border-slate-700 max-w-md mx-auto text-left space-y-1.5 text-xs">
                   <div>Tipo: <strong className={tipoReporte === 'CENTINELA' ? 'text-purple-400' : 'text-indigo-400'}>{tipoReporte}</strong></div>
-                  <div>Área: <strong className="text-white uppercase">{categoriaSeleccionada?.nombre}</strong></div>
+                  <div>Área: <strong className="text-white">{categoriaSeleccionada?.nombre}</strong></div>
                   {perifericoCentinela ? (
                     <>
-                      <div>Componente: <strong className="text-purple-400 uppercase">{perifericoCentinela}</strong></div>
-                      <div>Falla Específica: <strong className="text-indigo-300 uppercase">{subFallaCentinela}</strong></div>
+                      <div>Componente: <strong className="text-purple-400">{perifericoCentinela}</strong></div>
+                      <div>Falla Específica: <strong className="text-indigo-300">{subFallaCentinela}</strong></div>
                     </>
                   ) : (
                     <>
                       {subcatSeleccionada && (
                         <div>
-                          Módulo: <strong className="text-white uppercase">{subcatSeleccionada?.nombre}</strong>
+                          Módulo: <strong className="text-white">{subcatSeleccionada?.nombre}</strong>
                           {subcatSeleccionada?.descripcion && (
                             <p className="text-[11px] text-slate-400 mt-0.5 italic">{subcatSeleccionada.descripcion}</p>
                           )}
@@ -559,7 +559,7 @@ function AsistenteTipificacionView({ categorias = [], campanas = [], equipos = [
                       )}
                       {elementoSeleccionado && (
                         <div>
-                          Falla: <strong className="text-indigo-400 uppercase">{elementoSeleccionado?.nombre}</strong>
+                          Falla: <strong className="text-indigo-400">{elementoSeleccionado?.nombre}</strong>
                           {elementoSeleccionado?.descripcion && (
                             <p className="text-[11px] text-slate-400 mt-0.5 italic">{elementoSeleccionado.descripcion}</p>
                           )}
@@ -584,19 +584,19 @@ function AsistenteTipificacionView({ categorias = [], campanas = [], equipos = [
             {paso === 5 && (
               <div className="space-y-4 animate-fade-in pb-2">
                 <div className="flex justify-between items-center bg-slate-800/60 p-2.5 rounded-xl border border-slate-700">
-                  <span className="text-xs text-indigo-300 font-bold">📋 Complete los detalles de su {tipoReporte === 'CENTINELA' ? 'Centinela' : 'Reporte'}</span>
+                  <span className="text-xs text-indigo-300 font-bold">Complete los detalles de su {tipoReporte === 'CENTINELA' ? 'Centinela' : 'Reporte'}</span>
                   <button type="button" onClick={() => setPaso(4)} className="text-xs font-bold text-indigo-400 hover:underline cursor-pointer">« Ver tipificación</button>
                 </div>
 
                 {errorDuplicado && (
                   <div className="bg-red-950/80 border border-red-500 text-red-200 p-3 rounded-xl text-xs font-bold shadow-lg flex items-center gap-2">
-                    <span>❌</span> {errorDuplicado}
+                    {errorDuplicado}
                   </div>
                 )}
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-[11px] font-bold text-slate-300 uppercase mb-1">Área (Campaña):</label>
+                    <label className="block text-[11px] font-bold text-slate-300 mb-1">Área (Campaña):</label>
                     <select value={campanaSeleccionadaId} onChange={(e) => setCampanaSeleccionadaId(e.target.value)} className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-700 text-white text-xs outline-none">
                       <option value="">Seleccione Campaña</option>
                       {campanas.map((camp) => (
@@ -605,7 +605,7 @@ function AsistenteTipificacionView({ categorias = [], campanas = [], equipos = [
                     </select>
                   </div>
                   <div>
-                    <label className="block text-[11px] font-bold text-slate-300 uppercase mb-1">Nombre (Usuario Logueado):</label>
+                    <label className="block text-[11px] font-bold text-slate-300 mb-1">Nombre (Usuario Logueado):</label>
                     <input type="text" value={user?.name || 'VALERIA GOMEZ'} readOnly className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-700 text-indigo-300 text-xs font-bold cursor-not-allowed" />
                   </div>
                 </div>
@@ -613,7 +613,7 @@ function AsistenteTipificacionView({ categorias = [], campanas = [], equipos = [
                 {tipoReporte !== 'CENTINELA' ? (
                   <>
                     <div>
-                      <label className="block text-[11px] font-bold text-slate-300 uppercase mb-1">Asunto:</label>
+                      <label className="block text-[11px] font-bold text-slate-300 mb-1">Asunto:</label>
                       <input 
                         type="text" 
                         placeholder="Breve resumen del problema..."
@@ -624,7 +624,7 @@ function AsistenteTipificacionView({ categorias = [], campanas = [], equipos = [
                     </div>
 
                     <div>
-                      <label className="block text-[11px] font-bold text-slate-300 uppercase mb-1">Descripción:</label>
+                      <label className="block text-[11px] font-bold text-slate-300 mb-1">Descripción:</label>
                       <textarea 
                         rows="2" 
                         placeholder="Detalla los síntomas o pasos para reproducir el fallo..."
@@ -636,13 +636,13 @@ function AsistenteTipificacionView({ categorias = [], campanas = [], equipos = [
                   </>
                 ) : (
                   <div className="bg-purple-950/30 border border-purple-500/30 p-3.5 rounded-xl text-xs space-y-1">
-                    <div className="text-purple-300 font-bold uppercase">🛡️ Resumen automático Centinela:</div>
+                    <div className="text-purple-300 font-bold">Resumen automático Centinela:</div>
                     <div className="text-slate-300">Asunto: <strong className="text-white font-mono">[CENTINELA] {perifericoCentinela || subcatSeleccionada?.nombre}: {subFallaCentinela || elementoSeleccionado?.nombre || 'Falla reportada'}</strong></div>
                   </div>
                 )}
 
                 <div>
-                  <label className="block text-[11px] font-bold text-slate-300 uppercase mb-1">Equipo / Nodo (Seleccione uno o más):</label>
+                  <label className="block text-[11px] font-bold text-slate-300 mb-1">Equipo / Nodo (Seleccione uno o más):</label>
                   <div className="w-full h-28 overflow-y-auto px-3 py-2 rounded-xl bg-slate-950 border border-slate-700 text-xs space-y-1">
                     {listaEquiposActuales.length === 0 ? (
                       <span className="text-slate-500 italic">Seleccione una campaña</span>
@@ -670,7 +670,7 @@ function AsistenteTipificacionView({ categorias = [], campanas = [], equipos = [
                 </div>
 
                 <div>
-                  <label className="block text-[11px] font-bold text-slate-300 uppercase mb-1">Adjuntar Archivo:</label>
+                  <label className="block text-[11px] font-bold text-slate-300 mb-1">Adjuntar Archivo:</label>
                   <input 
                     type="file" 
                     onChange={(e) => setArchivo(e.target.files[0])}
@@ -686,7 +686,7 @@ function AsistenteTipificacionView({ categorias = [], campanas = [], equipos = [
                     type="button" 
                     onClick={handleFinalizarReporte} 
                     disabled={enviando}
-                    className="bg-indigo-600 hover:bg-indigo-500 text-white px-5 py-2 rounded-xl font-bold text-xs shadow-lg shadow-indigo-600/30 cursor-pointer disabled:opacity-50"
+                    className="bg-indigo-600 hover:bg-indigo-500 text-white px-5 py-2 rounded-xl font-bold text-xs cursor-pointer disabled:opacity-50"
                   >
                     {enviando ? 'Guardando...' : `Guardar ${tipoReporte === 'CENTINELA' ? `(${equiposSeleccionados.length}) Reportes Centinela` : 'Solicitud'}`}
                   </button>

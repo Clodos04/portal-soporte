@@ -157,7 +157,7 @@ function NuevaSolicitudView({ user, usuarios = [], grupos = [], usuariosPorGrupo
       
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-slate-800 p-6 rounded-2xl border border-slate-700 shadow-xl">
         <div>
-          <h1 className="text-3xl font-black text-white tracking-wide uppercase">Asistente de Solicitud Nueva</h1>
+          <h1 className="text-2xl font-semibold text-white tracking-tight">Asistente de Solicitud Nueva</h1>
           <p className="text-slate-400 text-sm mt-1">Registro guiado de incidencias y soporte técnico</p>
         </div>
 
@@ -165,14 +165,14 @@ function NuevaSolicitudView({ user, usuarios = [], grupos = [], usuariosPorGrupo
           <button 
             type="button" 
             onClick={() => { cargarDatosCentinela(); setIsAsistenteOpen(true); }} 
-            className="bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-500 hover:to-blue-500 text-white px-4 py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider shadow-lg shadow-indigo-600/35 transition-all flex items-center gap-2 cursor-pointer"
+            className="bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-500 hover:to-blue-500 text-white px-4 py-2.5 rounded-xl font-medium text-xs transition-all flex items-center gap-2 cursor-pointer"
           >
-            <span>🤖</span> Abrir Asistente Guiado
+            Abrir Asistente Guiado
           </button>
           <button 
             type="button" 
             onClick={onVolver} 
-            className="bg-slate-700 hover:bg-slate-600 text-slate-200 px-4 py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider shadow transition-colors border border-slate-600 cursor-pointer"
+            className="bg-slate-700 hover:bg-slate-600 text-slate-200 px-4 py-2.5 rounded-xl font-medium text-xs shadow transition-colors border border-slate-600 cursor-pointer"
           >
             Regresar
           </button>
@@ -206,7 +206,7 @@ function NuevaSolicitudView({ user, usuarios = [], grupos = [], usuariosPorGrupo
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-slate-900/60 p-6 rounded-xl border border-slate-700">
             <div className="space-y-4">
               <div>
-                <label className="block text-xs font-bold text-slate-300 uppercase mb-1.5">Estado:</label>
+                <label className="block text-xs font-medium text-slate-300 mb-1.5">Estado:</label>
                 <select value={estado} onChange={(e) => setEstado(e.target.value)} className="w-full px-3 py-2.5 rounded-lg bg-slate-900 border border-slate-700 text-white text-sm outline-none focus:border-indigo-500 transition-colors">
                   <option value="ABIERTO">ABIERTO</option>
                   <option value="EN PROCESO">EN PROCESO</option>
@@ -215,7 +215,7 @@ function NuevaSolicitudView({ user, usuarios = [], grupos = [], usuariosPorGrupo
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-300 uppercase mb-1.5">Grupo Asignado:</label>
+                <label className="block text-xs font-medium text-slate-300 mb-1.5">Grupo Asignado:</label>
                 <select value={grupo} onChange={(e) => { setGrupo(e.target.value); setUsuarioAsignado('Sin Asignar'); }} className="w-full px-3 py-2.5 rounded-lg bg-slate-900 border border-slate-700 text-white text-sm outline-none focus:border-indigo-500 transition-colors">
                   <option value="">Seleccione Grupo</option>
                   {grupos.map((g, idx) => (
@@ -225,7 +225,7 @@ function NuevaSolicitudView({ user, usuarios = [], grupos = [], usuariosPorGrupo
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-300 uppercase mb-1.5">Técnico / Usuario asignado:</label>
+                <label className="block text-xs font-medium text-slate-300 mb-1.5">Técnico / Usuario asignado:</label>
                 <select value={usuarioAsignado} onChange={(e) => setUsuarioAsignado(e.target.value)} className="w-full px-3 py-2.5 rounded-lg bg-slate-900 border border-slate-700 text-white text-sm outline-none focus:border-indigo-500 transition-colors">
                   <option value="Sin Asignar">Sin Asignar</option>
                   {tecnicosDisponibles.map((tec, idx) => (
@@ -237,18 +237,18 @@ function NuevaSolicitudView({ user, usuarios = [], grupos = [], usuariosPorGrupo
 
             <div className="space-y-4">
               <div className="flex justify-between items-center mb-1">
-                <label className="block text-xs font-bold text-slate-300 uppercase">Categorización del Ticket:</label>
+                <label className="block text-xs font-medium text-slate-300">Categorización del Ticket:</label>
                 <button
                   type="button"
                   onClick={() => { cargarDatosCentinela(); setIsAsistenteOpen(true); }}
                   className="bg-indigo-600/20 hover:bg-indigo-600 text-indigo-300 hover:text-white px-3 py-1.5 rounded-xl text-xs font-bold transition-all border border-indigo-500/40 flex items-center gap-1.5 shadow cursor-pointer"
                 >
-                  🤖 Abrir Asistente Guiado
+                  Abrir Asistente Guiado
                 </button>
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Categoría:</label>
+                <label className="block text-xs font-medium text-slate-400 mb-1">Categoría:</label>
                 <select value={categoria} onChange={handleCambioCategoria} className="w-full px-3 py-2.5 rounded-lg bg-slate-900 border border-slate-700 text-white text-sm outline-none focus:border-indigo-500 transition-colors">
                   <option value="">Seleccione Categoría</option>
                   {categoriasActivas.map((cat, idx) => (
@@ -258,7 +258,7 @@ function NuevaSolicitudView({ user, usuarios = [], grupos = [], usuariosPorGrupo
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Sub-Categoría:</label>
+                <label className="block text-xs font-medium text-slate-400 mb-1">Sub-Categoría:</label>
                 <select value={subCategoria} onChange={handleCambioSubcategoria} className="w-full px-3 py-2.5 rounded-lg bg-slate-900 border border-slate-700 text-white text-sm outline-none focus:border-indigo-500 transition-colors">
                   <option value="">Seleccione Sub-Categoría</option>
                   {subcategoriasDisponibles.map((sub, idx) => (
@@ -268,7 +268,7 @@ function NuevaSolicitudView({ user, usuarios = [], grupos = [], usuariosPorGrupo
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Elemento:</label>
+                <label className="block text-xs font-medium text-slate-400 mb-1">Elemento:</label>
                 <select value={elemento} onChange={(e) => setElemento(e.target.value)} className="w-full px-3 py-2.5 rounded-lg bg-slate-900 border border-slate-700 text-white text-sm outline-none focus:border-indigo-500 transition-colors">
                   <option value="">Seleccione Elemento</option>
                   {elementosDisponibles.map((elem, idx) => (
@@ -284,7 +284,7 @@ function NuevaSolicitudView({ user, usuarios = [], grupos = [], usuariosPorGrupo
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
-                <label className="block text-xs font-bold text-slate-300 uppercase mb-1.5">Área (Campaña):</label>
+                <label className="block text-xs font-medium text-slate-300 mb-1.5">Área (Campaña):</label>
                 <select value={campanaSeleccionadaId} onChange={handleCambioCampana} className="w-full px-3 py-2.5 rounded-lg bg-slate-900 border border-slate-700 text-white text-sm outline-none focus:border-indigo-500 transition-colors">
                   <option value="">Seleccione Campaña</option>
                   {campanasBD.map((camp) => (
@@ -294,7 +294,7 @@ function NuevaSolicitudView({ user, usuarios = [], grupos = [], usuariosPorGrupo
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-300 uppercase mb-1.5">Nombre (Usuario Logueado):</label>
+                <label className="block text-xs font-medium text-slate-300 mb-1.5">Nombre (Usuario Logueado):</label>
                 <input 
                   type="text" 
                   value={nombreCliente} 
@@ -307,7 +307,7 @@ function NuevaSolicitudView({ user, usuarios = [], grupos = [], usuariosPorGrupo
 
           <div className="space-y-4 pt-2">
             <div>
-              <label className="block text-xs font-bold text-slate-300 uppercase mb-1.5">Asunto:</label>
+              <label className="block text-xs font-medium text-slate-300 mb-1.5">Asunto:</label>
               <input 
                 type="text" 
                 required
@@ -319,7 +319,7 @@ function NuevaSolicitudView({ user, usuarios = [], grupos = [], usuariosPorGrupo
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-slate-300 uppercase mb-1.5">Descripción:</label>
+              <label className="block text-xs font-medium text-slate-300 mb-1.5">Descripción:</label>
               <textarea 
                 rows="3" 
                 required
@@ -332,7 +332,7 @@ function NuevaSolicitudView({ user, usuarios = [], grupos = [], usuariosPorGrupo
           </div>
 
           <div className="pt-2">
-            <label className="block text-xs font-bold text-slate-300 uppercase mb-1.5">Equipo / Nodo (Seleccione uno o más):</label>
+            <label className="block text-xs font-medium text-slate-300 mb-1.5">Equipo / Nodo (Seleccione uno o más):</label>
             <div className="w-full h-36 overflow-y-auto px-3 py-2 rounded-lg bg-slate-900 border border-slate-700 text-white text-sm space-y-1.5">
               {listaEquiposActuales.length === 0 ? (
                 <span className="text-slate-500 italic text-xs">Seleccione una campaña para ver los equipos disponibles</span>
@@ -365,7 +365,7 @@ function NuevaSolicitudView({ user, usuarios = [], grupos = [], usuariosPorGrupo
           </div>
 
           <div className="pt-2">
-            <label className="block text-xs font-bold text-slate-300 uppercase mb-1.5">Adjuntar Archivo:</label>
+            <label className="block text-xs font-medium text-slate-300 mb-1.5">Adjuntar Archivo:</label>
             <input 
               type="file" 
               onChange={(e) => setArchivo(e.target.files[0])}
@@ -384,7 +384,7 @@ function NuevaSolicitudView({ user, usuarios = [], grupos = [], usuariosPorGrupo
             <button 
               type="submit" 
               disabled={enviando}
-              className="bg-indigo-600 hover:bg-indigo-500 text-white px-6 py-2.5 rounded-xl font-bold text-sm shadow-lg shadow-indigo-600/30 transition-colors cursor-pointer disabled:opacity-50"
+              className="bg-indigo-600 hover:bg-indigo-500 text-white px-6 py-2.5 rounded-xl font-bold text-sm transition-colors cursor-pointer disabled:opacity-50"
             >
               {enviando ? 'Guardando...' : 'Guardar Solicitud'}
             </button>

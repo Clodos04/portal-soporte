@@ -72,11 +72,11 @@ function EditarSolicitudModal({ ticket = {}, user, usuarios = [], grupos = [], u
   };
 
   const etiquetasAccion = {
-    CREADO: '🆕 Ticket creado',
-    CAMBIO_ESTATUS: '🔄 Cambio de estatus',
-    ASIGNACION: '👤 Asignación',
-    EDICION: '✏️ Edición',
-    CIERRE_AUTOMATICO: '🤖 Cierre automático'
+    CREADO: 'Ticket creado',
+    CAMBIO_ESTATUS: 'Cambio de estatus',
+    ASIGNACION: 'Asignación',
+    EDICION: 'Edición',
+    CIERRE_AUTOMATICO: 'Cierre automático'
   };
 
   const abrirSelectorNodo = async () => {
@@ -179,13 +179,12 @@ function EditarSolicitudModal({ ticket = {}, user, usuarios = [], grupos = [], u
   };
 
   return (
-    <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm flex justify-center items-center z-50 p-4">
+    <div className="fixed inset-0 bg-slate-950/80 flex justify-center items-center z-50 p-4">
       <div className="bg-slate-800 border border-slate-700 rounded-2xl shadow-2xl max-w-2xl w-full overflow-hidden text-slate-200 animate-fade-in max-h-[90vh] flex flex-col">
         
         <div className="flex justify-between items-center bg-slate-900/80 px-6 py-4 border-b border-slate-700">
-          <div className="flex items-center gap-3">
-            <h2 className="text-lg font-bold text-white uppercase tracking-wide flex items-center gap-2">
-              {esCentinela && <span className="text-purple-400">🛡️</span>}
+          <div className="flex flex-wrap items-center gap-2">
+            <h2 className="mr-2 text-lg font-semibold text-white flex items-center gap-2 tracking-tight">
               {esCliente ? `Ver Solicitud #${ticket.folio}` : `Gestionar Solicitud #${ticket.folio}`}
             </h2>
             
@@ -193,9 +192,9 @@ function EditarSolicitudModal({ ticket = {}, user, usuarios = [], grupos = [], u
               <button
                 type="button"
                 onClick={abrirHistorialNodo}
-                className="bg-indigo-600/20 hover:bg-indigo-600 text-indigo-300 hover:text-white px-3 py-1 rounded-lg text-xs font-bold transition-all border border-indigo-500/40 flex items-center gap-1 cursor-pointer"
+                className="bg-slate-800 hover:bg-slate-700 text-slate-200 px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-colors border border-slate-700 flex items-center gap-1 cursor-pointer"
               >
-                <span>📋</span> Historial Nodo (3m)
+                Historial del nodo
               </button>
             )}
 
@@ -203,9 +202,9 @@ function EditarSolicitudModal({ ticket = {}, user, usuarios = [], grupos = [], u
               <button
                 type="button"
                 onClick={abrirAuditoria}
-                className="bg-slate-600/30 hover:bg-slate-600 text-slate-300 hover:text-white px-3 py-1 rounded-lg text-xs font-bold transition-all border border-slate-500/40 flex items-center gap-1.5 cursor-pointer"
+                className="bg-slate-800 hover:bg-slate-700 text-slate-200 px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-all border border-slate-500/40 flex items-center gap-1.5 cursor-pointer"
               >
-                <span>🕒</span> Historial de cambios
+                Historial de cambios
               </button>
             )}
 
@@ -213,16 +212,16 @@ function EditarSolicitudModal({ ticket = {}, user, usuarios = [], grupos = [], u
               <button
                 type="button"
                 onClick={() => { onClose(); onAbrirChat(ticket.folio); }}
-                className="bg-emerald-600/20 hover:bg-emerald-600 text-emerald-400 hover:text-white px-3 py-1 rounded-lg text-xs font-bold transition-all border border-emerald-500/40 flex items-center gap-1 cursor-pointer"
+                className="bg-slate-800 hover:bg-slate-700 text-slate-200 px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-colors border border-slate-700 flex items-center gap-1 cursor-pointer"
               >
-                💬 Abrir Chat
+                Abrir chat
               </button>
             )}
           </div>
           <button 
             type="button"
             onClick={onClose}
-            className="text-slate-400 hover:text-white font-bold text-lg px-2 py-1 rounded-lg hover:bg-slate-700 transition-colors cursor-pointer"
+            className="text-slate-400 hover:text-slate-100 font-bold text-lg px-2 py-1 rounded-lg hover:bg-slate-700 transition-colors cursor-pointer"
           >
             ✕
           </button>
@@ -231,7 +230,7 @@ function EditarSolicitudModal({ ticket = {}, user, usuarios = [], grupos = [], u
         <form onSubmit={handleSubmit} className="p-6 space-y-4 overflow-y-auto flex-grow">
           
           <div>
-            <label className="block text-xs font-bold text-slate-300 uppercase mb-1.5">Estado:</label>
+            <label className="block text-xs font-medium text-slate-300 mb-1.5">Estado:</label>
             <select 
               value={estatus} 
               disabled={esCliente}
@@ -245,7 +244,7 @@ function EditarSolicitudModal({ ticket = {}, user, usuarios = [], grupos = [], u
           </div>
 
           <div>
-            <label className="block text-xs font-bold text-slate-300 uppercase mb-1.5">Grupo Asignado:</label>
+            <label className="block text-xs font-medium text-slate-300 mb-1.5">Grupo Asignado:</label>
             <select 
               value={grupo} 
               disabled={esCliente}
@@ -260,7 +259,7 @@ function EditarSolicitudModal({ ticket = {}, user, usuarios = [], grupos = [], u
           </div>
 
           <div>
-            <label className="block text-xs font-bold text-slate-300 uppercase mb-1.5">Técnico / Usuario Asignado:</label>
+            <label className="block text-xs font-medium text-slate-300 mb-1.5">Técnico / Usuario Asignado:</label>
             <select 
               value={tecnico} 
               disabled={esCliente}
@@ -277,16 +276,16 @@ function EditarSolicitudModal({ ticket = {}, user, usuarios = [], grupos = [], u
           {/* CATEGORÍA, SUBCATEGORÍA Y ELEMENTO RESTAURADOS */}
           {esCentinela ? (
             <div className="bg-purple-950/30 border border-purple-500/30 p-4 rounded-xl space-y-2 text-xs">
-              <div className="text-purple-300 font-bold uppercase">🛡️ Tipificación Automática Centinela:</div>
+              <div className="text-purple-300 font-bold">Tipificación Automática Centinela:</div>
               <div className="grid grid-cols-2 gap-2 text-slate-300">
-                <div>Componente: <strong className="text-white uppercase">{ticket.subcategoria || 'Periférico'}</strong></div>
-                <div>Falla: <strong className="text-white uppercase">{ticket.elemento || 'Daño reportado'}</strong></div>
+                <div>Componente: <strong className="text-white">{ticket.subcategoria || 'Periférico'}</strong></div>
+                <div>Falla: <strong className="text-white">{ticket.elemento || 'Daño reportado'}</strong></div>
               </div>
             </div>
           ) : (
             <>
               <div>
-                <label className="block text-xs font-bold text-slate-300 uppercase mb-1.5">Categoría:</label>
+                <label className="block text-xs font-medium text-slate-300 mb-1.5">Categoría:</label>
                 <select 
                   value={categoria} 
                   disabled={esCliente}
@@ -303,7 +302,7 @@ function EditarSolicitudModal({ ticket = {}, user, usuarios = [], grupos = [], u
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-300 uppercase mb-1.5">Sub-Categoría:</label>
+                <label className="block text-xs font-medium text-slate-300 mb-1.5">Sub-Categoría:</label>
                 <select 
                   value={subcategoria} 
                   disabled={esCliente}
@@ -318,7 +317,7 @@ function EditarSolicitudModal({ ticket = {}, user, usuarios = [], grupos = [], u
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-300 uppercase mb-1.5">Elemento:</label>
+                <label className="block text-xs font-medium text-slate-300 mb-1.5">Elemento:</label>
                 <select 
                   value={elemento} 
                   disabled={esCliente}
@@ -336,14 +335,14 @@ function EditarSolicitudModal({ ticket = {}, user, usuarios = [], grupos = [], u
 
           <div>
             <div className="flex justify-between items-center mb-1.5">
-              <label className="block text-xs font-bold text-slate-300 uppercase">Equipo(s) / Nodo:</label>
+              <label className="block text-xs font-medium text-slate-300">Equipo(s) / Nodo:</label>
               {esSoporte && (
                 <button
                   type="button"
                   onClick={abrirSelectorNodo}
                   className="text-xs text-indigo-400 hover:text-indigo-300 font-bold flex items-center gap-1 cursor-pointer"
                 >
-                  <span>🔄</span> Cambiar Nodo (Centinela)
+                  Cambiar Nodo (Centinela)
                 </button>
               )}
             </div>
@@ -356,7 +355,7 @@ function EditarSolicitudModal({ ticket = {}, user, usuarios = [], grupos = [], u
           </div>
 
           <div>
-            <label className="block text-xs font-bold text-slate-300 uppercase mb-1.5">Resolución / Comentarios:</label>
+            <label className="block text-xs font-medium text-slate-300 mb-1.5">Resolución / Comentarios:</label>
             <textarea 
               rows="3" 
               value={resolucion} 
@@ -379,7 +378,7 @@ function EditarSolicitudModal({ ticket = {}, user, usuarios = [], grupos = [], u
               <button 
                 type="submit" 
                 disabled={cargando}
-                className="bg-green-600 hover:bg-green-500 text-white px-5 py-2 rounded-lg font-bold text-sm shadow-lg shadow-green-600/30 transition-colors disabled:opacity-50 cursor-pointer"
+                className="bg-indigo-600 hover:bg-indigo-500 text-white px-5 py-2 rounded-lg font-bold text-sm transition-colors disabled:opacity-50 cursor-pointer"
               >
                 {cargando ? 'Guardando...' : 'Guardar Cambios'}
               </button>
@@ -388,10 +387,10 @@ function EditarSolicitudModal({ ticket = {}, user, usuarios = [], grupos = [], u
         </form>
 
         {modalCambiarNodoOpen && (
-          <div className="absolute inset-0 bg-slate-950/90 z-50 flex flex-col p-6 animate-fade-in">
+          <div className="absolute inset-0 bg-slate-950 z-50 flex flex-col p-6 animate-fade-in">
             <div className="flex justify-between items-center mb-4">
-              <h3 className="text-sm font-bold text-white uppercase flex items-center gap-2">
-                <span>🔍</span> Seleccionar Nodo Correcto (Centinela)
+              <h3 className="text-sm font-medium text-white flex items-center gap-2">
+                Seleccionar Nodo Correcto (Centinela)
               </h3>
               <button 
                 onClick={() => setModalCambiarNodoOpen(false)}
@@ -432,10 +431,10 @@ function EditarSolicitudModal({ ticket = {}, user, usuarios = [], grupos = [], u
         )}
 
         {modalAuditoriaOpen && (
-          <div className="absolute inset-0 bg-slate-950/95 z-50 flex flex-col p-6 animate-fade-in">
+          <div className="absolute inset-0 bg-slate-950 z-50 flex flex-col p-6 animate-fade-in">
             <div className="flex justify-between items-center mb-4">
-              <h3 className="text-sm font-bold text-white uppercase flex items-center gap-2">
-                <span>🕒</span> Historial de cambios - Ticket <strong className="text-indigo-400">#{ticket.folio}</strong>
+              <h3 className="text-sm font-medium text-white flex items-center gap-2">
+                Historial de cambios - Ticket <strong className="text-indigo-400">#{ticket.folio}</strong>
               </h3>
               <button onClick={() => setModalAuditoriaOpen(false)} className="text-slate-400 hover:text-white font-bold text-sm cursor-pointer">
                 ✕ Cerrar
@@ -457,7 +456,7 @@ function EditarSolicitudModal({ ticket = {}, user, usuarios = [], grupos = [], u
                       <span className="text-slate-500 font-mono">{String(a.fecha).replace('T', ' ').slice(0, 19)}</span>
                     </div>
                     <p className="text-xs text-slate-300">
-                      👤 {a.usuario}
+                      {a.usuario}
                       {a.campo && (
                         <>
                           {' • '}<span className="text-slate-400">{a.campo}:</span>{' '}
@@ -475,10 +474,10 @@ function EditarSolicitudModal({ ticket = {}, user, usuarios = [], grupos = [], u
         )}
 
         {modalHistorialOpen && (
-          <div className="absolute inset-0 bg-slate-950/90 z-50 flex flex-col p-6 animate-fade-in">
+          <div className="absolute inset-0 bg-slate-950 z-50 flex flex-col p-6 animate-fade-in">
             <div className="flex justify-between items-center mb-4">
-              <h3 className="text-sm font-bold text-white uppercase flex items-center gap-2">
-                <span>📋</span> Historial de Mantenimiento (Últimos 3 Meses) - Nodo: <strong className="text-indigo-400">{equipoNodo}</strong>
+              <h3 className="text-sm font-medium text-white flex items-center gap-2">
+                Historial de Mantenimiento (Últimos 3 Meses) - Nodo: <strong className="text-indigo-400">{equipoNodo}</strong>
               </h3>
               <button 
                 onClick={() => setModalHistorialOpen(false)}
@@ -502,8 +501,8 @@ function EditarSolicitudModal({ ticket = {}, user, usuarios = [], grupos = [], u
                       <span className="text-slate-400">{t.fecha || t.created_at}</span>
                     </div>
                     <p className="font-bold text-white text-sm">{t.asunto || t.subcategoria}</p>
-                    <p className="text-xs text-slate-300">👤 Creado por: {t.creador} | 🛠️ Atendido por: {t.tecnico || 'Sin asignar'}</p>
-                    {t.resolucion && <p className="text-xs text-emerald-400 mt-1">✔ Resolución: {t.resolucion}</p>}
+                    <p className="text-xs text-slate-300">Creado por: {t.creador} | Atendido por: {t.tecnico || 'Sin asignar'}</p>
+                    {t.resolucion && <p className="text-xs text-emerald-400 mt-1">Resolución: {t.resolucion}</p>}
                   </div>
                 ))
               )}
