@@ -158,6 +158,14 @@ function App() {
       cargarDatosIniciales();
     });
 
+    // Aviso al autor de una sugerencia / reporte cuando el administrador la responde o cambia su estatus
+    socket.on('buzonRespondido', (data) => {
+      if (!data || !data.username || data.username !== userRef.current?.username) return;
+      reproducirAlerta(data.estatus === 'APLICADO'
+        ? '✅ ¡Tu sugerencia fue APLICADA! Gracias por ayudarnos a mejorar.'
+        : `📬 Tu ${String(data.tipo || 'sugerencia').toLowerCase()} del Buzón fue ${data.conRespuesta ? 'respondida' : 'actualizada'} (${data.estatus}).`);
+    });
+
     socket.on('nuevoFeedbackBuzon', (data) => {
       reproducirAlerta(`📬 Nuevo comentario en el Buzón (${data?.tipo || 'SUGERENCIA'}) de ${data?.usuario || 'Usuario'}`);
     });
@@ -169,6 +177,8 @@ function App() {
 
   // Alertas de SLA: avisa al equipo de soporte cuando un ticket abierto llega a 80% de su tiempo o se vence.
   // Se avisa una sola vez por ticket y nivel; revisa cada minuto con los datos más recientes.
+  const userRef = useRef(null);
+  useEffect(() => { userRef.current = user; }, [user]);
   const datosSlaRef = useRef({ tickets: [], categorias: [] });
   const alertasSlaEnviadas = useRef({});
   useEffect(() => { datosSlaRef.current = { tickets, categorias }; }, [tickets, categorias]);

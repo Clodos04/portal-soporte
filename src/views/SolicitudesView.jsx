@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { calcularSLA as calcularEstadoSLA, formatearDuracion } from '../utils/sla';
+import { exportarCSV } from '../utils/exportar';
 
 function SolicitudesView({ 
   tickets = [], 
@@ -106,6 +107,29 @@ function SolicitudesView({
     );
   });
 
+  const exportarListado = () => {
+    if (ticketsFiltrados.length === 0) { alert('No hay solicitudes para exportar con el filtro actual.'); return; }
+    const textoNivel = { ok: 'En tiempo', riesgo: 'Por vencer', vencido: 'Vencido', sin_fecha: '—' };
+    exportarCSV(ticketsFiltrados, [
+      { titulo: 'Folio', valor: t => t.folio },
+      { titulo: 'Fecha', valor: t => t.fecha },
+      { titulo: 'Estatus', valor: t => t.estatus },
+      { titulo: 'Solicitante', valor: t => t.creador },
+      { titulo: 'Técnico', valor: t => t.tecnico },
+      { titulo: 'Campaña', valor: t => t.campana },
+      { titulo: 'Categoría', valor: t => t.categoria },
+      { titulo: 'Subcategoría', valor: t => t.subcategoria },
+      { titulo: 'Equipo / Nodo', valor: t => t.equipo },
+      { titulo: 'Asunto', valor: t => t.asunto },
+      { titulo: 'SLA (horas)', valor: t => calcularEstadoSLA(t, categorias).limiteMin / 60 },
+      { titulo: 'Estado SLA', valor: t => {
+        const sla = calcularEstadoSLA(t, categorias);
+        return sla.nivel === 'cerrado' ? (sla.cumplido ? 'Resuelto en SLA' : 'Resuelto fuera de SLA') : textoNivel[sla.nivel];
+      } },
+      { titulo: 'Tiempo transcurrido (min)', valor: t => calcularEstadoSLA(t, categorias).transcurridoMin }
+    ], 'solicitudes');
+  };
+
   return (
     <div className="animate-fade-in max-w-7xl mx-auto space-y-6 text-slate-200">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-slate-800 p-6 rounded-xl border border-slate-700 shadow-lg">
@@ -121,6 +145,15 @@ function SolicitudesView({
           >
             ⚙️ Columnas
           </button>
+
+          {!esCliente && (
+            <button
+              onClick={exportarListado}
+              className="bg-emerald-700 hover:bg-emerald-600 text-white px-4 py-2 rounded-lg font-bold text-sm shadow transition-colors flex items-center gap-2 border border-emerald-600 cursor-pointer"
+            >
+              📥 Exportar
+            </button>
+          )}
           
           <button 
             onClick={onNuevaSolicitud}
