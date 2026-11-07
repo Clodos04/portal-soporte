@@ -182,7 +182,7 @@ function EditarSolicitudModal({ ticket = {}, user, usuarios = [], grupos = [], u
 
   return (
     <div className="fixed inset-0 bg-slate-950/80 flex justify-center items-center z-50 p-4">
-      <div className="bg-slate-800 border border-slate-700 rounded-2xl shadow-2xl max-w-2xl w-full overflow-hidden text-slate-200 animate-fade-in max-h-[90vh] flex flex-col">
+      <div className="bg-slate-800 border border-slate-700 rounded-2xl shadow-2xl max-w-3xl w-full overflow-hidden text-slate-200 animate-fade-in max-h-[90vh] flex flex-col">
         
         <div className="flex justify-between items-center bg-slate-900/80 px-6 py-4 border-b border-slate-700">
           <div className="flex flex-wrap items-center gap-2">
@@ -229,7 +229,7 @@ function EditarSolicitudModal({ ticket = {}, user, usuarios = [], grupos = [], u
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-4 overflow-y-auto flex-grow">
+        <form onSubmit={handleSubmit} className="p-5 sm:p-6 grid grid-cols-1 md:grid-cols-2 gap-4 content-start overflow-y-auto flex-grow">
           
           <div>
             <label className="block text-xs font-medium text-slate-300 mb-1.5">Estado:</label>
@@ -277,8 +277,8 @@ function EditarSolicitudModal({ ticket = {}, user, usuarios = [], grupos = [], u
 
           {/* CATEGORÍA, SUBCATEGORÍA Y ELEMENTO RESTAURADOS */}
           {esCentinela ? (
-            <div className="bg-purple-950/30 border border-purple-500/30 p-4 rounded-xl space-y-2 text-xs">
-              <div className="text-purple-300 font-bold">Tipificación Automática Centinela:</div>
+            <div className="md:col-span-2 bg-slate-900 border border-slate-700 p-4 rounded-xl space-y-2 text-xs">
+              <div className="text-indigo-300 font-medium">Tipificación Automática Centinela:</div>
               <div className="grid grid-cols-2 gap-2 text-slate-300">
                 <div>Componente: <strong className="text-white">{ticket.subcategoria || 'Periférico'}</strong></div>
                 <div>Falla: <strong className="text-white">{ticket.elemento || 'Daño reportado'}</strong></div>
@@ -335,7 +335,7 @@ function EditarSolicitudModal({ ticket = {}, user, usuarios = [], grupos = [], u
             </>
           )}
 
-          <div>
+          <div className="md:col-span-2">
             <div className="flex justify-between items-center mb-1.5">
               <label className="block text-xs font-medium text-slate-300">Equipo(s) / Nodo:</label>
               {esSoporte && (
@@ -356,7 +356,7 @@ function EditarSolicitudModal({ ticket = {}, user, usuarios = [], grupos = [], u
             />
           </div>
 
-          <div>
+          <div className="md:col-span-2">
             <label className="block text-xs font-medium text-slate-300 mb-1.5">Resolución / Comentarios:</label>
             <textarea 
               rows="3" 
@@ -368,7 +368,7 @@ function EditarSolicitudModal({ ticket = {}, user, usuarios = [], grupos = [], u
             ></textarea>
           </div>
 
-          <div className="flex justify-end gap-3 pt-4 border-t border-slate-700">
+          <div className="md:col-span-2 flex justify-end gap-3 pt-4 border-t border-slate-700">
             <button 
               type="button" 
               onClick={onClose} 

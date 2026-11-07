@@ -26,8 +26,10 @@ import AdminSubcategoriasView from './views/AdminSubcategoriasView';
 import AdminCampanasView from './views/AdminCampanasView';
 import { calcularSLA, esTicketCerrado } from './utils/sla';
 import Buscador from './components/Buscador';
+import { useAvisos } from './components/Avisos';
 
 function App() {
+  const { avisar, confirmar } = useAvisos();
   const [isLoggedIn, setIsLoggedIn] = useState(false); 
   const [user, setUser] = useState(null); 
   const [currentView, setCurrentView] = useState('inicio'); 
@@ -364,6 +366,25 @@ function App() {
     });
   };
 
+  const handleCambiarEstatusTablero = async (ticket, nuevoEstatus) => {
+    if (nuevoEstatus === 'Cerrado' && !(await confirmar(`¿Cerrar el ticket #${ticket.folio}? Se registrará en el historial de cambios.`, { textoConfirmar: 'Cerrar ticket', peligro: false }))) return;
+    const colorEstatus = nuevoEstatus === 'En Proceso' ? 'bg-orange-500' : nuevoEstatus === 'Cerrado' ? 'bg-red-500' : 'bg-green-500';
+    const anterior = tickets;
+    setTickets(prev => prev.map(t => (t.folio === ticket.folio ? { ...t, estatus: nuevoEstatus, colorEstatus } : t)));
+    try {
+      const res = await fetch(`/api/tickets/${ticket.folio}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ estatus: nuevoEstatus, colorEstatus })
+      });
+      if (!res.ok) throw new Error('El servidor rechazó el cambio');
+      avisar(`Ticket #${ticket.folio} movido a ${nuevoEstatus}`, 'exito');
+    } catch (error) {
+      setTickets(anterior);
+      avisar('No se pudo cambiar el estatus. Se restauró el valor anterior.', 'error');
+    }
+  };
+
   const handleActualizarTicket = (ticketActualizado) => {
     setTickets(tickets.map(t => t.folio === ticketActualizado.folio ? ticketActualizado : t));
     setIsEditModalOpen(false);
@@ -535,6 +556,7 @@ function App() {
         {currentView === 'solicitudes' && (
           <SolicitudesView 
             filtroInicial={filtroSolicitudesInicial}
+            onCambiarEstatus={handleCambiarEstatusTablero}
             onFiltroConsumido={() => setFiltroSolicitudesInicial(null)}
             tickets={tickets}
             categorias={categorias}

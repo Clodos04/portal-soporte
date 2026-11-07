@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { EstadoVacio } from '../components/Estados';
 import EtiquetaEstatus from '../components/EtiquetaEstatus';
 import { useAvisos } from '../components/Avisos';
-import { Plus, Search, StickyNote, Inbox } from 'lucide-react';
+import { Plus, Search, StickyNote, Inbox, List, Columns3 } from 'lucide-react';
+import TableroTickets from '../components/TableroTickets';
 import { calcularSLA as calcularEstadoSLA, formatearDuracion } from '../utils/sla';
 import { exportarCSV } from '../utils/exportar';
 
@@ -19,11 +20,13 @@ function SolicitudesView({
   onAbrirChat,
   onIrAEncuestaSpecific,
   filtroInicial,
+  onCambiarEstatus,
   onFiltroConsumido,
   estadisticasEncuestas = [] 
 }) {
   const { avisar } = useAvisos();
   const [busqueda, setBusqueda] = useState('');
+  const [vista, setVista] = useState('lista');
   const [filtroEstatus, setFiltroEstatus] = useState(filtroInicial || 'activos');
   const [, setTick] = useState(0);
 
@@ -88,17 +91,7 @@ function SolicitudesView({
   const conteoVencidos = ticketsBase.filter(t => nivelSLA(t) === 'vencido').length;
   const conteoPorVencer = ticketsBase.filter(t => nivelSLA(t) === 'riesgo').length;
 
-  const ticketsFiltrados = ticketsBase.filter(t => {
-    const estatusLower = t.estatus ? t.estatus.toLowerCase() : '';
-    const esCerrado = estatusLower.includes('cerrado');
-
-    if (filtroEstatus === 'activos' && esCerrado) return false;
-    if (filtroEstatus === 'cerrados' && !esCerrado) return false;
-    if (filtroEstatus === 'sin_asignar' && (esCerrado || !estaSinAsignar(t))) return false;
-    if (filtroEstatus === 'mios' && (esCerrado || !esMiTicket(t))) return false;
-    if (filtroEstatus === 'vencidos' && nivelSLA(t) !== 'vencido') return false;
-    if (filtroEstatus === 'por_vencer' && nivelSLA(t) !== 'riesgo') return false;
-
+  const coincideBusqueda = (t) => {
     const query = busqueda.toLowerCase().trim();
     if (!query) return true;
 
@@ -115,7 +108,23 @@ function SolicitudesView({
       (t.tecnico && t.tecnico.toLowerCase().includes(query)) ||
       (t.asignado && t.asignado.toLowerCase().includes(query))
     );
+  };
+
+  const ticketsFiltrados = ticketsBase.filter(t => {
+    const estatusLower = t.estatus ? t.estatus.toLowerCase() : '';
+    const esCerrado = estatusLower.includes('cerrado');
+
+    if (filtroEstatus === 'activos' && esCerrado) return false;
+    if (filtroEstatus === 'cerrados' && !esCerrado) return false;
+    if (filtroEstatus === 'sin_asignar' && (esCerrado || !estaSinAsignar(t))) return false;
+    if (filtroEstatus === 'mios' && (esCerrado || !esMiTicket(t))) return false;
+    if (filtroEstatus === 'vencidos' && nivelSLA(t) !== 'vencido') return false;
+    if (filtroEstatus === 'por_vencer' && nivelSLA(t) !== 'riesgo') return false;
+
+    return coincideBusqueda(t);
   });
+
+  const ticketsTablero = ticketsBase.filter(coincideBusqueda);
 
   const exportarListado = () => {
     if (ticketsFiltrados.length === 0) { avisar('No hay solicitudes para exportar con el filtro actual.', 'info'); return; }
@@ -149,6 +158,22 @@ function SolicitudesView({
         </div>
 
         <div className="flex flex-wrap items-center gap-3 w-full md:w-auto md:justify-end">
+          <div className="inline-flex rounded-lg border border-slate-700 bg-slate-900 p-0.5" role="group" aria-label="Tipo de vista">
+            <button
+              onClick={() => setVista('lista')}
+              aria-pressed={vista === 'lista'}
+              className={`px-3 py-1.5 rounded-md text-sm font-medium flex items-center gap-1.5 transition-colors cursor-pointer ${vista === 'lista' ? 'bg-slate-700 text-white' : 'text-slate-400 hover:text-slate-100'}`}
+            >
+              <List size={15} strokeWidth={1.75} /> Lista
+            </button>
+            <button
+              onClick={() => setVista('tablero')}
+              aria-pressed={vista === 'tablero'}
+              className={`px-3 py-1.5 rounded-md text-sm font-medium flex items-center gap-1.5 transition-colors cursor-pointer ${vista === 'tablero' ? 'bg-slate-700 text-white' : 'text-slate-400 hover:text-slate-100'}`}
+            >
+              <Columns3 size={15} strokeWidth={1.75} /> Tablero
+            </button>
+          </div>
           <button 
             onClick={onOpenCustomizer}
             className="bg-slate-700 hover:bg-slate-600 text-slate-200 px-4 py-2 rounded-lg font-bold text-sm shadow transition-colors flex items-center gap-2 border border-slate-600 cursor-pointer"
@@ -176,7 +201,7 @@ function SolicitudesView({
 
       <div className="bg-slate-800 rounded-xl shadow-lg border border-slate-700 p-4 sm:p-6 space-y-4">
         <div className="flex flex-col lg:flex-row justify-between items-stretch lg:items-center gap-4 border-b border-slate-700 pb-4">
-          <div className="flex flex-wrap items-center gap-2">
+          <div className={`flex flex-wrap items-center gap-2 ${vista === 'tablero' ? 'invisible hidden lg:flex lg:invisible' : ''}`}>
             <button 
               onClick={() => setFiltroEstatus('activos')}
               className={`px-3.5 py-2 rounded-lg font-bold text-xs transition-all cursor-pointer flex items-center gap-2 ${filtroEstatus === 'activos' ? 'bg-indigo-600 text-white' : 'bg-slate-900/60 text-slate-400 hover:text-white border border-slate-700'}`}
@@ -266,7 +291,7 @@ function SolicitudesView({
           </div>
         </div>
 
-        <div className="flex justify-between items-center text-xs text-slate-400 pt-1">
+        <div className={`${vista === 'tablero' ? 'hidden' : 'flex'} justify-between items-center text-xs text-slate-400 pt-1`}>
           <span>
             Filtro activo: <strong className="text-white">{filtroEstatus.replace('_', ' ')}</strong>
             {busqueda && <> • Buscando: <strong className="text-green-400">"{busqueda}"</strong></>}
@@ -274,7 +299,17 @@ function SolicitudesView({
           <span>Mostrando: <strong className="text-white">{ticketsFiltrados.length}</strong> registros</span>
         </div>
 
-        <div className="overflow-x-auto border border-slate-700 rounded-lg">
+        {vista === 'tablero' && (
+          <TableroTickets
+            tickets={ticketsTablero}
+            categorias={categorias}
+            puedeMover={!esCliente && !!onCambiarEstatus}
+            onAbrir={onEditarTicket}
+            onMover={onCambiarEstatus}
+          />
+        )}
+
+        <div className={vista === 'lista' ? 'overflow-x-auto border border-slate-700 rounded-lg' : 'hidden'}>
           <table className="w-full text-left text-sm text-slate-300 whitespace-nowrap">
             <thead className="bg-slate-700 text-slate-200 text-xs">
               <tr>
