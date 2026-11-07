@@ -449,7 +449,7 @@ function App() {
             user={user} 
             tickets={tickets} 
             categorias={categorias}
-            onIrASolicitudes={(filtro, busqueda = '') => { setFiltroSolicitudesInicial({ filtro, busqueda }); setCurrentView('solicitudes'); }}
+            onIrASolicitudes={(filtro, busqueda = '', grupo = '') => { setFiltroSolicitudesInicial({ filtro, busqueda, grupo }); setCurrentView('solicitudes'); }}
             grupos={grupos}
             estadisticasEncuestas={estadisticasEncuestas}
             onTomarTicket={handleTomarTicket}
