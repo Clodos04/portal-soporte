@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Plus } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
 function Dashboard({ user, tickets = [], grupos = [], onIrANuevaSolicitud, onIrAEncuesta, onIrABuzon, estadisticasEncuestas = [], onTomarTicket, onAbrirChat }) {
@@ -69,15 +70,15 @@ function Dashboard({ user, tickets = [], grupos = [], onIrANuevaSolicitud, onIrA
         <div className="relative overflow-hidden bg-gradient-to-r from-indigo-900/80 via-slate-900 to-blue-950 p-8 rounded-3xl border border-indigo-500/30 shadow-2xl flex flex-col md:flex-row justify-between items-center gap-6">
           <div className="absolute -right-10 -bottom-10 w-64 h-64 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none"></div>
           <div className="space-y-2 relative z-10">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/20 border border-indigo-500/40 text-indigo-300 text-xs font-bold uppercase tracking-wider">
-              <span>✨</span> Centro de Asistencia Inteligente
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/20 border border-indigo-500/40 text-indigo-300 text-xs font-medium">
+              Centro de Asistencia Inteligente
             </div>
-            <h1 className="text-3xl font-black text-white tracking-wide">¡Hola, {user?.name || 'Cliente'}! 👋</h1>
+            <h1 className="text-2xl font-semibold text-white tracking-tight">¡Hola, {user?.name || 'Cliente'}! </h1>
             <p className="text-slate-300 text-sm max-w-xl">Utiliza nuestro asistente guiado para reportar tus incidencias rápidamente y recibir atención especializada en tiempo real.</p>
           </div>
           <div className="relative z-10 w-full md:w-auto">
-            <button onClick={onIrANuevaSolicitud} className="w-full md:w-auto px-6 py-4 bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-500 hover:to-blue-500 text-white font-extrabold text-sm uppercase tracking-wider rounded-2xl shadow-lg shadow-indigo-600/40 transition-all transform active:scale-95 flex items-center justify-center gap-2 cursor-pointer">
-              <span>🚀</span> Iniciar Solicitud / Reporte
+            <button onClick={onIrANuevaSolicitud} className="w-full md:w-auto px-6 py-4 bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-500 hover:to-blue-500 text-white font-extrabold text-sm rounded-2xl transition-all transform active:scale-95 flex items-center justify-center gap-2 cursor-pointer">
+              Iniciar Solicitud / Reporte
             </button>
           </div>
         </div>
@@ -86,7 +87,7 @@ function Dashboard({ user, tickets = [], grupos = [], onIrANuevaSolicitud, onIrA
           <div className="bg-slate-800/95 backdrop-blur-xl rounded-2xl shadow-xl p-6 border border-slate-700/80 flex flex-col justify-between">
             <div>
               <div className="flex justify-between items-center mb-4">
-                <h2 className="text-base font-bold text-white uppercase tracking-wider flex items-center gap-2"><span>📂</span> Mis Tickets Abiertos</h2>
+                <h2 className="text-base font-semibold text-white flex items-center gap-2 tracking-tight">Mis Tickets Abiertos</h2>
                 <span className="bg-indigo-500/20 text-indigo-400 px-2.5 py-1 rounded-full text-xs font-bold border border-indigo-500/30">{misTicketsAbiertos?.length || 0} activos</span>
               </div>
               {misTicketsAbiertos.length === 0 ? (
@@ -114,7 +115,7 @@ function Dashboard({ user, tickets = [], grupos = [], onIrANuevaSolicitud, onIrA
           <div className="bg-slate-800/95 backdrop-blur-xl rounded-2xl shadow-xl p-6 border border-slate-700/80 flex flex-col justify-between">
             <div>
               <div className="flex justify-between items-center mb-4">
-                <h2 className="text-base font-bold text-white uppercase tracking-wider flex items-center gap-2"><span>⚡</span> Última Actualización</h2>
+                <h2 className="text-base font-semibold text-white flex items-center gap-2 tracking-tight">Última Actualización</h2>
               </div>
               {!ultimoTicketGeneral ? (
                 <div className="text-center py-8 border border-dashed border-slate-700 rounded-xl bg-slate-900/40">
@@ -148,8 +149,8 @@ function Dashboard({ user, tickets = [], grupos = [], onIrANuevaSolicitud, onIrA
         {/* TARJETA DIRECTA AL BUZÓN DE SUGERENCIAS Y REPORTE DE BUGS */}
         <div className="bg-gradient-to-r from-amber-950/40 via-slate-800 to-slate-800 rounded-2xl shadow-xl p-6 border border-amber-500/30 flex flex-col sm:flex-row justify-between items-center gap-4">
           <div className="space-y-1">
-            <h2 className="text-base font-bold text-amber-300 uppercase flex items-center gap-2">
-              <span>📬</span> Buzón de Sugerencias y Reporte de Errores del Portal
+            <h2 className="text-base font-semibold text-amber-300 flex items-center gap-2 tracking-tight">
+              Buzón de Sugerencias y Reporte de Errores del Portal
             </h2>
             <p className="text-xs text-slate-300">
               ¿Notaste algún fallo en la página o tienes alguna idea para mejorar el sistema? Envíanos tu comentario directo.
@@ -158,9 +159,9 @@ function Dashboard({ user, tickets = [], grupos = [], onIrANuevaSolicitud, onIrA
           {onIrABuzon && (
             <button
               onClick={onIrABuzon}
-              className="w-full sm:w-auto bg-amber-600 hover:bg-amber-500 text-white font-bold px-5 py-3 rounded-xl shadow-lg transition-colors text-xs uppercase tracking-wider cursor-pointer whitespace-nowrap"
+              className="w-full sm:w-auto bg-amber-600 hover:bg-amber-500 text-white font-medium px-5 py-3 rounded-xl shadow-lg transition-colors text-xs cursor-pointer whitespace-nowrap"
             >
-              💡 Abrir Buzón de Feedback
+              Abrir Buzón de Feedback
             </button>
           )}
         </div>
@@ -172,7 +173,7 @@ function Dashboard({ user, tickets = [], grupos = [], onIrANuevaSolicitud, onIrA
               <p className="text-xs text-slate-300 mt-1">Comparte tu opinión sobre la atención recibida en tu ticket cerrado <strong className="text-indigo-300">#{ultimoTicketCerradoPendiente.folio}</strong>.</p>
             </div>
             <button onClick={onIrAEncuesta} className="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-500 text-white font-bold px-6 py-3 rounded-xl shadow-lg transition-colors text-sm cursor-pointer whitespace-nowrap">
-              📋 Contestar Encuesta TI
+              Contestar Encuesta TI
             </button>
           </div>
         )}
@@ -239,42 +240,42 @@ function Dashboard({ user, tickets = [], grupos = [], onIrANuevaSolicitud, onIrA
   return (
     <div className="animate-fade-in space-y-6">
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold text-white uppercase tracking-wide">Panel de Control de Inicio</h1>
+        <h1 className="text-2xl font-semibold text-white tracking-tight">Panel de Control de Inicio</h1>
         <button onClick={onIrANuevaSolicitud} className="bg-indigo-600 hover:bg-indigo-500 text-white px-5 py-2.5 rounded-xl shadow-lg font-bold text-sm transition-all cursor-pointer flex items-center gap-2">
-          <span>🚀</span> + NUEVA SOLICITUD
+          <Plus size={16} strokeWidth={2} /> Nueva solicitud
         </button>
       </div>
       
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         <div className="bg-slate-800 rounded-2xl shadow-lg p-5 border border-slate-700 flex flex-col justify-between">
-          <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wide mb-4 text-center">Solicitudes Abiertas</h3>
-          <div className="flex justify-center items-center mb-4 px-2"><span className="text-5xl font-black text-white">{totalAbiertas}</span></div>
-          <div className="w-full bg-slate-700 rounded-full h-2"><div className="bg-green-500 h-2 rounded-full" style={{ width: `${Math.min(totalAbiertas * 10, 100)}%` }}></div></div>
+          <h3 className="text-xs font-medium text-slate-400 mb-4 text-center">Solicitudes Abiertas</h3>
+          <div className="flex justify-center items-center mb-4 px-2"><span className="text-5xl font-semibold text-white">{totalAbiertas}</span></div>
+          <div className="w-full bg-slate-700 rounded-full h-2"><div className="bg-indigo-500 h-2 rounded-full" style={{ width: `${Math.min(totalAbiertas * 10, 100)}%` }}></div></div>
         </div>
 
         <div className="bg-slate-800 rounded-2xl shadow-lg p-5 border border-slate-700 flex flex-col justify-between">
-          <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wide mb-4 text-center">En Proceso</h3>
-          <div className="flex justify-center items-center mb-4 px-2"><span className="text-5xl font-black text-white">{totalEnProceso}</span></div>
-          <div className="w-full bg-slate-700 rounded-full h-2"><div className="bg-orange-500 h-2 rounded-full" style={{ width: `${Math.min(totalEnProceso * 10, 100)}%` }}></div></div>
+          <h3 className="text-xs font-medium text-slate-400 mb-4 text-center">En Proceso</h3>
+          <div className="flex justify-center items-center mb-4 px-2"><span className="text-5xl font-semibold text-white">{totalEnProceso}</span></div>
+          <div className="w-full bg-slate-700 rounded-full h-2"><div className="bg-indigo-500 h-2 rounded-full" style={{ width: `${Math.min(totalEnProceso * 10, 100)}%` }}></div></div>
         </div>
 
         <div className="bg-slate-800 rounded-2xl shadow-lg p-5 border border-slate-700 flex flex-col justify-between">
-          <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wide mb-4 text-center">Tickets Hoy ({fechaHoyMX})</h3>
-          <div className="flex justify-center items-center mb-4 px-2"><span className="text-5xl font-black text-white">{ticketsDeHoy.length}</span></div>
-          <div className="w-full bg-slate-700 rounded-full h-2"><div className="bg-blue-500 h-2 rounded-full" style={{ width: `${Math.min(ticketsDeHoy.length * 10, 100)}%` }}></div></div>
+          <h3 className="text-xs font-medium text-slate-400 mb-4 text-center">Tickets Hoy ({fechaHoyMX})</h3>
+          <div className="flex justify-center items-center mb-4 px-2"><span className="text-5xl font-semibold text-white">{ticketsDeHoy.length}</span></div>
+          <div className="w-full bg-slate-700 rounded-full h-2"><div className="bg-indigo-500 h-2 rounded-full" style={{ width: `${Math.min(ticketsDeHoy.length * 10, 100)}%` }}></div></div>
         </div>
 
         <div className="bg-slate-800 rounded-2xl shadow-lg p-5 border border-slate-700 flex flex-col justify-between">
-          <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wide mb-4 text-center">SLA de Respuesta</h3>
-          <div className="flex justify-center items-center mb-4 px-2"><span className="text-5xl font-black text-white">{porcentajeSla}%</span></div>
+          <h3 className="text-xs font-medium text-slate-400 mb-4 text-center">SLA de Respuesta</h3>
+          <div className="flex justify-center items-center mb-4 px-2"><span className="text-5xl font-semibold text-white">{porcentajeSla}%</span></div>
           <div className="w-full bg-slate-700 rounded-full h-2"><div className="bg-indigo-600 h-2 rounded-full" style={{ width: `${porcentajeSla}%` }}></div></div>
         </div>
       </div>
 
       <div className="bg-slate-800 rounded-2xl shadow-xl p-6 border border-slate-700">
         <div className="flex justify-between items-center mb-4">
-          <h2 className="text-base font-bold text-white uppercase tracking-wider flex items-center gap-2">
-            <span>⚡</span> Solicitudes Recientes en Espera / Sin Asignar
+          <h2 className="text-base font-semibold text-white flex items-center gap-2 tracking-tight">
+            Solicitudes Recientes en Espera / Sin Asignar
           </h2>
           <span className="bg-amber-500/20 text-amber-400 px-3 py-1 rounded-full text-xs font-bold border border-amber-500/30">
             {ticketsSinAsignar.length} pendientes
@@ -295,22 +296,22 @@ function Dashboard({ user, tickets = [], grupos = [], onIrANuevaSolicitud, onIrA
                     <span className="text-[10px] text-slate-400 font-normal">{t.fecha}</span>
                   </div>
                   <p className="font-bold text-white text-sm line-clamp-1">{t.asunto || t.subcategoria}</p>
-                  <p className="text-xs text-slate-400 mt-0.5">👤 {t.creador || 'Cliente'} | 🏢 {t.equipo || 'Nodo General'}</p>
+                  <p className="text-xs text-slate-400 mt-0.5">{t.creador || 'Cliente'} | {t.equipo || 'Nodo General'}</p>
                 </div>
                 <div className="flex items-center gap-2 pt-2 border-t border-slate-800">
                   <button
                     type="button"
                     onClick={() => onTomarTicket(t.folio)}
-                    className="flex-1 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold transition-all cursor-pointer shadow-md flex items-center justify-center gap-1"
+                    className="flex-1 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-bold transition-all cursor-pointer shadow-md flex items-center justify-center gap-1"
                   >
-                    <span>🙋‍♂️</span> Tomar Ticket
+                    Tomar Ticket
                   </button>
                   <button
                     type="button"
                     onClick={() => onAbrirChat(t.folio)}
                     className="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-indigo-300 rounded-lg text-xs font-bold transition-all cursor-pointer border border-slate-700 flex items-center gap-1"
                   >
-                    <span>💬</span> Chat
+                    Chat
                   </button>
                 </div>
               </div>
@@ -323,7 +324,7 @@ function Dashboard({ user, tickets = [], grupos = [], onIrANuevaSolicitud, onIrA
         <div className="bg-slate-800 rounded-2xl shadow-lg p-6 border border-slate-700">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-4">
             <div>
-              <h2 className="text-lg font-bold text-slate-300 uppercase tracking-wide">Distribución por Grupo</h2>
+              <h2 className="text-lg font-semibold text-slate-300 tracking-tight">Distribución por Grupo</h2>
               <p className="text-xs text-slate-400">{soloHoyGrafica ? `Mostrando tickets creados hoy (${fechaHoyMX})` : `Mostrando histórico total (${safeTickets.length} tickets)`}</p>
             </div>
             <div className="flex items-center gap-1.5 bg-slate-900 p-1 rounded-xl border border-slate-700">
@@ -343,7 +344,7 @@ function Dashboard({ user, tickets = [], grupos = [], onIrANuevaSolicitud, onIrA
                 <XAxis dataKey="nombre" axisLine={false} tickLine={false} interval={0} angle={-30} textAnchor="end" tick={{ fill: '#94a3b8', fontSize: 10 }} />
                 <YAxis allowDecimals={false} axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 12 }} />
                 <Tooltip cursor={{ fill: '#1e293b' }} contentStyle={{ backgroundColor: '#0f172a', borderRadius: '8px', border: '1px solid #334155', color: '#f8fafc' }} />
-                <Bar dataKey="tickets" fill="#3b82f6" radius={[4, 4, 0, 0]} barSize={28} />
+                <Bar dataKey="tickets" fill="#5e6ad2" radius={[4, 4, 0, 0]} barSize={28} />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -351,7 +352,7 @@ function Dashboard({ user, tickets = [], grupos = [], onIrANuevaSolicitud, onIrA
         
         <div className="bg-slate-800 rounded-2xl shadow-lg p-6 border border-slate-700 flex flex-col justify-between">
           <div>
-            <h2 className="text-lg font-bold text-slate-300 uppercase tracking-wide">Indicador de Satisfacción por Asesor</h2>
+            <h2 className="text-lg font-semibold text-slate-300 tracking-tight">Indicador de Satisfacción por Asesor</h2>
             <p className="text-xs text-slate-400 mb-4">Promedio de encuestas obtenidas individualmente.</p>
           </div>
           
@@ -366,9 +367,8 @@ function Dashboard({ user, tickets = [], grupos = [], onIrANuevaSolicitud, onIrA
                     <p className="text-xs text-slate-400">Evaluaciones recibidas: {tec.evaluaciones}</p>
                   </div>
                   <div className="text-right">
-                    <span className="text-2xl font-black text-green-400">{tec.promedio}</span>
-                    <span className="text-yellow-400 text-lg ml-1">⭐</span>
-                  </div>
+                    <span className="text-2xl font-semibold text-green-400 tracking-tight">{tec.promedio}</span>
+                                      </div>
                 </div>
               ))
             )}

@@ -45,7 +45,7 @@ function AdminCampanasView({ campanas = [], setCampanas }) {
     <div className="animate-fade-in max-w-4xl mx-auto space-y-6 text-slate-200">
       
       <div className="bg-slate-800 p-6 rounded-xl border border-slate-700 shadow-lg">
-        <h1 className="text-2xl font-bold text-white uppercase tracking-wide">Administración de Campañas</h1>
+        <h1 className="text-2xl font-semibold text-white tracking-tight">Administración de Campañas</h1>
         <p className="text-slate-400 text-sm mt-1">Agrega o elimina campañas del sistema de soporte</p>
       </div>
 
@@ -61,7 +61,7 @@ function AdminCampanasView({ campanas = [], setCampanas }) {
           />
           <button 
             type="submit"
-            className="bg-green-600 hover:bg-green-500 text-white px-6 py-2.5 rounded-lg font-bold text-sm shadow-lg shadow-green-600/30 transition-colors"
+            className="bg-indigo-600 hover:bg-indigo-500 text-white px-6 py-2.5 rounded-lg font-bold text-sm transition-colors"
           >
             Agregar Campaña
           </button>
@@ -69,7 +69,7 @@ function AdminCampanasView({ campanas = [], setCampanas }) {
 
         <div className="overflow-x-auto border border-slate-700 rounded-lg">
           <table className="w-full text-left text-sm text-slate-300">
-            <thead className="bg-slate-700 text-slate-200 uppercase text-xs">
+            <thead className="bg-slate-700 text-slate-200 text-xs">
               <tr>
                 <th className="px-6 py-3">Nombre de la Campaña</th>
                 <th className="px-6 py-3 text-center">Acciones</th>

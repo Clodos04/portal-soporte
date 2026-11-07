@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Trash2 } from 'lucide-react';
 
 function BuzonSugerenciasView({ user }) {
   const [registros, setRegistros] = useState([]);
@@ -111,8 +112,8 @@ function BuzonSugerenciasView({ user }) {
       {/* ENCABEZADO */}
       <div className="bg-slate-800 p-6 rounded-2xl border border-slate-700 shadow-lg flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-white uppercase flex items-center gap-2">
-            📬 Buzón de Sugerencias y Reporte de Bugs
+          <h1 className="text-2xl font-semibold text-white flex items-center gap-2 tracking-tight">
+            Buzón de Sugerencias y Reporte de Bugs
           </h1>
           <p className="text-slate-400 text-sm mt-1">
             ¿Encontraste algún error en la plataforma o tienes una idea para mejorar Clodos TI Assist? Coméntalo aquí.
@@ -132,37 +133,37 @@ function BuzonSugerenciasView({ user }) {
             <button
               type="button"
               onClick={() => setTipo('SUGERENCIA')}
-              className={`flex-1 py-3 px-4 rounded-xl border text-xs font-bold uppercase transition-all cursor-pointer flex items-center justify-center gap-2 ${
+              className={`flex-1 py-3 px-4 rounded-xl border text-xs font-medium transition-all cursor-pointer flex items-center justify-center gap-2${
                 tipo === 'SUGERENCIA'
                   ? 'bg-amber-500/20 border-amber-500 text-amber-300 shadow-md'
                   : 'bg-slate-900/60 border-slate-700 text-slate-400 hover:text-white'
               }`}
             >
-              💡 Sugerencia / Nueva Idea
+              Sugerencia / Nueva Idea
             </button>
 
             <button
               type="button"
               onClick={() => setTipo('ERROR')}
-              className={`flex-1 py-3 px-4 rounded-xl border text-xs font-bold uppercase transition-all cursor-pointer flex items-center justify-center gap-2 ${
+              className={`flex-1 py-3 px-4 rounded-xl border text-xs font-medium transition-all cursor-pointer flex items-center justify-center gap-2${
                 tipo === 'ERROR'
                   ? 'bg-red-500/20 border-red-500 text-red-300 shadow-md'
                   : 'bg-slate-900/60 border-slate-700 text-slate-400 hover:text-white'
               }`}
             >
-              🐛 Reportar Error / Bug Visual
+              Reportar Error / Bug Visual
             </button>
 
             <button
               type="button"
               onClick={() => setTipo('COMENTARIO')}
-              className={`flex-1 py-3 px-4 rounded-xl border text-xs font-bold uppercase transition-all cursor-pointer flex items-center justify-center gap-2 ${
+              className={`flex-1 py-3 px-4 rounded-xl border text-xs font-medium transition-all cursor-pointer flex items-center justify-center gap-2${
                 tipo === 'COMENTARIO'
                   ? 'bg-indigo-500/20 border-indigo-500 text-indigo-300 shadow-md'
                   : 'bg-slate-900/60 border-slate-700 text-slate-400 hover:text-white'
               }`}
             >
-              💬 Comentario General
+              Comentario General
             </button>
           </div>
 
@@ -183,7 +184,7 @@ function BuzonSugerenciasView({ user }) {
 
           {mensajeExito && (
             <div className="p-3 rounded-xl bg-emerald-500/15 border border-emerald-500/40 text-emerald-300 text-xs font-bold">
-              ✔️ {mensajeExito}
+              {mensajeExito}
             </div>
           )}
 
@@ -191,9 +192,9 @@ function BuzonSugerenciasView({ user }) {
             <button
               type="submit"
               disabled={enviando}
-              className="bg-indigo-600 hover:bg-indigo-500 text-white px-6 py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider shadow-lg transition-all cursor-pointer disabled:opacity-50"
+              className="bg-indigo-600 hover:bg-indigo-500 text-white px-6 py-2.5 rounded-xl font-medium text-xs shadow-lg transition-all cursor-pointer disabled:opacity-50"
             >
-              {enviando ? 'Enviando...' : '📨 Enviar al Buzón'}
+              {enviando ? 'Enviando...' : 'Enviar al Buzón'}
             </button>
           </div>
         </form>
@@ -202,8 +203,8 @@ function BuzonSugerenciasView({ user }) {
       {/* LISTADO DE SUGERENCIAS Y ERRORES */}
       <div className="bg-slate-800 p-6 rounded-2xl border border-slate-700 shadow-lg space-y-4">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b border-slate-700 pb-4">
-          <h2 className="text-base font-bold text-white uppercase">
-            {esAdmin ? '📋 Bandeja de Retroalimentación Recibida' : '📋 Mis Comentarios Enviados'}
+          <h2 className="text-base font-semibold text-white tracking-tight">
+            {esAdmin ? 'Bandeja de Retroalimentación Recibida' : 'Mis Comentarios Enviados'}
           </h2>
 
           {esAdmin && (
@@ -236,7 +237,7 @@ function BuzonSugerenciasView({ user }) {
                 <div className="flex flex-wrap justify-between items-center gap-2">
                   <div className="flex items-center gap-2">
                     <span className={`px-2.5 py-0.5 rounded-md text-[11px] font-bold border ${badgeTipo(item.tipo)}`}>
-                      {item.tipo === 'ERROR' ? '🐛 BUG / ERROR' : item.tipo === 'SUGERENCIA' ? '💡 SUGERENCIA' : '💬 COMENTARIO'}
+                      {item.tipo === 'ERROR' ? 'BUG / ERROR' : item.tipo === 'SUGERENCIA' ? 'SUGERENCIA' : 'COMENTARIO'}
                     </span>
                     <span className="text-xs font-bold text-white">{item.usuario}</span>
                     <span className="text-[11px] text-slate-400">({item.campana || 'General'})</span>
@@ -244,7 +245,7 @@ function BuzonSugerenciasView({ user }) {
 
                   <div className="flex items-center gap-2">
                     <span className="text-[11px] text-slate-400 font-mono">{item.fecha_creacion}</span>
-                    <span className={`px-2.5 py-0.5 rounded-md text-[10px] font-extrabold border uppercase ${badgeEstatus(item.estatus)}`}>
+                    <span className={`px-2.5 py-0.5 rounded-md text-[10px] font-extrabold border${badgeEstatus(item.estatus)}`}>
                       {item.estatus || 'PENDIENTE'}
                     </span>
 
@@ -265,8 +266,8 @@ function BuzonSugerenciasView({ user }) {
                           className="px-2 py-1 bg-red-600/20 hover:bg-red-600 text-red-400 hover:text-white rounded-lg text-xs font-bold transition-colors cursor-pointer"
                           title="Eliminar"
                         >
-                          🗑️
-                        </button>
+<Trash2 size={15} strokeWidth={1.75} />
+</button>
                       </>
                     )}
                   </div>
@@ -276,7 +277,7 @@ function BuzonSugerenciasView({ user }) {
 
                 {item.respuesta_admin && (
                   <div className="bg-indigo-950/40 border border-indigo-500/30 p-3 rounded-lg text-xs space-y-1">
-                    <div className="font-bold text-indigo-300">👨‍💻 Respuesta de TI / Administración:</div>
+                    <div className="font-bold text-indigo-300">Respuesta de TI / Administración:</div>
                     <div className="text-slate-200">{item.respuesta_admin}</div>
                   </div>
                 )}
@@ -304,7 +305,7 @@ function BuzonSugerenciasView({ user }) {
 
                       <button
                         onClick={() => guardarRespuestaAdmin(item.id)}
-                        className="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-lg text-xs font-bold cursor-pointer"
+                        className="bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-lg text-xs font-bold cursor-pointer"
                       >
                         Guardar
                       </button>

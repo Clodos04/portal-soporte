@@ -33,7 +33,7 @@ function App() {
   const [user, setUser] = useState(null); 
   const [currentView, setCurrentView] = useState('inicio'); 
 
-  // 🌓 Estado para Modo Oscuro / Claro (Persistente en localStorage)
+  // Estado para Modo Oscuro / Claro (Persistente en localStorage)
   const [isDarkMode, setIsDarkMode] = useState(() => {
     const savedTheme = localStorage.getItem('sav_theme');
     return savedTheme ? savedTheme === 'dark' : true;
@@ -145,16 +145,16 @@ function App() {
     fetch('/api/categorias').then(res => res.json()).then(data => { if (Array.isArray(data)) setCategorias(data); });
     fetch('/api/encuestas/reporte').then(res => res.json()).then(data => { if (data && data.historial) setEstadisticasEncuestas(data.historial); });
 
-    // ⚡ CONEXIÓN ESTABLE EN TIEMPO REAL CON SOCKET.IO
+    // CONEXIÓN ESTABLE EN TIEMPO REAL CON SOCKET.IO
     const socket = io();
 
     socket.on('ticketActualizado', (data) => {
-      console.log("⚡ Actualización en tiempo real recibida:", data);
+      console.log("Actualización en tiempo real recibida:", data);
       cargarDatosIniciales(); 
     });
 
     socket.on('nuevoMensajeChat', (data) => {
-      console.log("💬 Nuevo mensaje de chat en tiempo real:", data);
+      console.log("Nuevo mensaje de chat en tiempo real:", data);
       cargarDatosIniciales();
     });
 
@@ -162,12 +162,12 @@ function App() {
     socket.on('buzonRespondido', (data) => {
       if (!data || !data.username || data.username !== userRef.current?.username) return;
       reproducirAlerta(data.estatus === 'APLICADO'
-        ? '✅ ¡Tu sugerencia fue APLICADA! Gracias por ayudarnos a mejorar.'
-        : `📬 Tu ${String(data.tipo || 'sugerencia').toLowerCase()} del Buzón fue ${data.conRespuesta ? 'respondida' : 'actualizada'} (${data.estatus}).`);
+        ? '¡Tu sugerencia fue APLICADA! Gracias por ayudarnos a mejorar.'
+        : `Tu ${String(data.tipo || 'sugerencia').toLowerCase()} del Buzón fue ${data.conRespuesta ? 'respondida' : 'actualizada'} (${data.estatus}).`);
     });
 
     socket.on('nuevoFeedbackBuzon', (data) => {
-      reproducirAlerta(`📬 Nuevo comentario en el Buzón (${data?.tipo || 'SUGERENCIA'}) de ${data?.usuario || 'Usuario'}`);
+      reproducirAlerta(`Nuevo comentario en el Buzón (${data?.tipo || 'SUGERENCIA'}) de ${data?.usuario || 'Usuario'}`);
     });
 
     return () => {
@@ -197,8 +197,8 @@ function App() {
         alertasSlaEnviadas.current[t.folio] = nivelAlerta;
         if (primeraVez) return;
         reproducirAlerta(nivelAlerta === 'vencido'
-          ? `🔴 SLA VENCIDO: ticket #${t.folio}`
-          : `🟡 SLA por vencer (80%): ticket #${t.folio}`);
+          ? `SLA VENCIDO: ticket #${t.folio}`
+          : `SLA por vencer (80%): ticket #${t.folio}`);
       });
       if (lista.length > 0) alertasSlaEnviadas.current.__listo = true;
     };
@@ -273,7 +273,7 @@ function App() {
         body: JSON.stringify({
           folio: folio,
           remitente: 'Sistema',
-          texto: `👨‍💻 El técnico ${nombreTecnico} ha tomado tu solicitud y se encuentra en camino a tu posición.`,
+          texto: `El técnico ${nombreTecnico} ha tomado tu solicitud y se encuentra en camino a tu posición.`,
           hora: horaActual
         })
       });
@@ -410,9 +410,8 @@ function App() {
     <div className={`${!isDarkMode ? 'light-mode' : ''} min-h-screen bg-slate-900 font-sans pb-10 text-slate-200 relative`}>
       {alertaVisual && (
         <div className="fixed bottom-6 right-6 z-50 bg-slate-800 border border-indigo-500/50 text-slate-100 px-5 py-4 rounded-2xl shadow-2xl flex items-center space-x-3 animate-bounce">
-          <span className="text-xl">⚡</span>
-          <div>
-            <p className="text-xs font-bold text-indigo-400 uppercase tracking-wider">Clodos TI Assist (CTI)</p>
+                    <div>
+            <p className="text-xs font-medium text-indigo-400">Clodos TI Assist (CTI)</p>
             <p className="text-sm font-medium">{alertaVisual}</p>
           </div>
         </div>

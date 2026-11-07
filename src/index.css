@@ -1,6 +1,60 @@
 @import "tailwindcss";
 
 /* =========================================================
+   SISTEMA DE DISEÑO (basado en DESIGN.md)
+   Neutros casi negros + un único acento lavanda. Los colores
+   semánticos (verde / ámbar / rojo) se reservan para estados.
+   Se sobrescriben las escalas de Tailwind para que todo el
+   portal tome la paleta sin tocar cada componente.
+   ========================================================= */
+@theme {
+  --font-sans: "Inter Variable", "Inter", ui-sans-serif, system-ui, "Segoe UI", Roboto, sans-serif;
+
+  --color-slate-50:  #f7f8f8;
+  --color-slate-100: #eef0f2;
+  --color-slate-200: #e1e4e8;
+  --color-slate-300: #cdd2da;
+  --color-slate-400: #8a8f98;
+  --color-slate-500: #62666d;
+  --color-slate-600: #34343a;
+  --color-slate-700: #23252a;
+  --color-slate-800: #141516;
+  --color-slate-900: #0f1011;
+  --color-slate-950: #08090a;
+
+  /* Acento único: lavanda (#5e6ad2). Violeta, púrpura, azul e índigo convergen a él. */
+  --color-indigo-200: #cfd3f7;
+  --color-indigo-300: #aab2f5;
+  --color-indigo-400: #8f99ee;
+  --color-indigo-500: #7480e0;
+  --color-indigo-600: #5e6ad2;
+  --color-indigo-700: #4c56b0;
+  --color-indigo-800: #373f85;
+  --color-indigo-900: #23275a;
+  --color-indigo-950: #15173a;
+
+  --color-purple-300: #aab2f5;
+  --color-purple-400: #8f99ee;
+  --color-purple-500: #7480e0;
+  --color-purple-600: #5e6ad2;
+  --color-purple-700: #4c56b0;
+  --color-purple-900: #23275a;
+  --color-purple-950: #15173a;
+
+  --color-blue-300: #aab2f5;
+  --color-blue-400: #8f99ee;
+  --color-blue-500: #7480e0;
+  --color-blue-600: #5e6ad2;
+  --color-blue-700: #4c56b0;
+}
+
+body {
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  font-feature-settings: "cv11", "ss01";
+}
+
+/* =========================================================
    MOTOR DE MODO CLARO AUTOMÁTICO (Tailwind v4)
    ========================================================= */
 .light-mode {
@@ -20,10 +74,10 @@
   --color-slate-50:  #0f172a;
 
   /* Ajuste de acentos para máxima legibilidad sobre fondo blanco */
-  --color-indigo-300: #4f46e5;
-  --color-indigo-400: #4338ca;
-  --color-purple-300: #6b21a8;
-  --color-purple-400: #7e22ce;
+  --color-indigo-300: #5e6ad2;
+  --color-indigo-400: #4c56b0;
+  --color-purple-300: #5e6ad2;
+  --color-purple-400: #4c56b0;
   --color-emerald-400: #059669;
   --color-amber-400: #d97706;
   --color-red-400: #dc2626;

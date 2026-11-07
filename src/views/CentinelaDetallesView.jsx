@@ -72,10 +72,10 @@ function CentinelaDetallesView({ tickets = [], onVolver, onEditarTicket }) {
       {/* Cabecera */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center bg-slate-800/90 p-6 rounded-2xl border border-slate-700 shadow-xl gap-4">
         <div>
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-purple-500/20 border border-purple-500/40 text-purple-300 text-xs font-bold uppercase tracking-wider mb-2">
-            <span>🛡️</span> Módulo de Compras e Inventario
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-purple-500/20 border border-purple-500/40 text-purple-300 text-xs font-medium mb-2">
+            Módulo de Compras e Inventario
           </div>
-          <h1 className="text-2xl font-black text-white tracking-wide uppercase">
+          <h1 className="text-2xl font-semibold text-white tracking-tight">
             Detalle de Requisiciones Pendientes (5+ Centinelas)
           </h1>
           <p className="text-slate-400 text-xs mt-1">
@@ -98,7 +98,7 @@ function CentinelaDetallesView({ tickets = [], onVolver, onEditarTicket }) {
         <div className="text-center py-16 text-slate-400 text-sm">Cargando detalles técnicos de Centinela...</div>
       ) : requisicionesPendientes.length === 0 ? (
         <div className="text-center py-16 bg-slate-800/50 border border-dashed border-slate-700 rounded-3xl space-y-3">
-          <div className="text-4xl">✨</div>
+          <div className="text-4xl"></div>
           <h2 className="text-lg font-bold text-white">No hay requisiciones pendientes</h2>
           <p className="text-xs text-slate-400 max-w-md mx-auto">
             Actualmente ningún nodo cuenta con 5 o más reportes del mismo periférico acumulados.
@@ -115,10 +115,9 @@ function CentinelaDetallesView({ tickets = [], onVolver, onEditarTicket }) {
                 {/* Tarjeta Header con Detalles Técnicos (IP, Estación y Campaña) */}
                 <div className="bg-gradient-to-r from-purple-950/80 to-slate-900 px-6 py-4 border-b border-slate-700 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                   <div className="flex items-center gap-3">
-                    <span className="text-2xl">🖥️</span>
-                    <div>
+                                        <div>
                       <div className="flex items-center gap-3">
-                        <h2 className="text-sm font-bold text-white uppercase">
+                        <h2 className="text-sm font-medium text-white">
                           Nodo / Estación: <span className="text-purple-400 font-mono text-base">{item.nodo}</span>
                         </h2>
                         <span className="bg-slate-950 px-2.5 py-1 rounded border border-slate-700 font-mono text-xs text-emerald-400">
@@ -126,12 +125,12 @@ function CentinelaDetallesView({ tickets = [], onVolver, onEditarTicket }) {
                         </span>
                       </div>
                       <p className="text-xs text-slate-400 mt-1">
-                        Campaña / Área: <strong className="text-indigo-300 uppercase">{infoTecnica.campanaNombre}</strong> | Componente Afectado: <strong className="text-white uppercase">{item.componente}</strong>
+                        Campaña / Área: <strong className="text-indigo-300">{infoTecnica.campanaNombre}</strong> | Componente Afectado: <strong className="text-white">{item.componente}</strong>
                       </p>
                     </div>
                   </div>
-                  <div className="bg-purple-600/30 border border-purple-500 text-purple-300 px-3 py-1 rounded-full text-xs font-black whitespace-nowrap">
-                    {item.reportes.length} Reportes Acumulados ⚠️
+                  <div className="bg-purple-600/30 border border-purple-500 text-purple-300 px-3 py-1 rounded-full text-xs font-semibold whitespace-nowrap">
+                    {item.reportes.length} Reportes Acumulados 
                   </div>
                 </div>
 
@@ -139,7 +138,7 @@ function CentinelaDetallesView({ tickets = [], onVolver, onEditarTicket }) {
                 <div className="p-6 overflow-x-auto">
                   <table className="w-full text-left border-collapse text-xs">
                     <thead>
-                      <tr className="border-b border-slate-700 text-slate-400 font-bold uppercase">
+                      <tr className="border-b border-slate-700 text-slate-400 font-bold">
                         <th className="py-2.5 px-3">Folio</th>
                         <th className="py-2.5 px-3">Fecha</th>
                         <th className="py-2.5 px-3">Falla Específica</th>
@@ -153,7 +152,7 @@ function CentinelaDetallesView({ tickets = [], onVolver, onEditarTicket }) {
                         <tr key={rIdx} className="hover:bg-slate-900/40 transition-colors">
                           <td className="py-3 px-3 font-mono text-indigo-400 font-bold">#{rep.folio}</td>
                           <td className="py-3 px-3 text-slate-300">{rep.fecha || rep.created_at?.split('T')[0]}</td>
-                          <td className="py-3 px-3 text-white uppercase">{rep.elemento || 'Falla general'}</td>
+                          <td className="py-3 px-3 text-white">{rep.elemento || 'Falla general'}</td>
                           <td className="py-3 px-3">
                             <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${rep.estatus === 'Cerrado' ? 'bg-red-500/20 text-red-400 border border-red-500/30' : 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'}`}>
                               {rep.estatus}

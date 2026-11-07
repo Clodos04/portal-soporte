@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { ChevronUp, ChevronDown } from 'lucide-react';
 
 function ColumnCustomizerModal({ activeColumns, availableColumns, columnLabels, onClose, onSave }) {
   const [tempActive, setTempActive] = useState([...activeColumns]);
@@ -79,8 +80,12 @@ function ColumnCustomizerModal({ activeColumns, availableColumns, columnLabels, 
                 <div key={col} className="flex justify-between items-center bg-slate-700 px-4 py-3 rounded-lg border border-slate-600 shadow-sm">
                   <span className="font-medium text-white">{columnLabels[col]}</span>
                   <div className="flex gap-2">
-                    <button onClick={() => handleMoveUp(index)} disabled={index === 0} className="text-slate-400 hover:text-green-400 disabled:opacity-30 p-1 bg-slate-800 rounded">⬆</button>
-                    <button onClick={() => handleMoveDown(index)} disabled={index === tempActive.length - 1} className="text-slate-400 hover:text-green-400 disabled:opacity-30 p-1 bg-slate-800 rounded">⬇</button>
+                    <button onClick={() => handleMoveUp(index)} disabled={index === 0} className="text-slate-400 hover:text-green-400 disabled:opacity-30 p-1 bg-slate-800 rounded" aria-label="Subir">
+<ChevronUp size={15} strokeWidth={1.75} />
+</button>
+                    <button onClick={() => handleMoveDown(index)} disabled={index === tempActive.length - 1} className="text-slate-400 hover:text-green-400 disabled:opacity-30 p-1 bg-slate-800 rounded" aria-label="Bajar">
+<ChevronDown size={15} strokeWidth={1.75} />
+</button>
                     <button onClick={() => handleRemove(col)} className="text-slate-400 hover:text-red-400 p-1 bg-slate-800 rounded ml-2">✕</button>
                   </div>
                 </div>
