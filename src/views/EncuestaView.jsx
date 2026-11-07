@@ -114,7 +114,7 @@ function EncuestaView({ tickets, user, ticketEspecifico, onRegresar, onGuardarEn
 
           <div className="space-y-2 pt-2">
             <label className="block text-sm font-bold text-slate-300">¿Qué podríamos hacer mejor la próxima vez?</label>
-            <textarea rows="3" value={comentarios} onChange={(e) => setComentarios(e.target.value)} placeholder="Escribe tus sugerencias..." className="w-full px-4 py-3 rounded-lg bg-slate-900 border border-slate-700 text-white placeholder-slate-500 outline-none resize-none text-sm"></textarea>
+            <textarea rows="3" value={comentarios} onChange={(e) => setComentarios(e.target.value)} placeholder="Escribe tus sugerencias…" className="w-full px-4 py-3 rounded-lg bg-slate-900 border border-slate-700 text-white placeholder-slate-500 outline-none resize-none text-sm"></textarea>
           </div>
 
           <div className="flex justify-between items-center pt-6 border-t border-slate-700">

@@ -54,7 +54,7 @@ function AdminCampanasView({ campanas = [], setCampanas }) {
       <div className="bg-slate-800 rounded-xl shadow-lg border border-slate-700 p-6 space-y-6">
         
         <form onSubmit={handleAgregar} className="flex gap-4">
-          <input 
+          <input aria-label="Nombre de la nueva campaña" 
             type="text"
             placeholder="Nombre de la nueva campaña (ej. *111R10)"
             value={nuevaCampana}

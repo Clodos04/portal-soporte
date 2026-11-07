@@ -169,7 +169,7 @@ function SupervisorPanel({ user, onVerDetallesCentinela }) {
             {onVerDetallesCentinela && (
               <button
                 onClick={onVerDetallesCentinela}
-                className="bg-purple-600 hover:bg-purple-500 text-white px-4 py-2 rounded-xl text-xs font-extrabold shadow-lg transition-all cursor-pointer whitespace-nowrap flex items-center gap-2"
+                className="bg-purple-600 hover:bg-purple-500 text-white px-4 py-2 rounded-xl text-xs font-extrabold shadow-lg transition-colors cursor-pointer whitespace-nowrap flex items-center gap-2"
               >
                 Ver Más Detalles
               </button>
@@ -240,7 +240,7 @@ function SupervisorPanel({ user, onVerDetallesCentinela }) {
           <label className="block text-xs font-medium text-slate-300 mb-1">Buscar por Folio o Asunto:</label>
           <input 
             type="text" 
-            placeholder="Ej. TICKET-001 o impresora..." 
+            placeholder="Ej. TICKET-001 o impresora…" 
             value={busquedaFolio}
             onChange={(e) => setBusquedaFolio(e.target.value)}
             className="w-full px-3 py-2 rounded-lg bg-slate-900 border border-slate-700 text-white text-sm outline-none focus:border-indigo-500"

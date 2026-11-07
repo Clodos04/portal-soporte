@@ -204,7 +204,7 @@ function SolicitudesView({
           <div className={`flex flex-wrap items-center gap-2 ${vista === 'tablero' ? 'invisible hidden lg:flex lg:invisible' : ''}`}>
             <button 
               onClick={() => setFiltroEstatus('activos')}
-              className={`px-3.5 py-2 rounded-lg font-bold text-xs transition-all cursor-pointer flex items-center gap-2 ${filtroEstatus === 'activos' ? 'bg-indigo-600 text-white' : 'bg-slate-900/60 text-slate-400 hover:text-white border border-slate-700'}`}
+              className={`px-3.5 py-2 rounded-lg font-bold text-xs transition-colors cursor-pointer flex items-center gap-2 ${filtroEstatus === 'activos' ? 'bg-indigo-600 text-white' : 'bg-slate-900/60 text-slate-400 hover:text-white border border-slate-700'}`}
             >
               <span>Abiertos / En Proceso</span>
               <span className={`px-1.5 py-0.5 rounded-full text-[10px] ${filtroEstatus === 'activos' ? 'bg-black/20 text-white' : 'bg-slate-800 text-slate-300'}`}>
@@ -216,7 +216,7 @@ function SolicitudesView({
               <>
                 <button 
                   onClick={() => setFiltroEstatus('sin_asignar')}
-                  className={`px-3.5 py-2 rounded-lg font-bold text-xs transition-all cursor-pointer flex items-center gap-2 ${filtroEstatus === 'sin_asignar' ? 'bg-indigo-600 text-white' : 'bg-slate-900/60 text-slate-400 hover:text-white border border-slate-700'}`}
+                  className={`px-3.5 py-2 rounded-lg font-bold text-xs transition-colors cursor-pointer flex items-center gap-2 ${filtroEstatus === 'sin_asignar' ? 'bg-indigo-600 text-white' : 'bg-slate-900/60 text-slate-400 hover:text-white border border-slate-700'}`}
                 >
                   <span>Sin Asignar</span>
                   <span className={`px-1.5 py-0.5 rounded-full text-[10px] ${filtroEstatus === 'sin_asignar' ? 'bg-black/20 text-white' : 'bg-slate-800 text-amber-400'}`}>
@@ -226,7 +226,7 @@ function SolicitudesView({
 
                 <button 
                   onClick={() => setFiltroEstatus('mios')}
-                  className={`px-3.5 py-2 rounded-lg font-bold text-xs transition-all cursor-pointer flex items-center gap-2 ${filtroEstatus === 'mios' ? 'bg-indigo-600 text-white shadow-md' : 'bg-slate-900/60 text-slate-400 hover:text-white border border-slate-700'}`}
+                  className={`px-3.5 py-2 rounded-lg font-bold text-xs transition-colors cursor-pointer flex items-center gap-2 ${filtroEstatus === 'mios' ? 'bg-indigo-600 text-white shadow-md' : 'bg-slate-900/60 text-slate-400 hover:text-white border border-slate-700'}`}
                 >
                   <span>Mis Tickets</span>
                   <span className={`px-1.5 py-0.5 rounded-full text-[10px] ${filtroEstatus === 'mios' ? 'bg-black/20 text-white' : 'bg-slate-800 text-indigo-400'}`}>
@@ -240,7 +240,7 @@ function SolicitudesView({
               <>
                 <button 
                   onClick={() => setFiltroEstatus('vencidos')}
-                  className={`px-3.5 py-2 rounded-lg font-bold text-xs transition-all cursor-pointer flex items-center gap-2 ${filtroEstatus === 'vencidos' ? 'bg-indigo-600 text-white' : 'bg-slate-900/60 text-slate-400 hover:text-white border border-slate-700'}`}
+                  className={`px-3.5 py-2 rounded-lg font-bold text-xs transition-colors cursor-pointer flex items-center gap-2 ${filtroEstatus === 'vencidos' ? 'bg-indigo-600 text-white' : 'bg-slate-900/60 text-slate-400 hover:text-white border border-slate-700'}`}
                 >
                   <span>SLA Vencido</span>
                   <span className={`px-1.5 py-0.5 rounded-full text-[10px] ${filtroEstatus === 'vencidos' ? 'bg-black/20 text-white' : 'bg-slate-800 text-red-400'}`}>
@@ -250,7 +250,7 @@ function SolicitudesView({
 
                 <button 
                   onClick={() => setFiltroEstatus('por_vencer')}
-                  className={`px-3.5 py-2 rounded-lg font-bold text-xs transition-all cursor-pointer flex items-center gap-2 ${filtroEstatus === 'por_vencer' ? 'bg-indigo-600 text-white' : 'bg-slate-900/60 text-slate-400 hover:text-white border border-slate-700'}`}
+                  className={`px-3.5 py-2 rounded-lg font-bold text-xs transition-colors cursor-pointer flex items-center gap-2 ${filtroEstatus === 'por_vencer' ? 'bg-indigo-600 text-white' : 'bg-slate-900/60 text-slate-400 hover:text-white border border-slate-700'}`}
                 >
                   <span>Por Vencer</span>
                   <span className={`px-1.5 py-0.5 rounded-full text-[10px] ${filtroEstatus === 'por_vencer' ? 'bg-black/20 text-white' : 'bg-slate-800 text-amber-400'}`}>
@@ -262,7 +262,7 @@ function SolicitudesView({
 
             <button 
               onClick={() => setFiltroEstatus('cerrados')}
-              className={`px-3.5 py-2 rounded-lg font-bold text-xs transition-all cursor-pointer flex items-center gap-2 ${filtroEstatus === 'cerrados' ? 'bg-indigo-600 text-white' : 'bg-slate-900/60 text-slate-400 hover:text-white border border-slate-700'}`}
+              className={`px-3.5 py-2 rounded-lg font-bold text-xs transition-colors cursor-pointer flex items-center gap-2 ${filtroEstatus === 'cerrados' ? 'bg-indigo-600 text-white' : 'bg-slate-900/60 text-slate-400 hover:text-white border border-slate-700'}`}
             >
               <span>Cerrados</span>
               <span className={`px-1.5 py-0.5 rounded-full text-[10px] ${filtroEstatus === 'cerrados' ? 'bg-black/20 text-white' : 'bg-slate-800 text-slate-400'}`}>
@@ -275,7 +275,7 @@ function SolicitudesView({
             <Search size={15} strokeWidth={1.75} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none" />
                         <input 
               type="text"
-              placeholder="Folio, equipo, campaña, usuario..."
+              placeholder="Folio, equipo, campaña, usuario…"
               value={busqueda}
               onChange={(e) => setBusqueda(e.target.value)}
               className="w-full pl-9 pr-8 py-2 rounded-lg bg-slate-900 border border-slate-700 text-white text-sm outline-none focus:border-green-500 transition-colors"
@@ -410,7 +410,7 @@ function SolicitudesView({
                             ) : (
                               <button 
                                 onClick={() => onIrAEncuestaSpecific(ticket)}
-                                className="px-3.5 py-2 bg-slate-800/80 hover:bg-green-600/20 text-slate-300 hover:text-green-300 rounded-xl text-xs font-medium border border-slate-700/60 hover:border-green-500/40 transition-all cursor-pointer"
+                                className="px-3.5 py-2 bg-slate-800/80 hover:bg-green-600/20 text-slate-300 hover:text-green-300 rounded-xl text-xs font-medium border border-slate-700/60 hover:border-green-500/40 transition-colors cursor-pointer"
                               >
                                 Encuesta
                               </button>

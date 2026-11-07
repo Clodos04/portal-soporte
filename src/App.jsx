@@ -40,6 +40,13 @@ function App() {
     return savedTheme ? savedTheme === 'dark' : true;
   });
 
+  // Barras de desplazamiento, inputs nativos y color de la barra del navegador acordes al tema
+  useEffect(() => {
+    document.documentElement.style.colorScheme = isDarkMode ? 'dark' : 'light';
+    const meta = document.querySelector('meta[name="theme-color"]');
+    if (meta) meta.setAttribute('content', isDarkMode ? '#0f1011' : '#f1f5f9');
+  }, [isDarkMode]);
+
   const toggleTheme = () => {
     setIsDarkMode(prev => {
       const nextMode = !prev;
@@ -495,6 +502,13 @@ function App() {
         />
       )}
 
+      <a
+        href="#contenido"
+        className="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-[90] focus:bg-indigo-600 focus:text-white focus:px-4 focus:py-2 focus:rounded-lg"
+      >
+        Saltar al contenido
+      </a>
+
       <Menu
         currentView={currentView}
         setCurrentView={setCurrentView}
@@ -519,7 +533,7 @@ function App() {
         onToggleTheme={toggleTheme}
       />
 
-      <main className="p-4 sm:p-6 pb-10 max-w-7xl w-full mx-auto relative z-0">
+      <main id="contenido" tabIndex={-1} className="p-4 sm:p-6 pb-10 max-w-7xl w-full mx-auto relative z-0 outline-none">
         {currentView === 'inicio' && (
           <Dashboard 
             user={user} 

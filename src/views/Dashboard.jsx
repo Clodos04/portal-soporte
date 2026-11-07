@@ -1,9 +1,9 @@
-import React, { useState, useEffect } from 'react';
-import { EstadoVacio } from '../components/Estados';
+import React, { useState, useEffect, lazy, Suspense } from 'react';
+import { EstadoVacio, Esqueleto } from '../components/Estados';
 import EtiquetaEstatus from '../components/EtiquetaEstatus';
 import { Plus, CheckCircle2, AlertOctagon, Clock } from 'lucide-react';
 import { calcularSLA, esTicketCerrado } from '../utils/sla';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+const GraficaGrupos = lazy(() => import('../components/GraficaGrupos'));
 
 function Dashboard({ user, tickets = [], categorias = [], onIrASolicitudes, grupos = [], onIrANuevaSolicitud, onIrAEncuesta, onIrABuzon, estadisticasEncuestas = [], onTomarTicket, onAbrirChat }) {
   const safeTickets = Array.isArray(tickets) ? tickets : [];
@@ -248,7 +248,7 @@ function Dashboard({ user, tickets = [], categorias = [], onIrASolicitudes, grup
     <div className="animate-fade-in space-y-6">
       <div className="flex flex-wrap gap-3 justify-between items-center mb-2">
         <h1 className="text-xl sm:text-2xl font-semibold text-white tracking-tight">Panel de Control de Inicio</h1>
-        <button onClick={onIrANuevaSolicitud} className="bg-indigo-600 hover:bg-indigo-500 text-white px-5 py-2.5 rounded-xl shadow-lg font-bold text-sm transition-all cursor-pointer flex items-center gap-2">
+        <button onClick={onIrANuevaSolicitud} className="bg-indigo-600 hover:bg-indigo-500 text-white px-5 py-2.5 rounded-xl shadow-lg font-bold text-sm transition-colors cursor-pointer flex items-center gap-2">
           <Plus size={16} strokeWidth={2} /> Nueva solicitud
         </button>
       </div>
@@ -326,7 +326,7 @@ function Dashboard({ user, tickets = [], categorias = [], onIrASolicitudes, grup
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 max-h-72 overflow-y-auto pr-2">
             {ticketsSinAsignar.map(t => (
-              <div key={t.folio} className="bg-slate-900/90 p-4 rounded-xl border border-slate-700 flex flex-col justify-between gap-3 shadow-sm hover:border-indigo-500/50 transition-all">
+              <div key={t.folio} className="bg-slate-900/90 p-4 rounded-xl border border-slate-700 flex flex-col justify-between gap-3 shadow-sm hover:border-indigo-500/50 transition-colors">
                 <div>
                   <div className="flex justify-between items-center text-xs text-indigo-400 font-bold mb-1">
                     <span>Folio #{t.folio}</span>
@@ -339,14 +339,14 @@ function Dashboard({ user, tickets = [], categorias = [], onIrASolicitudes, grup
                   <button
                     type="button"
                     onClick={() => onTomarTicket(t.folio)}
-                    className="flex-1 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-bold transition-all cursor-pointer shadow-md flex items-center justify-center gap-1"
+                    className="flex-1 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-bold transition-colors cursor-pointer shadow-md flex items-center justify-center gap-1"
                   >
                     Tomar Ticket
                   </button>
                   <button
                     type="button"
                     onClick={() => onAbrirChat(t.folio)}
-                    className="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-indigo-300 rounded-lg text-xs font-bold transition-all cursor-pointer border border-slate-700 flex items-center gap-1"
+                    className="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-indigo-300 rounded-lg text-xs font-bold transition-colors cursor-pointer border border-slate-700 flex items-center gap-1"
                   >
                     Chat
                   </button>
@@ -375,15 +375,9 @@ function Dashboard({ user, tickets = [], categorias = [], onIrASolicitudes, grup
           </div>
 
           <div className="h-80 w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={datosGrupos} margin={{ top: 15, right: 20, left: -10, bottom: 55 }}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#334155" />
-                <XAxis dataKey="nombre" axisLine={false} tickLine={false} interval={0} angle={-30} textAnchor="end" tick={{ fill: '#94a3b8', fontSize: 10 }} />
-                <YAxis allowDecimals={false} axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 12 }} />
-                <Tooltip cursor={{ fill: '#1e293b' }} contentStyle={{ backgroundColor: '#0f172a', borderRadius: '8px', border: '1px solid #334155', color: '#f8fafc' }} />
-                <Bar dataKey="tickets" fill="#5e6ad2" radius={[4, 4, 0, 0]} barSize={28} />
-              </BarChart>
-            </ResponsiveContainer>
+            <Suspense fallback={<Esqueleto className="h-full w-full" />}>
+              <GraficaGrupos datosGrupos={datosGrupos} />
+            </Suspense>
           </div>
         </div>
         

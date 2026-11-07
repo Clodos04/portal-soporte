@@ -145,7 +145,7 @@ function LiveChatView({ folio, user, onFinalizarChat, onAbrirModalEdicion, ticke
             <button 
               type="button"
               onClick={() => onTomarTicket(ticket.folio)}
-              className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-bold shadow-lg transition-all cursor-pointer flex items-center gap-1.5"
+              className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-bold shadow-lg transition-colors cursor-pointer flex items-center gap-1.5"
             >
               Tomar Ticket
             </button>
@@ -155,7 +155,7 @@ function LiveChatView({ folio, user, onFinalizarChat, onAbrirModalEdicion, ticke
             <button 
               type="button"
               onClick={() => onAbrirModalEdicion(ticket)}
-              className="px-4 py-2 bg-red-600/20 hover:bg-red-600 text-red-400 hover:text-white rounded-xl text-xs font-bold border border-red-500/30 transition-all cursor-pointer"
+              className="px-4 py-2 bg-red-600/20 hover:bg-red-600 text-red-400 hover:text-white rounded-xl text-xs font-bold border border-red-500/30 transition-colors cursor-pointer"
             >
               Cerrar Ticket
             </button>
@@ -164,7 +164,7 @@ function LiveChatView({ folio, user, onFinalizarChat, onAbrirModalEdicion, ticke
           <button 
             type="button"
             onClick={onFinalizarChat}
-            className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white rounded-xl text-xs font-bold border border-slate-700 transition-all cursor-pointer"
+            className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white rounded-xl text-xs font-bold border border-slate-700 transition-colors cursor-pointer"
           >
             Finalizar y Salir
           </button>
@@ -224,7 +224,7 @@ function LiveChatView({ folio, user, onFinalizarChat, onAbrirModalEdicion, ticke
                 type="button"
                 disabled={enviandoOpcion}
                 onClick={() => enviarTextoAlChat(opcion)}
-                className="w-full p-3 rounded-xl bg-slate-800 hover:bg-indigo-600/30 text-slate-200 hover:text-white border border-slate-700 hover:border-indigo-500 text-left text-xs font-semibold transition-all flex items-center justify-between group cursor-pointer shadow-sm disabled:opacity-50"
+                className="w-full p-3 rounded-xl bg-slate-800 hover:bg-indigo-600/30 text-slate-200 hover:text-white border border-slate-700 hover:border-indigo-500 text-left text-xs font-semibold transition-colors flex items-center justify-between group cursor-pointer shadow-sm disabled:opacity-50"
               >
                 <span>{opcion}</span>
                 <span className="text-indigo-400 group-hover:translate-x-1 transition-transform font-bold ml-2 shrink-0">
@@ -238,9 +238,9 @@ function LiveChatView({ folio, user, onFinalizarChat, onAbrirModalEdicion, ticke
 
       {/* Barra de Escritura */}
       <form onSubmit={enviarMensaje} className="p-4 bg-slate-800 border-t border-slate-700 flex gap-3 shrink-0">
-        <input 
+        <input aria-label="Escribe un mensaje" 
           type="text"
-          placeholder="O escribe algún comentario adicional aquí..."
+          placeholder="O escribe algún comentario adicional aquí…"
           value={nuevoMensaje}
           onChange={(e) => setNuevoMensaje(e.target.value)}
           className="flex-1 px-4 py-3 rounded-xl bg-slate-950 border border-slate-700 text-white text-sm outline-none focus:border-indigo-500"
@@ -248,7 +248,7 @@ function LiveChatView({ folio, user, onFinalizarChat, onAbrirModalEdicion, ticke
         <button 
           type="submit"
           disabled={enviandoOpcion}
-          className="px-6 py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-medium text-xs rounded-xl shadow-lg transition-all cursor-pointer disabled:opacity-50"
+          className="px-6 py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-medium text-xs rounded-xl shadow-lg transition-colors cursor-pointer disabled:opacity-50"
         >
           Enviar ➔
         </button>

@@ -204,7 +204,7 @@ function EditarSolicitudModal({ ticket = {}, user, usuarios = [], grupos = [], u
               <button
                 type="button"
                 onClick={abrirAuditoria}
-                className="bg-slate-800 hover:bg-slate-700 text-slate-200 px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-all border border-slate-500/40 flex items-center gap-1.5 cursor-pointer"
+                className="bg-slate-800 hover:bg-slate-700 text-slate-200 px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-colors border border-slate-500/40 flex items-center gap-1.5 cursor-pointer"
               >
                 Historial de cambios
               </button>
@@ -363,7 +363,7 @@ function EditarSolicitudModal({ ticket = {}, user, usuarios = [], grupos = [], u
               value={resolucion} 
               disabled={esCliente}
               onChange={(e) => setResolucion(e.target.value)}
-              placeholder="Describa cómo se resolvió el requerimiento..."
+              placeholder="Describa cómo se resolvió el requerimiento…"
               className="w-full px-3 py-2.5 rounded-lg bg-slate-900 border border-slate-700 text-white text-sm outline-none focus:border-green-500 resize-none transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
             ></textarea>
           </div>
@@ -403,7 +403,7 @@ function EditarSolicitudModal({ ticket = {}, user, usuarios = [], grupos = [], u
             </div>
             <input 
               type="text"
-              placeholder="Escribe para buscar nodo (ej. B-02-250)..."
+              placeholder="Escribe para buscar nodo (ej. B-02-250)…"
               value={busquedaNodo}
               onChange={(e) => setBusquedaNodo(e.target.value)}
               className="w-full px-4 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-white text-sm outline-none focus:border-indigo-500 mb-4 font-mono"
@@ -419,7 +419,7 @@ function EditarSolicitudModal({ ticket = {}, user, usuarios = [], grupos = [], u
                       setEquipoNodo(n.equipo);
                       setModalCambiarNodoOpen(false);
                     }}
-                    className="p-3 bg-slate-900 hover:bg-indigo-600/30 border border-slate-700 hover:border-indigo-500 rounded-xl flex justify-between items-center cursor-pointer transition-all"
+                    className="p-3 bg-slate-900 hover:bg-indigo-600/30 border border-slate-700 hover:border-indigo-500 rounded-xl flex justify-between items-center cursor-pointer transition-colors"
                   >
                     <div>
                       <span className="font-mono font-bold text-green-400">{n.equipo}</span>
@@ -444,7 +444,7 @@ function EditarSolicitudModal({ ticket = {}, user, usuarios = [], grupos = [], u
             </div>
             <div className="flex-1 overflow-y-auto space-y-3 pr-1">
               {cargandoAuditoria ? (
-                <p className="text-center text-slate-400 py-10">Cargando historial...</p>
+                <p className="text-center text-slate-400 py-10">Cargando historial…</p>
               ) : auditoria.length === 0 ? (
                 <div className="text-center py-12 border border-dashed border-slate-700 rounded-xl bg-slate-900/40">
                   <p className="text-slate-400 text-sm font-medium">Aún no hay cambios registrados para este ticket.</p>
@@ -490,7 +490,7 @@ function EditarSolicitudModal({ ticket = {}, user, usuarios = [], grupos = [], u
             </div>
             <div className="flex-1 overflow-y-auto space-y-3 pr-1">
               {cargandoHistorial ? (
-                <p className="text-center text-slate-400 py-10">Cargando expediente del nodo...</p>
+                <p className="text-center text-slate-400 py-10">Cargando expediente del nodo…</p>
               ) : historialNodo.length === 0 ? (
                 <div className="text-center py-12 border border-dashed border-slate-700 rounded-xl bg-slate-900/40">
                   <p className="text-slate-400 text-sm font-medium">No hay registros previos para este nodo en los últimos 3 meses.</p>

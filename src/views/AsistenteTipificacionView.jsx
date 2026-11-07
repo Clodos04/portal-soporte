@@ -256,7 +256,7 @@ function AsistenteTipificacionView({ categorias = [], campanas = [], equipos = [
               <button
                 type="button"
                 onClick={() => setTipoReporte('REPORTE')}
-                className="p-5 rounded-2xl bg-slate-800 border-2 border-slate-700 hover:border-indigo-500 text-left transition-all group cursor-pointer shadow-lg space-y-2"
+                className="p-5 rounded-2xl bg-slate-800 border-2 border-slate-700 hover:border-indigo-500 text-left transition-colors group cursor-pointer shadow-lg space-y-2"
               >
                 <div className="text-2xl"></div>
                 <div className="font-medium text-white text-sm">Reporte de Soporte / Falla</div>
@@ -275,7 +275,7 @@ function AsistenteTipificacionView({ categorias = [], campanas = [], equipos = [
                     setPaso(2);
                   }
                 }}
-                className="p-5 rounded-2xl bg-purple-950/40 border-2 border-purple-800/60 hover:border-purple-500 text-left transition-all group cursor-pointer shadow-lg space-y-2"
+                className="p-5 rounded-2xl bg-purple-950/40 border-2 border-purple-800/60 hover:border-purple-500 text-left transition-colors group cursor-pointer shadow-lg space-y-2"
               >
                 <div className="text-2xl"></div>
                 <div className="font-medium text-purple-300 text-sm">Reporte Centinela</div>
@@ -311,7 +311,7 @@ function AsistenteTipificacionView({ categorias = [], campanas = [], equipos = [
                         key={cat.id || idx}
                         type="button"
                         onClick={() => seleccionarCat(cat)}
-                        className="p-4 rounded-xl bg-slate-800/80 border border-slate-700 hover:border-indigo-500 transition-all text-left flex items-center justify-between group cursor-pointer shadow-md"
+                        className="p-4 rounded-xl bg-slate-800/80 border border-slate-700 hover:border-indigo-500 transition-colors text-left flex items-center justify-between group cursor-pointer shadow-md"
                       >
                         <div className="pr-3">
                           <div className="font-medium text-white text-sm">{cat.nombre}</div>
@@ -349,7 +349,7 @@ function AsistenteTipificacionView({ categorias = [], campanas = [], equipos = [
                           key={sub.id || sub.nombre}
                           type="button"
                           onClick={() => seleccionarSubcat(sub)}
-                          className="p-4 rounded-xl bg-slate-800/80 border border-slate-700 hover:border-indigo-500 text-left flex items-center justify-between group cursor-pointer transition-all shadow-sm"
+                          className="p-4 rounded-xl bg-slate-800/80 border border-slate-700 hover:border-indigo-500 text-left flex items-center justify-between group cursor-pointer transition-colors shadow-sm"
                         >
                           <div className="pr-3">
                             <div className="font-medium text-white text-xs">{sub.nombre}</div>
@@ -513,7 +513,7 @@ function AsistenteTipificacionView({ categorias = [], campanas = [], equipos = [
                           key={elem.id || elem.nombre}
                           type="button"
                           onClick={() => seleccionarElemento(elem)}
-                          className="p-4 rounded-xl bg-slate-800/80 border border-slate-700 hover:border-indigo-500 text-left flex items-center justify-between group cursor-pointer transition-all shadow-sm"
+                          className="p-4 rounded-xl bg-slate-800/80 border border-slate-700 hover:border-indigo-500 text-left flex items-center justify-between group cursor-pointer transition-colors shadow-sm"
                         >
                           <div className="pr-3">
                             <div className="font-medium text-white text-xs">{elem.nombre}</div>
@@ -616,7 +616,7 @@ function AsistenteTipificacionView({ categorias = [], campanas = [], equipos = [
                       <label className="block text-[11px] font-bold text-slate-300 mb-1">Asunto:</label>
                       <input 
                         type="text" 
-                        placeholder="Breve resumen del problema..."
+                        placeholder="Breve resumen del problema…"
                         value={asunto}
                         onChange={(e) => setAsunto(e.target.value)}
                         className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-700 text-white text-xs outline-none focus:border-indigo-500"
@@ -627,7 +627,7 @@ function AsistenteTipificacionView({ categorias = [], campanas = [], equipos = [
                       <label className="block text-[11px] font-bold text-slate-300 mb-1">Descripción:</label>
                       <textarea 
                         rows="2" 
-                        placeholder="Detalla los síntomas o pasos para reproducir el fallo..."
+                        placeholder="Detalla los síntomas o pasos para reproducir el fallo…"
                         value={descripcion}
                         onChange={(e) => setDescripcion(e.target.value)}
                         className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-700 text-white text-xs outline-none focus:border-indigo-500 resize-none"

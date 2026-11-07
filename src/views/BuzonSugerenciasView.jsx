@@ -136,7 +136,7 @@ function BuzonSugerenciasView({ user }) {
             <button
               type="button"
               onClick={() => setTipo('SUGERENCIA')}
-              className={`flex-1 py-3 px-4 rounded-xl border text-xs font-medium transition-all cursor-pointer flex items-center justify-center gap-2${
+              className={`flex-1 py-3 px-4 rounded-xl border text-xs font-medium transition-colors cursor-pointer flex items-center justify-center gap-2${
                 tipo === 'SUGERENCIA'
                   ? 'bg-amber-500/20 border-amber-500 text-amber-300 shadow-md'
                   : 'bg-slate-900/60 border-slate-700 text-slate-400 hover:text-white'
@@ -148,7 +148,7 @@ function BuzonSugerenciasView({ user }) {
             <button
               type="button"
               onClick={() => setTipo('ERROR')}
-              className={`flex-1 py-3 px-4 rounded-xl border text-xs font-medium transition-all cursor-pointer flex items-center justify-center gap-2${
+              className={`flex-1 py-3 px-4 rounded-xl border text-xs font-medium transition-colors cursor-pointer flex items-center justify-center gap-2${
                 tipo === 'ERROR'
                   ? 'bg-red-500/20 border-red-500 text-red-300 shadow-md'
                   : 'bg-slate-900/60 border-slate-700 text-slate-400 hover:text-white'
@@ -160,7 +160,7 @@ function BuzonSugerenciasView({ user }) {
             <button
               type="button"
               onClick={() => setTipo('COMENTARIO')}
-              className={`flex-1 py-3 px-4 rounded-xl border text-xs font-medium transition-all cursor-pointer flex items-center justify-center gap-2${
+              className={`flex-1 py-3 px-4 rounded-xl border text-xs font-medium transition-colors cursor-pointer flex items-center justify-center gap-2${
                 tipo === 'COMENTARIO'
                   ? 'bg-indigo-500/20 border-indigo-500 text-indigo-300 shadow-md'
                   : 'bg-slate-900/60 border-slate-700 text-slate-400 hover:text-white'
@@ -171,7 +171,7 @@ function BuzonSugerenciasView({ user }) {
           </div>
 
           <div>
-            <textarea
+            <textarea aria-label="Mensaje de la sugerencia o reporte"
               rows="3"
               required
               value={mensaje}
@@ -195,7 +195,7 @@ function BuzonSugerenciasView({ user }) {
             <button
               type="submit"
               disabled={enviando}
-              className="bg-indigo-600 hover:bg-indigo-500 text-white px-6 py-2.5 rounded-xl font-medium text-xs shadow-lg transition-all cursor-pointer disabled:opacity-50"
+              className="bg-indigo-600 hover:bg-indigo-500 text-white px-6 py-2.5 rounded-xl font-medium text-xs shadow-lg transition-colors cursor-pointer disabled:opacity-50"
             >
               {enviando ? 'Enviando...' : 'Enviar al Buzón'}
             </button>
@@ -286,7 +286,7 @@ function BuzonSugerenciasView({ user }) {
                 {esAdmin && editandoId === item.id && (
                   <div className="pt-3 border-t border-slate-700/80 space-y-3 animate-fade-in">
                     <div className="flex flex-col sm:flex-row gap-3">
-                      <select
+                      <select aria-label="Estatus del registro"
                         value={estatusTemp}
                         onChange={(e) => setEstatusTemp(e.target.value)}
                         className="bg-slate-800 border border-slate-600 rounded-lg px-3 py-2 text-xs text-white font-bold outline-none"
@@ -296,11 +296,11 @@ function BuzonSugerenciasView({ user }) {
                         <option value="APLICADO">APLICADO / RESUELTO</option>
                       </select>
 
-                      <input
+                      <input aria-label="Respuesta del administrador"
                         type="text"
                         value={respuestaTexto}
                         onChange={(e) => setRespuestaTexto(e.target.value)}
-                        placeholder="Escribe una respuesta o nota para el usuario..."
+                        placeholder="Escribe una respuesta o nota para el usuario…"
                         className="flex-1 bg-slate-800 border border-slate-600 rounded-lg px-3 py-2 text-xs text-white outline-none focus:border-indigo-500"
                       />
 
