@@ -57,8 +57,6 @@ function Menu({ currentView, setCurrentView, user }) {
       <div className="flex gap-6 items-center">
         <Pestana onIr={ir} vista="inicio" activo={currentView === 'inicio'}>Inicio</Pestana>
         <Pestana onIr={ir} vista="solicitudes" activo={currentView === 'solicitudes' || currentView === 'nueva-solicitud'}>Solicitudes</Pestana>
-        <Pestana onIr={ir} vista="tareas" activo={currentView === 'tareas'}>Tareas</Pestana>
-        <Pestana onIr={ir} vista="informes" activo={currentView === 'informes'}>Informes</Pestana>
 
         {user?.role === 'client' && (
           <Pestana onIr={ir} vista="guia-tickets" activo={currentView === 'guia-tickets'}>Guía de ayuda</Pestana>

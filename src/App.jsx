@@ -12,8 +12,6 @@ import Dashboard from './views/Dashboard';
 import SolicitudesView from './views/SolicitudesView';
 import NuevaSolicitudView from './views/NuevaSolicitudView';
 import LiveChatView from './views/LiveChatView'; 
-import Tareas from './views/Tareas';
-import Informes from './views/Informes';
 import EncuestaView from './views/EncuestaView';
 import GuiaTicketsView from './views/GuiaTicketsView';
 import AdminReportesView from './views/AdminReportesView';
@@ -596,8 +594,6 @@ function App() {
           <CentinelaDetallesView tickets={tickets} onVolver={() => setCurrentView('admin-supervisor-panel')} onEditarTicket={(ticket) => { setTicketEnEdicion(ticket); setIsEditModalOpen(true); }} />
         )}
 
-        {currentView === 'tareas' && <Tareas />}
-        {currentView === 'informes' && <Informes />}
         {currentView === 'guia-tickets' && <GuiaTicketsView />}
       </main>
     </div>
