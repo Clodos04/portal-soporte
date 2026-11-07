@@ -67,17 +67,17 @@ function Dashboard({ user, tickets = [], grupos = [], onIrANuevaSolicitud, onIrA
 
     return (
       <div className="animate-fade-in space-y-8">
-        <div className="relative overflow-hidden bg-gradient-to-r from-indigo-900/80 via-slate-900 to-blue-950 p-8 rounded-3xl border border-indigo-500/30 shadow-2xl flex flex-col md:flex-row justify-between items-center gap-6">
+        <div className="relative overflow-hidden bg-slate-900 p-8 rounded-2xl border border-slate-700 flex flex-col md:flex-row justify-between items-center gap-6">
           <div className="absolute -right-10 -bottom-10 w-64 h-64 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none"></div>
           <div className="space-y-2 relative z-10">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/20 border border-indigo-500/40 text-indigo-300 text-xs font-medium">
               Centro de Asistencia Inteligente
             </div>
-            <h1 className="text-2xl font-semibold text-white tracking-tight">¡Hola, {user?.name || 'Cliente'}! </h1>
+            <h1 className="text-2xl font-semibold text-white tracking-tight">¡Hola, {(user?.name || 'Cliente').toLowerCase().replace(/(^|\s)\S/g, (l) => l.toUpperCase())}! </h1>
             <p className="text-slate-300 text-sm max-w-xl">Utiliza nuestro asistente guiado para reportar tus incidencias rápidamente y recibir atención especializada en tiempo real.</p>
           </div>
           <div className="relative z-10 w-full md:w-auto">
-            <button onClick={onIrANuevaSolicitud} className="w-full md:w-auto px-6 py-4 bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-500 hover:to-blue-500 text-white font-extrabold text-sm rounded-2xl transition-all transform active:scale-95 flex items-center justify-center gap-2 cursor-pointer">
+            <button onClick={onIrANuevaSolicitud} className="w-full md:w-auto px-6 py-4 bg-indigo-600 hover:bg-indigo-500 text-white font-medium text-sm rounded-lg transition-colors flex items-center justify-center gap-2 cursor-pointer">
               Iniciar Solicitud / Reporte
             </button>
           </div>
@@ -147,9 +147,9 @@ function Dashboard({ user, tickets = [], grupos = [], onIrANuevaSolicitud, onIrA
         </div>
 
         {/* TARJETA DIRECTA AL BUZÓN DE SUGERENCIAS Y REPORTE DE BUGS */}
-        <div className="bg-gradient-to-r from-amber-950/40 via-slate-800 to-slate-800 rounded-2xl shadow-xl p-6 border border-amber-500/30 flex flex-col sm:flex-row justify-between items-center gap-4">
+        <div className="bg-slate-900 rounded-2xl p-6 border border-slate-700 flex flex-col sm:flex-row justify-between items-center gap-4">
           <div className="space-y-1">
-            <h2 className="text-base font-semibold text-amber-300 flex items-center gap-2 tracking-tight">
+            <h2 className="text-base font-semibold text-white flex items-center gap-2 tracking-tight">
               Buzón de Sugerencias y Reporte de Errores del Portal
             </h2>
             <p className="text-xs text-slate-300">
@@ -159,7 +159,7 @@ function Dashboard({ user, tickets = [], grupos = [], onIrANuevaSolicitud, onIrA
           {onIrABuzon && (
             <button
               onClick={onIrABuzon}
-              className="w-full sm:w-auto bg-amber-600 hover:bg-amber-500 text-white font-medium px-5 py-3 rounded-xl shadow-lg transition-colors text-xs cursor-pointer whitespace-nowrap"
+              className="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-500 text-white font-medium px-5 py-3 rounded-xl shadow-lg transition-colors text-xs cursor-pointer whitespace-nowrap"
             >
               Abrir Buzón de Feedback
             </button>
@@ -167,7 +167,7 @@ function Dashboard({ user, tickets = [], grupos = [], onIrANuevaSolicitud, onIrA
         </div>
 
         {ultimoTicketCerradoPendiente && (
-          <div className="bg-gradient-to-r from-indigo-900/60 via-slate-800 to-slate-800 rounded-2xl shadow-xl p-6 border border-indigo-500/30 flex flex-col sm:flex-row justify-between items-center gap-4">
+          <div className="bg-slate-900 rounded-2xl p-6 border border-slate-700 flex flex-col sm:flex-row justify-between items-center gap-4">
             <div>
               <h2 className="text-lg font-bold text-white">¿Tienes un momento?</h2>
               <p className="text-xs text-slate-300 mt-1">Comparte tu opinión sobre la atención recibida en tu ticket cerrado <strong className="text-indigo-300">#{ultimoTicketCerradoPendiente.folio}</strong>.</p>
@@ -225,7 +225,8 @@ function Dashboard({ user, tickets = [], grupos = [], onIrANuevaSolicitud, onIrA
   const encuestasPorTecnico = (estadisticasEncuestas || []).reduce((acc, curr) => {
     if (!curr.tecnico) return acc;
     if (!acc[curr.tecnico]) acc[curr.tecnico] = { suma: 0, cantidad: 0 };
-    const val = Number(curr.promedio) || Number(curr.calificacion) || 5;
+    const val = Number(curr.promedio) || Number(curr.calificacion) || 0;
+    if (!val) return acc; // una encuesta sin calificación válida no cuenta como un 5
     acc[curr.tecnico].suma += val;
     acc[curr.tecnico].cantidad += 1;
     return acc;

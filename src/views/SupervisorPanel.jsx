@@ -117,7 +117,7 @@ function SupervisorPanel({ user, onVerDetallesCentinela }) {
 
   const historialEncuestasFiltrado = encuestasData.historial.filter(e => idsFiltrados.has(e.ticket_id) || idsFiltrados.has(e.folio));
   
-  let promedioCSAT = '4.3';
+  let promedioCSAT = null; // sin encuestas no hay promedio: no se inventa un valor
   if (historialEncuestasFiltrado.length > 0) {
     const sumaCalif = historialEncuestasFiltrado.reduce((acc, curr) => acc + (Number(curr.promedio) || Number(curr.calificacion) || 0), 0);
     promedioCSAT = (sumaCalif / historialEncuestasFiltrado.length).toFixed(1);
@@ -215,7 +215,7 @@ function SupervisorPanel({ user, onVerDetallesCentinela }) {
             onChange={(e) => setFiltroCampana(e.target.value)}
             className="w-full px-3 py-2 rounded-lg bg-slate-900 border border-slate-700 text-white text-sm outline-none focus:border-indigo-500"
           >
-            <option value="TODAS">TODAS LAS CAMPAÑAS</option>
+            <option value="TODAS">Todas las campañas</option>
             {campanas.map((c, idx) => (
               <option key={idx} value={c}>{c}</option>
             ))}
@@ -229,7 +229,7 @@ function SupervisorPanel({ user, onVerDetallesCentinela }) {
             onChange={(e) => setFiltroTecnico(e.target.value)}
             className="w-full px-3 py-2 rounded-lg bg-slate-900 border border-slate-700 text-white text-sm outline-none focus:border-indigo-500"
           >
-            <option value="TODOS">TODOS LOS TÉCNICOS</option>
+            <option value="TODOS">Todos los técnicos</option>
             {tecnicos.map((t, idx) => (
               <option key={idx} value={t.username}>{t.nombre} {t.paterno} ({t.username})</option>
             ))}
@@ -279,7 +279,7 @@ function SupervisorPanel({ user, onVerDetallesCentinela }) {
           <span className="text-xs font-medium text-slate-400">Satisfacción Cliente (CSAT)</span>
           <div className="flex items-baseline justify-between mt-3">
             <span className="text-3xl font-extrabold text-yellow-400">
-              {promedioCSAT} <span className="text-lg text-slate-400">/ 5.0</span>
+              {promedioCSAT ?? '—'} {promedioCSAT !== null && <span className="text-lg text-slate-400">/ 5.0</span>}
             </span>
             <span className="text-xs text-slate-400">{historialEncuestasFiltrado.length} encuestas</span>
           </div>

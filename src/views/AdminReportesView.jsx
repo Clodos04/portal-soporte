@@ -82,7 +82,7 @@ export default function AdminReportesView({ tickets = [], campanas = [], estadis
     ? Number(estadisticasEncuestas.estadisticas.promedio).toFixed(1)
     : (listaEncuestas.length > 0
         ? (listaEncuestas.reduce((acc, e) => acc + (Number(e.calificacion) || Number(e.promedio) || 0), 0) / listaEncuestas.length).toFixed(1)
-        : '4.3');
+        : null);
 
   // Nodo activo a consultar (prioriza el input de texto libre si se escribió algo, de lo contrario usa el select)
   const nodoActivo = (busquedaNodoTexto.trim() !== '' ? busquedaNodoTexto.trim() : nodoSeleccionadoHistorial);
@@ -130,7 +130,7 @@ export default function AdminReportesView({ tickets = [], campanas = [], estadis
       <div className="bg-slate-800 border border-slate-700 p-6 rounded-xl shadow-lg flex flex-col md:flex-row justify-between items-center gap-4">
         <div>
           <h2 className="text-2xl font-bold text-white flex items-center gap-2">
-            REPORTES Y ANALÍTICAS
+            Reportes y analíticas
           </h2>
           <p className="text-slate-400 text-sm mt-1">
             Métricas de rendimiento, productividad de técnicos, tiempos, categorías e historial de nodos.
@@ -198,7 +198,7 @@ export default function AdminReportesView({ tickets = [], campanas = [], estadis
         </div>
         <div className="bg-slate-800 border border-slate-700 p-5 rounded-xl shadow">
           <p className="text-slate-400 text-xs font-semibold">Satisfacción Promedio</p>
-          <p className="text-3xl font-extrabold text-purple-400 mt-2">{promedioSatisfaccion} </p>
+          <p className="text-3xl font-extrabold text-purple-400 mt-2">{promedioSatisfaccion ?? '—'} </p>
         </div>
       </div>
 

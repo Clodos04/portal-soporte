@@ -236,7 +236,7 @@ function AsistenteTipificacionView({ categorias = [], campanas = [], equipos = [
       <div className="bg-slate-800/90 py-4 px-6 text-center border-b border-slate-700 flex justify-between items-center shrink-0">
         <div></div>
         <h2 className="text-lg font-semibold text-white flex items-center gap-2 tracking-tight">
-          ASISTENTE DE TIPIFICACIÓN GUIADA
+          Asistente de tipificación guiada
         </h2>
         {onCancelar && (
           <button type="button" onClick={onCancelar} className="text-slate-400 hover:text-white font-bold text-lg cursor-pointer">
