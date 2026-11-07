@@ -382,7 +382,7 @@ function EditarSolicitudModal({ ticket = {}, user, usuarios = [], grupos = [], u
                 disabled={cargando}
                 className="bg-indigo-600 hover:bg-indigo-500 text-white px-5 py-2 rounded-lg font-bold text-sm transition-colors disabled:opacity-50 cursor-pointer"
               >
-                {cargando ? 'Guardando...' : 'Guardar Cambios'}
+                {cargando ? 'Guardando...' : 'Guardar cambios'}
               </button>
             )}
           </div>

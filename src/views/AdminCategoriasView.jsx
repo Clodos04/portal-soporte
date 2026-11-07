@@ -81,7 +81,7 @@ function AdminCategoriasView({ categorias = [], setCategorias, user, onVerSubcat
             onClick={abrirNueva}
             className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg font-bold text-sm shadow transition-colors flex items-center gap-2 cursor-pointer"
           >
-            Nueva Categoría
+            Nueva categoría
           </button>
         </div>
 
@@ -139,7 +139,7 @@ function AdminCategoriasView({ categorias = [], setCategorias, user, onVerSubcat
                         <td className="px-4 py-3 text-slate-400 text-xs">{cat.fecAlta || cat.fec_alta || 'N/D'}</td>
                         <td className="px-4 py-3 text-slate-300">{cat.usuario || 'SISTEMA'}</td>
                         <td className="px-4 py-3 text-center flex justify-center gap-2">
-                          <button onClick={() => abrirEdicion(cat)} className="p-1.5 bg-blue-600/20 text-blue-400 hover:bg-blue-600 hover:text-white rounded transition-colors cursor-pointer" title="Editar Categoría y SLA">
+                          <button onClick={() => abrirEdicion(cat)} className="p-1.5 bg-blue-600/20 text-blue-400 hover:bg-blue-600 hover:text-white rounded transition-colors cursor-pointer" title="Editar categoría y SLA">
 <Pencil size={15} strokeWidth={1.75} />
 </button>
                           <button onClick={() => eliminarCategoria(cat.id)} className="p-1.5 bg-red-600/20 text-red-400 hover:bg-red-600 hover:text-white rounded transition-colors cursor-pointer" title="Eliminar">
@@ -162,7 +162,7 @@ function AdminCategoriasView({ categorias = [], setCategorias, user, onVerSubcat
     <div className="animate-fade-in max-w-2xl mx-auto bg-slate-800 rounded-xl shadow-2xl border border-slate-700 text-slate-200 overflow-hidden">
       <div className="bg-slate-700 py-4 px-6 text-center border-b border-slate-600">
         <h2 className="text-xl font-semibold tracking-tight text-white tracking-tight">
-          {!categoriaActual ? 'Registrar Nueva Categoría' : 'Editar Categoría'}
+          {!categoriaActual ? 'Registrar nueva categoría' : 'Editar categoría'}
         </h2>
       </div>
 
@@ -242,7 +242,7 @@ function AdminCategoriasView({ categorias = [], setCategorias, user, onVerSubcat
             Cancelar
           </button>
           <button type="submit" className="bg-blue-600 hover:bg-blue-500 text-white px-8 py-2.5 rounded-lg shadow-lg font-bold transition-colors text-sm cursor-pointer">
-            Guardar Categoría
+            Guardar categoría
           </button>
         </div>
       </form>

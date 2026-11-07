@@ -342,7 +342,7 @@ function Dashboard({ user, tickets = [], categorias = [], onIrASolicitudes, grup
                     onClick={() => onTomarTicket(t.folio)}
                     className="flex-1 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-bold transition-colors cursor-pointer shadow-md flex items-center justify-center gap-1"
                   >
-                    Tomar Ticket
+                    Tomar ticket
                   </button>
                   <button
                     type="button"

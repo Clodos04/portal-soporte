@@ -11,3 +11,17 @@ export const nombrePresentable = (nombre = '') => {
     .map((palabra, i) => (i > 0 && PARTICULAS.has(palabra) ? palabra : palabra.charAt(0).toUpperCase() + palabra.slice(1)))
     .join(' ');
 };
+
+// Quita los emojis SOLO para mostrar un texto (no cambia lo que se guarda ni lo que se envía).
+// Conserva los saltos de línea y colapsa los espacios que dejan los emojis.
+export const sinEmojis = (texto = '') =>
+  String(texto ?? '')
+    .replace(/[\p{Extended_Pictographic}\u{1F3FB}-\u{1F3FF}️‍]+[ \t]?/gu, '')
+    .replace(/[ \t]{2,}/g, ' ')
+    .trim();
+
+// Los nombres de personas llegan en mayúsculas ("CHRISTOPHER OSORIO"); textos como "Asistente TI" se dejan igual.
+export const nombreSiEstaEnMayusculas = (texto = '') => {
+  const t = String(texto ?? '');
+  return t !== '' && t === t.toUpperCase() ? nombrePresentable(t) : t;
+};

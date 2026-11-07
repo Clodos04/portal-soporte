@@ -96,7 +96,7 @@ function ColumnCustomizerModal({ activeColumns, availableColumns, columnLabels, 
         
         <div className="flex justify-end gap-3 p-6 border-t border-slate-700 bg-slate-900/30 rounded-b-xl">
           <button onClick={onClose} className="bg-slate-700 hover:bg-slate-600 text-slate-200 px-6 py-3 rounded-lg font-bold border border-slate-600">Cancelar</button>
-          <button onClick={() => onSave(tempActive, tempAvailable)} className="bg-indigo-600 hover:bg-indigo-500 text-white px-8 py-3 rounded-lg shadow-lg font-bold">Guardar Cambios</button>
+          <button onClick={() => onSave(tempActive, tempAvailable)} className="bg-indigo-600 hover:bg-indigo-500 text-white px-8 py-3 rounded-lg shadow-lg font-bold">Guardar cambios</button>
         </div>
       </div>
     </div>

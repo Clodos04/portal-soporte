@@ -36,7 +36,7 @@ function GuiaTicketsView() {
           <div className="text-4xl font-semibold text-indigo-400/20 absolute top-4 right-4">03</div>
           <h3 className="text-lg font-bold text-white">Detalla y Envía</h3>
           <p className="text-xs text-slate-400 leading-relaxed">
-            Completa el asunto, describe claramente tu situación, selecciona los equipos afectados, adjunta una captura si es necesario y haz clic en <strong className="text-slate-200">Guardar Solicitud</strong>.
+            Completa el asunto, describe claramente tu situación, selecciona los equipos afectados, adjunta una captura si es necesario y haz clic en <strong className="text-slate-200">Guardar solicitud</strong>.
           </p>
         </div>
 
