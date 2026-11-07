@@ -14,8 +14,8 @@
   --color-slate-100: #eef0f2;
   --color-slate-200: #e1e4e8;
   --color-slate-300: #cdd2da;
-  --color-slate-400: #8a8f98;
-  --color-slate-500: #62666d;
+  --color-slate-400: #a1a6af;
+  --color-slate-500: #8a8f98;
   --color-slate-600: #34343a;
   --color-slate-700: #23252a;
   --color-slate-800: #141516;
@@ -136,4 +136,25 @@ body {
 /* Transición suave al cambiar entre Modo Claro y Oscuro */
 .min-h-screen, header, nav, main, div, table, tr, td, th, input, select, textarea, button, h1, h2, h3, h4, p, span {
   transition: background-color 0.2s ease, border-color 0.2s ease, color 0.15s ease;
+}
+
+/* =========================================================
+   ACCESIBILIDAD
+   ========================================================= */
+button:focus-visible,
+a:focus-visible,
+select:focus-visible,
+[role="button"]:focus-visible,
+summary:focus-visible {
+  outline: 2px solid var(--color-indigo-400);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

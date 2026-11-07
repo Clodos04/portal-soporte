@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import { EsqueletoPanel } from '../components/Estados';
+import EtiquetaEstatus from '../components/EtiquetaEstatus';
 
 function SupervisorPanel({ user, onVerDetallesCentinela }) {
   const [tickets, setTickets] = useState([]);
@@ -127,9 +129,7 @@ function SupervisorPanel({ user, onVerDetallesCentinela }) {
 
   if (loading) {
     return (
-      <div className="flex justify-center items-center h-96 text-white text-lg">
-        Cargando métricas y panel de supervisor...
-      </div>
+      <div className="max-w-7xl mx-auto"><EsqueletoPanel /></div>
     );
   }
 
@@ -328,12 +328,7 @@ function SupervisorPanel({ user, onVerDetallesCentinela }) {
                       </td>
                       <td className="px-4 py-3 text-slate-300">{t.tecnico || 'Sin asignar'}</td>
                       <td className="px-4 py-3">
-                        <span className={`px-2 py-0.5 rounded text-xs font-bold ${
-                          t.estatus === 'Cerrado' || t.estatus === 'CERRADO' ? 'bg-blue-600/30 text-blue-400' : 
-                          t.estatus === 'En Proceso' ? 'bg-yellow-600/30 text-yellow-400' : 'bg-green-600/30 text-green-400'
-                        }`}>
-                          {t.estatus}
-                        </span>
+                        <EtiquetaEstatus estatus={t.estatus} />
                       </td>
                       <td className="px-4 py-3 text-center">
                         {encuestaAsociada ? (

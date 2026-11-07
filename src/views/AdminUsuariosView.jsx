@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
+import { EstadoVacio } from '../components/Estados';
 import { useAvisos } from '../components/Avisos';
-import { Pencil, Trash2 } from 'lucide-react';
+import { Pencil, Trash2, Users } from 'lucide-react';
 
 const listaCampanas = [
   "TI",
@@ -160,7 +161,7 @@ function AdminUsuariosView({ grupos: gruposProp = [], usuarios = [], setUsuarios
               <tbody className="divide-y divide-slate-700">
                 {usuarios.length === 0 ? (
                   <tr>
-                    <td colSpan="9" className="px-4 py-8 text-center text-slate-500 italic">No hay usuarios registrados.</td>
+                    <td colSpan="9"><EstadoVacio compacto icono={Users} titulo="No hay usuarios registrados" /></td>
                   </tr>
                 ) : (
                   usuarios.map((usu) => (

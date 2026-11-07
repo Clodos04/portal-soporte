@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
+import { EstadoVacio } from '../components/Estados';
+import EtiquetaEstatus from '../components/EtiquetaEstatus';
 import { useAvisos } from '../components/Avisos';
-import { Plus, Search, StickyNote } from 'lucide-react';
+import { Plus, Search, StickyNote, Inbox } from 'lucide-react';
 import { calcularSLA as calcularEstadoSLA, formatearDuracion } from '../utils/sla';
 import { exportarCSV } from '../utils/exportar';
 
@@ -284,8 +286,14 @@ function SolicitudesView({
             <tbody className="divide-y divide-slate-700">
               {ticketsFiltrados.length === 0 ? (
                 <tr>
-                  <td colSpan={activeColumns.length + 5} className="px-4 py-8 text-center text-slate-500 italic">
-                    No hay solicitudes registradas en esta bandeja o que coincidan con la búsqueda.
+                  <td colSpan={activeColumns.length + 5}>
+                    <EstadoVacio
+                      icono={Inbox}
+                      titulo="No hay solicitudes en esta vista"
+                      descripcion={busqueda ? 'Prueba con otro folio, equipo o nombre.' : 'Cuando se registre una solicitud aparecerá aquí.'}
+                      accion={esCliente ? 'Crear solicitud' : undefined}
+                      onAccion={onNuevaSolicitud}
+                    />
                   </td>
                 </tr>
               ) : (
@@ -319,9 +327,7 @@ function SolicitudesView({
                       </td>
 
                       <td className="px-4 py-3 whitespace-nowrap">
-                        <span className={`px-3 py-1 rounded-full text-xs font-bold inline-block text-white shadow-sm ${ticket.colorEstatus || 'bg-green-600'}`}>
-                          {ticket.estatus}
-                        </span>
+                        <EtiquetaEstatus estatus={ticket.estatus} />
                       </td>
 
                       <td className="px-4 py-3 whitespace-nowrap">

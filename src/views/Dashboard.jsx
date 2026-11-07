@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Plus } from 'lucide-react';
+import { EstadoVacio } from '../components/Estados';
+import EtiquetaEstatus from '../components/EtiquetaEstatus';
+import { Plus, CheckCircle2 } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
 function Dashboard({ user, tickets = [], grupos = [], onIrANuevaSolicitud, onIrAEncuesta, onIrABuzon, estadisticasEncuestas = [], onTomarTicket, onAbrirChat }) {
@@ -91,10 +93,7 @@ function Dashboard({ user, tickets = [], grupos = [], onIrANuevaSolicitud, onIrA
                 <span className="bg-indigo-500/20 text-indigo-400 px-2.5 py-1 rounded-full text-xs font-bold border border-indigo-500/30">{misTicketsAbiertos?.length || 0} activos</span>
               </div>
               {misTicketsAbiertos.length === 0 ? (
-                <div className="text-center py-8 border border-dashed border-slate-700 rounded-xl bg-slate-900/40">
-                  <p className="text-slate-400 text-sm font-medium">No tienes solicitudes abiertas actualmente.</p>
-                  <p className="text-slate-500 text-xs mt-1">Todo funciona con normalidad en tus servicios.</p>
-                </div>
+                <EstadoVacio compacto icono={CheckCircle2} titulo="No tienes solicitudes abiertas" descripcion="Todo funciona con normalidad en tus servicios." />
               ) : (
                 <div className="space-y-3">
                   {misTicketsAbiertos.map(t => (
@@ -104,7 +103,7 @@ function Dashboard({ user, tickets = [], grupos = [], onIrANuevaSolicitud, onIrA
                         <p className="font-bold text-white text-sm mt-0.5">{t.asunto}</p>
                         <p className="text-xs text-slate-400 mt-1">Fecha: {t.fecha}</p>
                       </div>
-                      <span className={`px-2.5 py-1 rounded-lg text-xs font-bold ${t.colorEstatus || 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'}`}>{t.estatus}</span>
+                      <EtiquetaEstatus estatus={t.estatus} />
                     </div>
                   ))}
                 </div>
@@ -284,9 +283,7 @@ function Dashboard({ user, tickets = [], grupos = [], onIrANuevaSolicitud, onIrA
         </div>
 
         {ticketsSinAsignar.length === 0 ? (
-          <div className="text-center py-6 border border-dashed border-slate-700 rounded-xl bg-slate-900/40">
-            <p className="text-slate-400 text-xs font-medium">No hay tickets pendientes sin asignar en este momento. ¡Buen trabajo!</p>
-          </div>
+          <EstadoVacio compacto icono={CheckCircle2} titulo="Todo asignado" descripcion="No hay tickets pendientes sin asignar en este momento." />
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 max-h-72 overflow-y-auto pr-2">
             {ticketsSinAsignar.map(t => (

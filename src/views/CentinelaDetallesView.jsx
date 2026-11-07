@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { EsqueletoPanel } from '../components/Estados';
 
 function CentinelaDetallesView({ tickets = [], onVolver, onEditarTicket }) {
   const safeTickets = tickets || [];
@@ -95,7 +96,7 @@ function CentinelaDetallesView({ tickets = [], onVolver, onEditarTicket }) {
 
       {/* Contenido Principal */}
       {cargando ? (
-        <div className="text-center py-16 text-slate-400 text-sm">Cargando detalles técnicos de Centinela...</div>
+        <EsqueletoPanel tarjetas={3} filas={4} />
       ) : requisicionesPendientes.length === 0 ? (
         <div className="text-center py-16 bg-slate-800/50 border border-dashed border-slate-700 rounded-3xl space-y-3">
           <div className="text-4xl"></div>

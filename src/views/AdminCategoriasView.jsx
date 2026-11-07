@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
+import { EstadoVacio } from '../components/Estados';
 import { useAvisos } from '../components/Avisos';
-import { Pencil, Trash2 } from 'lucide-react';
+import { Pencil, Trash2, FolderTree } from 'lucide-react';
 
 function AdminCategoriasView({ categorias = [], setCategorias, user, onVerSubcategorias }) {
   const { confirmar } = useAvisos();
@@ -101,7 +102,7 @@ function AdminCategoriasView({ categorias = [], setCategorias, user, onVerSubcat
               <tbody className="divide-y divide-slate-700">
                 {categorias.length === 0 ? (
                   <tr>
-                    <td colSpan="7" className="px-4 py-8 text-center text-slate-500 italic">No hay categorías registradas.</td>
+                    <td colSpan="7"><EstadoVacio compacto icono={FolderTree} titulo="No hay categorías registradas" /></td>
                   </tr>
                 ) : (
                   categorias.map((cat) => {
