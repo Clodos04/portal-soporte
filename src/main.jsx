@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client'
 import '@fontsource-variable/inter'
 import './index.css'
 import App from './App.jsx'
+import { AvisosProvider } from './components/Avisos.jsx'
 
 // Si el servidor responde 401 (sesión expirada) fuera del login, se recarga para mostrar la pantalla de acceso
 const fetchOriginal = window.fetch.bind(window);
@@ -17,6 +18,8 @@ window.fetch = async (...args) => {
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
-    <App />
+    <AvisosProvider>
+      <App />
+    </AvisosProvider>
   </StrictMode>,
 )

@@ -1,7 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Trash2 } from 'lucide-react';
+import { EstadoVacio } from '../components/Estados';
+import { useAvisos } from '../components/Avisos';
+import { Trash2, MessageSquare } from 'lucide-react';
 
 function BuzonSugerenciasView({ user }) {
+  const { confirmar } = useAvisos();
   const [registros, setRegistros] = useState([]);
   const [tipo, setTipo] = useState('SUGERENCIA');
   const [mensaje, setMensaje] = useState('');
@@ -79,7 +82,7 @@ function BuzonSugerenciasView({ user }) {
   };
 
   const eliminarRegistro = async (id) => {
-    if (!window.confirm('¿Eliminar este comentario del buzón?')) return;
+    if (!await confirmar('¿Eliminar este comentario del buzón?')) return;
     try {
       await fetch(`/api/buzon/${id}`, { method: 'DELETE' });
       setRegistros(registros.filter(r => r.id !== id));
@@ -227,9 +230,7 @@ function BuzonSugerenciasView({ user }) {
         </div>
 
         {misRegistros.length === 0 ? (
-          <div className="text-center py-8 text-slate-500 italic text-sm">
-            No hay comentarios ni reportes registrados todavía.
-          </div>
+          <EstadoVacio compacto icono={MessageSquare} titulo="Aún no hay comentarios" descripcion="Las sugerencias y reportes enviados aparecerán aquí." />
         ) : (
           <div className="space-y-3">
             {misRegistros.map((item) => (

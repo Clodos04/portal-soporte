@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
+import { useAvisos } from '../components/Avisos';
 import { exportarCSV } from '../utils/exportar';
 
 export default function AdminReportesView({ tickets = [], campanas = [], estadisticasEncuestas = [], user, onIrACentinela }) {
+  const { avisar } = useAvisos();
   const [filtroCampana, setFiltroCampana] = useState('Todas');
   const [filtroEstatus, setFiltroEstatus] = useState('Todos');
   
@@ -100,13 +102,27 @@ export default function AdminReportesView({ tickets = [], campanas = [], estadis
       })
     : [];
 
+  // Mapa de calor: cuántos reportes tuvo cada nodo en los últimos 90 días
+  const UMBRAL_REQUISICION = 5;
+  const reportesPorNodo = Object.entries(
+    ticketsFiltrados.reduce((acc, t) => {
+      const nodo = (t.equipo || '').trim();
+      if (!nodo || nodo === 'Ninguno') return acc;
+      const fechaT = new Date(t.created_at || t.fecha);
+      if (isNaN(fechaT.getTime()) || fechaT < haceTresMeses) return acc;
+      acc[nodo] = (acc[nodo] || 0) + 1;
+      return acc;
+    }, {})
+  ).sort((a, b) => b[1] - a[1]);
+  const maximoReportes = reportesPorNodo.length ? reportesPorNodo[0][1] : 0;
+
   // Lista única de nodos con reportes previos
   const listaNodosConReportes = Array.from(
     new Set(tickets.map(t => t.equipo).filter(eq => eq && eq !== 'Ninguno' && eq.trim() !== ''))
   ).sort();
 
   const exportarExcelSimulado = () => {
-    if (ticketsFiltrados.length === 0) { alert('No hay tickets para exportar con los filtros seleccionados.'); return; }
+    if (ticketsFiltrados.length === 0) { avisar('No hay tickets para exportar con los filtros seleccionados.', 'info'); return; }
     exportarCSV(ticketsFiltrados, [
       { titulo: 'Folio', valor: t => t.folio },
       { titulo: 'Fecha', valor: t => t.fecha },
@@ -304,6 +320,50 @@ export default function AdminReportesView({ tickets = [], campanas = [], estadis
       </div>
 
       {/* SECCIÓN ADICIONAL: CONSULTA DE HISTORIAL DE NODOS (SELECT NATIVO) */}
+      <div className="bg-slate-800 border border-slate-700 p-5 sm:p-6 rounded-xl shadow-lg space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3">
+          <div>
+            <h3 className="text-lg font-semibold text-white">Mapa de calor de nodos</h3>
+            <p className="text-slate-400 text-sm mt-1">
+              Reportes por nodo en los últimos 90 días. Con {UMBRAL_REQUISICION} o más reportes se recomienda requisición de compra. Haz clic en un nodo para ver su expediente.
+            </p>
+          </div>
+          <div className="flex items-center gap-2 text-xs text-slate-400 shrink-0" aria-hidden="true">
+            Menos
+            {[0.15, 0.35, 0.55, 0.8, 1].map(n => (
+              <span key={n} className="w-4 h-4 rounded" style={{ backgroundColor: `rgba(94, 106, 210, ${n})` }} />
+            ))}
+            Más
+          </div>
+        </div>
+
+        {reportesPorNodo.length === 0 ? (
+          <p className="text-slate-500 text-sm py-6 text-center">No hay reportes de nodos en los últimos 90 días con los filtros actuales.</p>
+        ) : (
+          <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-2">
+            {reportesPorNodo.slice(0, 48).map(([nodo, cantidad]) => {
+              const requiereCompra = cantidad >= UMBRAL_REQUISICION;
+              const intensidad = 0.15 + 0.85 * (cantidad / maximoReportes);
+              return (
+                <button
+                  key={nodo}
+                  onClick={() => { setNodoSeleccionadoHistorial(nodo); setBusquedaNodoTexto(''); }}
+                  title={`${nodo}: ${cantidad} reporte${cantidad === 1 ? '' : 's'}${requiereCompra ? ' · requiere requisición' : ''}`}
+                  className={`rounded-lg px-2.5 py-2 text-left border transition-colors cursor-pointer ${requiereCompra ? 'border-red-400/60' : 'border-transparent hover:border-slate-500'}`}
+                  style={{ backgroundColor: `rgba(94, 106, 210, ${intensidad})` }}
+                >
+                  <span className="block font-mono text-xs text-white truncate">{nodo}</span>
+                  <span className="block text-lg font-semibold text-white leading-tight">{cantidad}</span>
+                </button>
+              );
+            })}
+          </div>
+        )}
+        {reportesPorNodo.length > 48 && (
+          <p className="text-xs text-slate-500">Mostrando los 48 nodos con más reportes de {reportesPorNodo.length}.</p>
+        )}
+      </div>
+
       <div className="bg-slate-800 border border-slate-700 p-6 rounded-xl shadow-lg space-y-4">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
           <div>

@@ -27,7 +27,7 @@ function AdminGruposView({ grupos, onAgregarGrupo, onEliminarGrupo }) {
         </button>
       </form>
 
-      <div className="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden shadow-lg">
+      <div className="bg-slate-800 rounded-xl border border-slate-700 overflow-x-auto shadow-lg">
         <table className="w-full text-left text-sm">
           <thead className="bg-slate-700 text-slate-300 text-xs">
             <tr>

@@ -12,8 +12,6 @@ import Dashboard from './views/Dashboard';
 import SolicitudesView from './views/SolicitudesView';
 import NuevaSolicitudView from './views/NuevaSolicitudView';
 import LiveChatView from './views/LiveChatView'; 
-import Tareas from './views/Tareas';
-import Informes from './views/Informes';
 import EncuestaView from './views/EncuestaView';
 import GuiaTicketsView from './views/GuiaTicketsView';
 import AdminReportesView from './views/AdminReportesView';
@@ -27,8 +25,11 @@ import AdminCategoriasView from './views/AdminCategoriasView';
 import AdminSubcategoriasView from './views/AdminSubcategoriasView';
 import AdminCampanasView from './views/AdminCampanasView';
 import { calcularSLA, esTicketCerrado } from './utils/sla';
+import Buscador from './components/Buscador';
+import { useAvisos } from './components/Avisos';
 
 function App() {
+  const { avisar, confirmar } = useAvisos();
   const [isLoggedIn, setIsLoggedIn] = useState(false); 
   const [user, setUser] = useState(null); 
   const [currentView, setCurrentView] = useState('inicio'); 
@@ -58,6 +59,11 @@ function App() {
 
   const [categoriaParaSubcategorias, setCategoriaParaSubcategorias] = useState(null);
   const [alertaVisual, setAlertaVisual] = useState(null);
+  const [filtroSolicitudesInicial, setFiltroSolicitudesInicial] = useState(null);
+  const [menuAbierto, setMenuAbierto] = useState(false);
+  const [buscadorAbierto, setBuscadorAbierto] = useState(false);
+  // Historial de notificaciones de la sesión (campana del encabezado)
+  const [notificaciones, setNotificaciones] = useState([]);
 
   const columnLabels = {
     tecnico: 'Técnico', creador: 'Creado por', asunto: 'Asunto', descripcion: 'Descripción',
@@ -86,6 +92,7 @@ function App() {
   }, [currentView]);
 
   const reproducirAlerta = (mensajeTexto) => {
+    setNotificaciones(prev => [{ id: Date.now() + Math.random(), texto: mensajeTexto, fecha: new Date(), leida: false }, ...prev].slice(0, 30));
     const audio = new Audio('/Sonidos/minecraft_exp.mp3');
     audio.play().catch(err => console.log("Audio bloqueado por el navegador:", err));
     setAlertaVisual(mensajeTexto);
@@ -207,6 +214,18 @@ function App() {
     return () => { clearTimeout(arranque); clearInterval(intervalo); alertasSlaEnviadas.current = {}; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isLoggedIn, user?.role]);
+
+  useEffect(() => {
+    if (!isLoggedIn) return;
+    const alTeclear = (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        setBuscadorAbierto(abierto => !abierto);
+      }
+    };
+    window.addEventListener('keydown', alTeclear);
+    return () => window.removeEventListener('keydown', alTeclear);
+  }, [isLoggedIn]);
 
   // Restaurar la sesión (cookie httpOnly) al recargar la página
   useEffect(() => {
@@ -347,6 +366,25 @@ function App() {
     });
   };
 
+  const handleCambiarEstatusTablero = async (ticket, nuevoEstatus) => {
+    if (nuevoEstatus === 'Cerrado' && !(await confirmar(`¿Cerrar el ticket #${ticket.folio}? Se registrará en el historial de cambios.`, { textoConfirmar: 'Cerrar ticket', peligro: false }))) return;
+    const colorEstatus = nuevoEstatus === 'En Proceso' ? 'bg-orange-500' : nuevoEstatus === 'Cerrado' ? 'bg-red-500' : 'bg-green-500';
+    const anterior = tickets;
+    setTickets(prev => prev.map(t => (t.folio === ticket.folio ? { ...t, estatus: nuevoEstatus, colorEstatus } : t)));
+    try {
+      const res = await fetch(`/api/tickets/${ticket.folio}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ estatus: nuevoEstatus, colorEstatus })
+      });
+      if (!res.ok) throw new Error('El servidor rechazó el cambio');
+      avisar(`Ticket #${ticket.folio} movido a ${nuevoEstatus}`, 'exito');
+    } catch (error) {
+      setTickets(anterior);
+      avisar('No se pudo cambiar el estatus. Se restauró el valor anterior.', 'error');
+    }
+  };
+
   const handleActualizarTicket = (ticketActualizado) => {
     setTickets(tickets.map(t => t.folio === ticketActualizado.folio ? ticketActualizado : t));
     setIsEditModalOpen(false);
@@ -407,7 +445,7 @@ function App() {
   }
 
   return (
-    <div className={`${!isDarkMode ? 'light-mode' : ''} min-h-screen bg-slate-900 font-sans pb-10 text-slate-200 relative`}>
+    <div className={`${!isDarkMode ? 'light-mode' : ''} min-h-screen flex bg-slate-900 font-sans text-slate-200 relative`}>
       {alertaVisual && (
         <div className="fixed bottom-6 right-6 z-50 bg-slate-800 border border-indigo-500/50 text-slate-100 px-5 py-4 rounded-2xl shadow-2xl flex items-center space-x-3 animate-bounce">
                     <div>
@@ -457,19 +495,37 @@ function App() {
         />
       )}
 
-      <Header 
+      <Menu
+        currentView={currentView}
+        setCurrentView={setCurrentView}
+        user={user}
+        abierto={menuAbierto}
+        onCerrar={() => setMenuAbierto(false)}
+        onAbrirBuscador={() => setBuscadorAbierto(true)}
+        isDarkMode={isDarkMode}
+      />
+
+      <div className="flex-1 min-w-0 flex flex-col">
+      <Header
+          onAbrirMenu={() => setMenuAbierto(true)}
+          onAbrirBuscador={() => setBuscadorAbierto(true)}
+          notificaciones={notificaciones}
+          onMarcarLeidas={() => setNotificaciones(prev => prev.map(n => ({ ...n, leida: true })))}
+          onLimpiarNotificaciones={() => setNotificaciones([])}
+          
         user={user} 
         onLogout={() => { fetch('/api/logout', { method: 'POST' }).catch(() => {}); setIsLoggedIn(false); setUser(null); }} 
         isDarkMode={isDarkMode}
         onToggleTheme={toggleTheme}
       />
-      <Menu currentView={currentView} setCurrentView={setCurrentView} user={user} />
 
-      <main className="p-6 max-w-7xl mx-auto relative z-0">
+      <main className="p-4 sm:p-6 pb-10 max-w-7xl w-full mx-auto relative z-0">
         {currentView === 'inicio' && (
           <Dashboard 
             user={user} 
             tickets={tickets} 
+            categorias={categorias}
+            onIrASolicitudes={(filtro) => { setFiltroSolicitudesInicial(filtro); setCurrentView('solicitudes'); }}
             grupos={grupos}
             estadisticasEncuestas={estadisticasEncuestas}
             onTomarTicket={handleTomarTicket}
@@ -499,6 +555,9 @@ function App() {
 
         {currentView === 'solicitudes' && (
           <SolicitudesView 
+            filtroInicial={filtroSolicitudesInicial}
+            onCambiarEstatus={handleCambiarEstatusTablero}
+            onFiltroConsumido={() => setFiltroSolicitudesInicial(null)}
             tickets={tickets}
             categorias={categorias}
             activeColumns={activeColumns}
@@ -596,10 +655,18 @@ function App() {
           <CentinelaDetallesView tickets={tickets} onVolver={() => setCurrentView('admin-supervisor-panel')} onEditarTicket={(ticket) => { setTicketEnEdicion(ticket); setIsEditModalOpen(true); }} />
         )}
 
-        {currentView === 'tareas' && <Tareas />}
-        {currentView === 'informes' && <Informes />}
         {currentView === 'guia-tickets' && <GuiaTicketsView />}
       </main>
+      </div>
+
+      <Buscador
+        abierto={buscadorAbierto}
+        onCerrar={() => setBuscadorAbierto(false)}
+        user={user}
+        tickets={tickets}
+        onIrAVista={(vista) => setCurrentView(vista)}
+        onAbrirTicket={(ticket) => { setTicketEnEdicion(ticket); setIsEditModalOpen(true); }}
+      />
     </div>
   );
 }

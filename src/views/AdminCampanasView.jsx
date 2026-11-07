@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
+import { useAvisos } from '../components/Avisos';
 
 function AdminCampanasView({ campanas = [], setCampanas }) {
+  const { avisar, confirmar } = useAvisos();
   const [nuevaCampana, setNuevaCampana] = useState('');
 
   const handleAgregar = (e) => {
@@ -9,7 +11,7 @@ function AdminCampanasView({ campanas = [], setCampanas }) {
     
     const campanaTrim = nuevaCampana.trim();
     if (campanas.includes(campanaTrim)) {
-      alert('Esta campaña ya existe.');
+      avisar('Esta campaña ya existe.', 'info');
       return;
     }
 
@@ -25,12 +27,12 @@ function AdminCampanasView({ campanas = [], setCampanas }) {
     .catch(err => console.error('Error al guardar campaña:', err));
   };
 
-  const handleEliminar = (campanaAEliminar) => {
+  const handleEliminar = async (campanaAEliminar) => {
     if (campanas.length <= 1) {
-      alert('Debe existir al menos una campaña en el sistema.');
+      avisar('Debe existir al menos una campaña en el sistema.', 'info');
       return;
     }
-    if (window.confirm(`¿Estás seguro de eliminar la campaña ${campanaAEliminar}?`)) {
+    if (await confirmar(`¿Estás seguro de eliminar la campaña ${campanaAEliminar}?`)) {
       fetch(`/api/campanas/${encodeURIComponent(campanaAEliminar)}`, {
         method: 'DELETE'
       })

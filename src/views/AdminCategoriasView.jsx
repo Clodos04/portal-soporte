@@ -1,7 +1,10 @@
 import React, { useState } from 'react';
-import { Pencil, Trash2 } from 'lucide-react';
+import { EstadoVacio } from '../components/Estados';
+import { useAvisos } from '../components/Avisos';
+import { Pencil, Trash2, FolderTree } from 'lucide-react';
 
 function AdminCategoriasView({ categorias = [], setCategorias, user, onVerSubcategorias }) {
+  const { confirmar } = useAvisos();
   const [modo, setModo] = useState('lista'); // 'lista', 'form'
   const [categoriaActual, setCategoriaActual] = useState(null);
   
@@ -60,8 +63,8 @@ function AdminCategoriasView({ categorias = [], setCategorias, user, onVerSubcat
     setModo('lista');
   };
 
-  const eliminarCategoria = (id) => {
-    if (window.confirm('¿Estás seguro de eliminar esta categoría?')) {
+  const eliminarCategoria = async (id) => {
+    if (await confirmar('¿Estás seguro de eliminar esta categoría?')) {
       setCategorias(categorias.filter(c => c.id !== id));
     }
   };
@@ -99,7 +102,7 @@ function AdminCategoriasView({ categorias = [], setCategorias, user, onVerSubcat
               <tbody className="divide-y divide-slate-700">
                 {categorias.length === 0 ? (
                   <tr>
-                    <td colSpan="7" className="px-4 py-8 text-center text-slate-500 italic">No hay categorías registradas.</td>
+                    <td colSpan="7"><EstadoVacio compacto icono={FolderTree} titulo="No hay categorías registradas" /></td>
                   </tr>
                 ) : (
                   categorias.map((cat) => {

@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
+import { useAvisos } from '../components/Avisos';
 import { Pencil, Trash2 } from 'lucide-react';
 
 function AdminSubcategoriasView({ categoria, categorias, setCategorias, user, onBack }) {
+  const { confirmar } = useAvisos();
   // Estado de navegación
   const [subcatActiva, setSubcatActiva] = useState(null);
   const [modo, setModo] = useState('lista'); // 'lista', 'form'
@@ -88,8 +90,8 @@ function AdminSubcategoriasView({ categoria, categorias, setCategorias, user, on
     setModo('lista');
   };
 
-  const eliminarSubcategoria = (id) => {
-    if (window.confirm('¿Estás seguro de eliminar esta subcategoría y todos sus elementos?')) {
+  const eliminarSubcategoria = async (id) => {
+    if (await confirmar('¿Estás seguro de eliminar esta subcategoría y todos sus elementos?')) {
       const nuevasCategorias = categorias.map(c => {
         if (c.id === catActual.id) {
           return { ...c, subcategorias: (c.subcategorias || []).filter(sub => sub.id !== id) };
@@ -177,8 +179,8 @@ function AdminSubcategoriasView({ categoria, categorias, setCategorias, user, on
     setSubcatActiva(subActualizada);
   };
 
-  const eliminarElemento = (elemId) => {
-    if (window.confirm('¿Estás seguro de eliminar este elemento?')) {
+  const eliminarElemento = async (elemId) => {
+    if (await confirmar('¿Estás seguro de eliminar este elemento?')) {
       const nuevasCategorias = categorias.map(c => {
         if (c.id === catActual.id) {
           const subsActualizadas = (c.subcategorias || []).map(sub => {
