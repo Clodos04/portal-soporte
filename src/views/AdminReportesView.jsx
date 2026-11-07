@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { exportarCSV } from '../utils/exportar';
 
 export default function AdminReportesView({ tickets = [], campanas = [], estadisticasEncuestas = [], user, onIrACentinela }) {
   const [filtroCampana, setFiltroCampana] = useState('Todas');
@@ -105,7 +106,22 @@ export default function AdminReportesView({ tickets = [], campanas = [], estadis
   ).sort();
 
   const exportarExcelSimulado = () => {
-    alert('Exportando reporte completo a CSV/Excel...');
+    if (ticketsFiltrados.length === 0) { alert('No hay tickets para exportar con los filtros seleccionados.'); return; }
+    exportarCSV(ticketsFiltrados, [
+      { titulo: 'Folio', valor: t => t.folio },
+      { titulo: 'Fecha', valor: t => t.fecha },
+      { titulo: 'Estatus', valor: t => t.estatus },
+      { titulo: 'Campaña', valor: t => t.campana },
+      { titulo: 'Categoría', valor: t => t.categoria },
+      { titulo: 'Subcategoría', valor: t => t.subcategoria },
+      { titulo: 'Equipo / Nodo', valor: t => t.equipo },
+      { titulo: 'Solicitante', valor: t => t.creador },
+      { titulo: 'Técnico', valor: t => t.tecnico },
+      { titulo: 'Asunto', valor: t => t.asunto },
+      { titulo: 'Resolución', valor: t => t.resolucion },
+      { titulo: 'Creado', valor: t => t.created_at },
+      { titulo: 'Cerrado / Actualizado', valor: t => t.updated_at }
+    ], 'reporte_tickets');
   };
 
   return (

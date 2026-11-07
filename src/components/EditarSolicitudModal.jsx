@@ -21,6 +21,9 @@ function EditarSolicitudModal({ ticket = {}, user, usuarios = [], grupos = [], u
 
   const [modalCambiarNodoOpen, setModalCambiarNodoOpen] = useState(false);
   const [modalHistorialOpen, setModalHistorialOpen] = useState(false);
+  const [modalAuditoriaOpen, setModalAuditoriaOpen] = useState(false);
+  const [auditoria, setAuditoria] = useState([]);
+  const [cargandoAuditoria, setCargandoAuditoria] = useState(false);
   const [nodosCentinela, setNodosCentinela] = useState([]);
   const [campanasCentinela, setCampanasCentinela] = useState([]);
   const [busquedaNodo, setBusquedaNodo] = useState('');
@@ -52,6 +55,29 @@ function EditarSolicitudModal({ ticket = {}, user, usuarios = [], grupos = [], u
   const elementosDisponibles = Array.isArray(subcategoriaObj?.elementos)
     ? subcategoriaObj.elementos.filter(el => (el?.estatus || 'ACTIVO').toUpperCase() === 'ACTIVO')
     : [];
+
+  const abrirAuditoria = async () => {
+    setModalAuditoriaOpen(true);
+    setCargandoAuditoria(true);
+    try {
+      const res = await fetch(`/api/tickets/${encodeURIComponent(ticket.folio)}/historial`);
+      const data = await res.json();
+      setAuditoria(Array.isArray(data) ? data : []);
+    } catch (error) {
+      console.error('Error al cargar el historial de cambios:', error);
+      setAuditoria([]);
+    } finally {
+      setCargandoAuditoria(false);
+    }
+  };
+
+  const etiquetasAccion = {
+    CREADO: '🆕 Ticket creado',
+    CAMBIO_ESTATUS: '🔄 Cambio de estatus',
+    ASIGNACION: '👤 Asignación',
+    EDICION: '✏️ Edición',
+    CIERRE_AUTOMATICO: '🤖 Cierre automático'
+  };
 
   const abrirSelectorNodo = async () => {
     setModalCambiarNodoOpen(true);
@@ -170,6 +196,16 @@ function EditarSolicitudModal({ ticket = {}, user, usuarios = [], grupos = [], u
                 className="bg-indigo-600/20 hover:bg-indigo-600 text-indigo-300 hover:text-white px-3 py-1 rounded-lg text-xs font-bold transition-all border border-indigo-500/40 flex items-center gap-1 cursor-pointer"
               >
                 <span>📋</span> Historial Nodo (3m)
+              </button>
+            )}
+
+            {esSoporte && (
+              <button
+                type="button"
+                onClick={abrirAuditoria}
+                className="bg-slate-600/30 hover:bg-slate-600 text-slate-300 hover:text-white px-3 py-1 rounded-lg text-xs font-bold transition-all border border-slate-500/40 flex items-center gap-1.5 cursor-pointer"
+              >
+                <span>🕒</span> Historial de cambios
               </button>
             )}
 
@@ -391,6 +427,49 @@ function EditarSolicitudModal({ ticket = {}, user, usuarios = [], grupos = [], u
                     <span className="text-xs font-bold text-indigo-400">Seleccionar ➔</span>
                   </div>
                 ))}
+            </div>
+          </div>
+        )}
+
+        {modalAuditoriaOpen && (
+          <div className="absolute inset-0 bg-slate-950/95 z-50 flex flex-col p-6 animate-fade-in">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-sm font-bold text-white uppercase flex items-center gap-2">
+                <span>🕒</span> Historial de cambios - Ticket <strong className="text-indigo-400">#{ticket.folio}</strong>
+              </h3>
+              <button onClick={() => setModalAuditoriaOpen(false)} className="text-slate-400 hover:text-white font-bold text-sm cursor-pointer">
+                ✕ Cerrar
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto space-y-3 pr-1">
+              {cargandoAuditoria ? (
+                <p className="text-center text-slate-400 py-10">Cargando historial...</p>
+              ) : auditoria.length === 0 ? (
+                <div className="text-center py-12 border border-dashed border-slate-700 rounded-xl bg-slate-900/40">
+                  <p className="text-slate-400 text-sm font-medium">Aún no hay cambios registrados para este ticket.</p>
+                  <p className="text-slate-500 text-xs mt-1">El registro comienza a partir de la activación de la auditoría.</p>
+                </div>
+              ) : (
+                auditoria.map((a) => (
+                  <div key={a.id} className="bg-slate-900 p-3 rounded-xl border border-slate-700 space-y-1">
+                    <div className="flex justify-between text-xs font-bold">
+                      <span className="text-indigo-300">{etiquetasAccion[a.accion] || a.accion}</span>
+                      <span className="text-slate-500 font-mono">{String(a.fecha).replace('T', ' ').slice(0, 19)}</span>
+                    </div>
+                    <p className="text-xs text-slate-300">
+                      👤 {a.usuario}
+                      {a.campo && (
+                        <>
+                          {' • '}<span className="text-slate-400">{a.campo}:</span>{' '}
+                          {a.valor_anterior ? <span className="text-red-300 line-through">{a.valor_anterior}</span> : null}
+                          {a.valor_anterior && a.valor_nuevo ? ' → ' : ''}
+                          {a.valor_nuevo ? <span className="text-emerald-300">{a.valor_nuevo}</span> : null}
+                        </>
+                      )}
+                    </p>
+                  </div>
+                ))
+              )}
             </div>
           </div>
         )}

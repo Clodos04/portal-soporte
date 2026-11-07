@@ -181,6 +181,39 @@ const filtrarColumnas = (tabla, datos) => {
   return limpio;
 };
 
+// ============================================================================
+// AUDITORÍA DE TICKETS: quién cambió qué y cuándo
+// ============================================================================
+db.query(`
+  CREATE TABLE IF NOT EXISTS auditoria_tickets (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    folio VARCHAR(30) NOT NULL,
+    usuario VARCHAR(150) NOT NULL,
+    accion VARCHAR(40) NOT NULL,
+    campo VARCHAR(60) DEFAULT NULL,
+    valor_anterior TEXT,
+    valor_nuevo TEXT,
+    fecha DATETIME NOT NULL,
+    INDEX idx_auditoria_folio (folio),
+    INDEX idx_auditoria_fecha (fecha)
+  )
+`, (err) => { if (err) console.error('Error al crear/verificar tabla auditoria_tickets:', err.message); });
+
+const CAMPOS_AUDITADOS = ['estatus', 'tecnico', 'grupo', 'categoria', 'subcategoria', 'elemento', 'equipo', 'resolucion', 'asunto', 'prioridad'];
+
+const registrarAuditoria = (folio, usuario, accion, cambios = [{}]) => {
+  const fecha = obtenerFechaMySQL();
+  const filas = cambios.map(c => [String(folio), usuario || 'Sistema', accion, c.campo || null,
+    c.anterior === undefined || c.anterior === null ? null : String(c.anterior).slice(0, 2000),
+    c.nuevo === undefined || c.nuevo === null ? null : String(c.nuevo).slice(0, 2000), fecha]);
+  if (filas.length === 0) return;
+  db.query('INSERT INTO auditoria_tickets (folio, usuario, accion, campo, valor_anterior, valor_nuevo, fecha) VALUES ?', [filas], (err) => {
+    if (err) console.error('No se pudo registrar auditoría:', err.message);
+  });
+};
+
+const nombreActor = (req) => (req.sesion && (req.sesion.nombre || req.sesion.username)) || 'Sistema';
+
 // Configuración de conexiones de Socket.io en tiempo real (requiere sesión válida)
 io.use((socket, next) => {
   const cookies = Object.fromEntries(
@@ -302,7 +335,8 @@ const rutasAdminEscritura = [
   { metodo: 'DELETE', ruta: /^\/(api\/)?grupos\/[^/]+\/?$/ },
   { metodo: 'POST', ruta: /^\/(api\/)?categorias\/sincronizar\/?$/ },
   { metodo: 'PUT', ruta: /^\/(CTI\/)?(api\/)?buzon\/[^/]+\/?$/ },
-  { metodo: 'DELETE', ruta: /^\/(CTI\/)?(api\/)?buzon\/[^/]+\/?$/ }
+  { metodo: 'DELETE', ruta: /^\/(CTI\/)?(api\/)?buzon\/[^/]+\/?$/ },
+  { metodo: 'GET', ruta: /^\/(api\/)?tickets\/[^/]+\/historial\/?$/ }
 ];
 app.use((req, res, next) => {
   const esApi = req.path.startsWith('/api/') || req.path.startsWith('/CTI/api/') ||
@@ -330,12 +364,36 @@ app.get(['/api/me', '/me'], (req, res) => {
 
 // Tickets (CRUD)
 app.get(['/api/tickets', '/tickets'], (req, res) => {
+  const formatear = (results) => results.map(t => ({ ...t, notas: parseJsonSeguro(t.notas) }));
+
+  // Paginación opcional: /api/tickets?limit=50&page=1&estatus=activos|cerrados&q=texto
+  // Sin "limit" se devuelve la lista completa (compatibilidad con el portal actual).
+  if (req.query.limit !== undefined) {
+    const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 50, 1), 500);
+    const page = Math.max(parseInt(req.query.page, 10) || 1, 1);
+    const condiciones = [];
+    const params = [];
+    if (req.query.estatus === 'cerrados') condiciones.push("LOWER(estatus) LIKE '%cerrado%'");
+    if (req.query.estatus === 'activos') condiciones.push("LOWER(estatus) NOT LIKE '%cerrado%'");
+    const q = String(req.query.q || '').trim();
+    if (q) {
+      condiciones.push('(folio LIKE ? OR asunto LIKE ? OR creador LIKE ? OR equipo LIKE ? OR tecnico LIKE ? OR categoria LIKE ?)');
+      for (let i = 0; i < 6; i++) params.push(`%${q}%`);
+    }
+    const where = condiciones.length ? `WHERE ${condiciones.join(' AND ')}` : '';
+    return db.query(`SELECT COUNT(*) AS total FROM tickets ${where}`, params, (errCount, cnt) => {
+      if (errCount) return res.status(500).json({ error: errCount.message });
+      db.query(`SELECT * FROM tickets ${where} ORDER BY id DESC LIMIT ? OFFSET ?`, [...params, limit, (page - 1) * limit], (err, results) => {
+        if (err) return res.status(500).json({ error: err.message });
+        res.set('X-Total-Count', String(cnt[0].total));
+        res.json(formatear(results));
+      });
+    });
+  }
+
   db.query('SELECT * FROM tickets ORDER BY id DESC', (err, results) => {
     if (err) return res.status(500).json({ error: err.message });
-    res.json(results.map(t => ({
-      ...t,
-      notas: parseJsonSeguro(t.notas)
-    })));
+    res.json(formatear(results));
   });
 });
 
@@ -348,7 +406,7 @@ app.get(['/api/tickets/contar-hoy', '/tickets/contar-hoy'], (req, res) => {
   });
 });
 
-const continuarInsercionTicket = (ticketData, res) => {
+const continuarInsercionTicket = (ticketData, res, actor = 'Sistema') => {
   const { fechaSolo, fechaHora, horaCorta } = obtenerFechaHoraMexico();
   const anioMesActual = fechaSolo.slice(0, 7);
   const catUpper = (ticketData.categoria || '').toUpperCase();
@@ -370,6 +428,7 @@ const continuarInsercionTicket = (ticketData, res) => {
       if (err) return res.status(500).json({ error: err.message });
       db.query('INSERT INTO mensajes_chat (folio, remitente, texto, hora) VALUES (?, ?, ?, ?)', [ticketData.folio, 'Sistema', primerMensaje, horaCorta], () => {
         io.emit('ticketActualizado', { folio: ticketData.folio });
+        registrarAuditoria(ticketData.folio, actor, 'CREADO', [{ campo: 'asunto', anterior: null, nuevo: ticketData.asunto || ticketData.subcategoria || '' }]);
         res.json({ message: 'Ticket creado exitosamente', id: result.insertId, folio: ticketData.folio, fecha: fechaSolo, folioPrevio });
       });
     });
@@ -454,17 +513,19 @@ app.post(['/api/tickets', '/tickets'], (req, res) => {
           if (esSubsecuente) {
             const horaMexActual = obtenerFechaMySQL();
             db.query("UPDATE tickets SET estatus = 'Cerrado', colorEstatus = 'bg-red-600', updated_at = ? WHERE folio = ?", [horaMexActual, nuevoFolio]);
+            registrarAuditoria(nuevoFolio, 'Sistema', 'CIERRE_AUTOMATICO', [{ campo: 'estatus', anterior: 'Abierto', nuevo: 'Cerrado (reporte subsecuente del mes)' }]);
           }
 
           db.query('INSERT INTO mensajes_chat (folio, remitente, texto, hora) VALUES (?, ?, ?, ?)', [nuevoFolio, 'Sistema', textoMensaje, horaCorta], (errChat) => {
             if (errChat) console.error("Error al registrar mensaje en chat:", errChat);
             io.emit('ticketActualizado', { folio: nuevoFolio });
+            registrarAuditoria(nuevoFolio, nombreActor(req), 'CREADO', [{ campo: 'asunto', anterior: null, nuevo: ticketData.asunto || ticketData.subcategoria || '' }]);
             res.json({ message: 'Ticket creado exitosamente', id: result.insertId, folio: nuevoFolio, esSubsecuente, fecha: fechaSolo });
           });
         });
       });
     } else {
-      continuarInsercionTicket(ticketData, res);
+      continuarInsercionTicket(ticketData, res, nombreActor(req));
     }
   });
 });
@@ -480,13 +541,41 @@ app.put(['/api/tickets/:folio', '/tickets/:folio'], (req, res) => {
     }
   }
   ticketData.updated_at = obtenerFechaMySQL();
-  db.query('UPDATE tickets SET ? WHERE folio = ?', [filtrarColumnas('tickets', ticketData), req.params.folio], (err, result) => {
-    if (err) return res.status(500).json({ error: err.message });
-    if (result.affectedRows === 0) return res.status(404).json({ error: 'No se encontró el ticket.' });
-    
-    io.emit('ticketActualizado', { folio: req.params.folio });
-    res.json({ message: 'Ticket actualizado correctamente' });
+  const actor = nombreActor(req);
+
+  // Se lee el ticket antes de actualizarlo para poder registrar qué campos cambiaron
+  db.query('SELECT * FROM tickets WHERE folio = ? LIMIT 1', [req.params.folio], (errPrev, prev) => {
+    const anterior = (!errPrev && prev && prev.length > 0) ? prev[0] : null;
+
+    db.query('UPDATE tickets SET ? WHERE folio = ?', [filtrarColumnas('tickets', ticketData), req.params.folio], (err, result) => {
+      if (err) return res.status(500).json({ error: err.message });
+      if (result.affectedRows === 0) return res.status(404).json({ error: 'No se encontró el ticket.' });
+
+      if (anterior) {
+        const cambios = CAMPOS_AUDITADOS
+          .filter(c => ticketData[c] !== undefined && String(ticketData[c] ?? '') !== String(anterior[c] ?? ''))
+          .map(c => ({ campo: c, anterior: anterior[c], nuevo: ticketData[c] }));
+        if (ticketData.notas !== undefined && String(ticketData.notas ?? '') !== String(anterior.notas ?? '')) {
+          cambios.push({ campo: 'notas', anterior: null, nuevo: 'Notas actualizadas' });
+        }
+        const accion = cambios.some(c => c.campo === 'estatus') ? 'CAMBIO_ESTATUS'
+          : cambios.some(c => c.campo === 'tecnico') ? 'ASIGNACION' : 'EDICION';
+        registrarAuditoria(req.params.folio, actor, accion, cambios);
+      }
+
+      io.emit('ticketActualizado', { folio: req.params.folio });
+      res.json({ message: 'Ticket actualizado correctamente' });
+    });
   });
+});
+
+// Historial de cambios de un ticket (solo ADMINISTRADOR, ver reglas globales)
+app.get(['/api/tickets/:folio/historial', '/tickets/:folio/historial'], (req, res) => {
+  db.query('SELECT id, folio, usuario, accion, campo, valor_anterior, valor_nuevo, fecha FROM auditoria_tickets WHERE folio = ? ORDER BY id ASC',
+    [req.params.folio], (err, results) => {
+      if (err) return res.status(500).json({ error: err.message });
+      res.json(results);
+    });
 });
 
 app.get(['/api/centinela/datos', '/centinela/datos'], (req, res) => {
@@ -560,6 +649,7 @@ app.post(['/api/chat', '/chat'], (req, res) => {
             if (evaluacion.cerrarTicket) {
               const horaMexActual = obtenerFechaMySQL();
               db.query("UPDATE tickets SET estatus = 'Cerrado', colorEstatus = 'bg-red-600', updated_at = ? WHERE folio = ?", [horaMexActual, folio]);
+              registrarAuditoria(folio, 'Sistema', 'CIERRE_AUTOMATICO', [{ campo: 'estatus', anterior: ticket.estatus, nuevo: 'Cerrado (flujo de chat)' }]);
             }
             db.query('INSERT INTO mensajes_chat (folio, remitente, texto, hora) VALUES (?, ?, ?, ?)', [folio, 'Sistema', evaluacion.textoRespuesta, horaActual], () => {
               io.emit('nuevoMensajeChat', { folio });
@@ -779,7 +869,7 @@ app.get(['/api/encuestas/reporte', '/encuestas/reporte'], (req, res) => {
 });
 
 app.get(['/api/kpis/tiempos', '/kpis/tiempos'], (req, res) => {
-  db.query('SELECT * FROM tickets', (err, results) => {
+  db.query('SELECT id, folio, estatus, created_at, updated_at FROM tickets', (err, results) => {
     if (err) return res.status(500).json({ error: err.message });
     res.json(results.map(t => ({ id: t.id, folio: t.folio, minutos_resolucion: Math.round(((t.estatus === 'Cerrado' ? new Date(t.updated_at) : new Date()) - new Date(t.created_at)) / (1000 * 60)) || 5 })));
   });
@@ -827,6 +917,11 @@ app.put(['/api/buzon/:id', '/buzon/:id', '/CTI/api/buzon/:id'], (req, res) => {
     (err) => {
       if (err) return res.status(500).json({ error: err.message });
       io.emit('actualizacionBuzon');
+      db.query('SELECT username, tipo FROM buzon_sugerencias WHERE id = ? LIMIT 1', [req.params.id], (errSel, filas) => {
+        if (!errSel && filas && filas.length > 0 && filas[0].username) {
+          io.emit('buzonRespondido', { username: filas[0].username, tipo: filas[0].tipo, estatus: estatus || 'REVISADO', conRespuesta: !!respuesta_admin });
+        }
+      });
       res.json({ success: true, message: 'Registro del buzón actualizado' });
     }
   );
