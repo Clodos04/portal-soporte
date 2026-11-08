@@ -328,6 +328,9 @@ app.post(['/api/logout', '/logout'], (req, res) => {
 
 // A partir de aquí TODA la API requiere sesión. Las rutas de escritura sensibles piden además rol ADMINISTRADOR.
 const rutasAdminEscritura = [
+  { metodo: 'POST', ruta: /^\/(api\/)?tickets\/masivo\/?$/ },
+  { metodo: 'POST', ruta: /^\/(api\/)?tickets\/[^/]+\/copiar\/?$/ },
+  { metodo: 'DELETE', ruta: /^\/(api\/)?tickets\/[^/]+\/?$/ },
   { metodo: 'POST', ruta: /^\/(api\/)?usuarios\/?$/ },
   { metodo: 'PUT', ruta: /^\/(api\/)?usuarios\/[^/]+\/?$/ },
   { metodo: 'DELETE', ruta: /^\/(api\/)?usuarios\/[^/]+\/?$/ },
@@ -377,7 +380,8 @@ app.get(['/api/me', '/me'], (req, res) => {
     res.json({ user: {
       id: u.id, username: u.username, name: `${u.nombre || ''} ${u.paterno || ''}`.trim(),
       role: esAdmin ? 'support' : 'client', nivel: esAdmin ? 'ADMINISTRADOR' : 'CLIENTE',
-      campana: u.campana || 'General', nombre: u.nombre || '', paterno: u.paterno || '', materno: u.materno || ''
+      campana: u.campana || 'General', nombre: u.nombre || '', paterno: u.paterno || '', materno: u.materno || '',
+      gruposAsignados: parseJsonSeguro(u.gruposAsignados)
     } });
   });
 });
@@ -587,6 +591,118 @@ app.put(['/api/tickets/:folio', '/tickets/:folio'], (req, res) => {
       res.json({ message: 'Ticket actualizado correctamente' });
     });
   });
+});
+
+// ---------------------------------------------------------------------------
+// Acciones sobre varios tickets (solo ADMINISTRADOR, ver reglas globales)
+// ---------------------------------------------------------------------------
+const consulta = (sql, params = []) => new Promise((resolve, reject) => {
+  db.query(sql, params, (err, rows) => (err ? reject(err) : resolve(rows)));
+});
+
+const colorDeEstatus = (estatus) => {
+  const e = String(estatus || '').toUpperCase();
+  if (e === 'CERRADO') return 'bg-red-500';
+  if (e === 'EN PROCESO') return 'bg-orange-500';
+  return 'bg-green-500';
+};
+
+// Siguiente folio DDMMYYNN (mismo formato que al crear un ticket)
+const generarFolio = async () => {
+  const { fechaSolo, prefijoFolio } = obtenerFechaHoraMexico();
+  const filas = await consulta('SELECT folio FROM tickets WHERE DATE(fecha) = ? OR folio LIKE ?', [fechaSolo, `${prefijoFolio}%`]);
+  let maximo = filas.length;
+  filas.forEach(r => {
+    const f = String(r.folio || '');
+    if (f.startsWith(prefijoFolio) && f.length >= 8) {
+      const n = parseInt(f.slice(6), 10);
+      if (!isNaN(n) && n > maximo) maximo = n;
+    }
+  });
+  return `${prefijoFolio}${String(maximo + 1).padStart(2, '0')}`;
+};
+
+const MAX_FOLIOS_MASIVO = 200;
+
+// Asigna grupo, técnico y/o estatus a varios folios a la vez. Cada cambio queda en la auditoría.
+app.post(['/api/tickets/masivo', '/tickets/masivo'], async (req, res) => {
+  const folios = Array.isArray(req.body && req.body.folios)
+    ? [...new Set(req.body.folios.map(f => String(f).trim()).filter(Boolean))] : [];
+  if (folios.length === 0) return res.status(400).json({ error: 'Selecciona al menos un folio.' });
+  if (folios.length > MAX_FOLIOS_MASIVO) return res.status(400).json({ error: `Máximo ${MAX_FOLIOS_MASIVO} folios por operación.` });
+
+  const cambios = {};
+  ['grupo', 'tecnico', 'estatus'].forEach(campo => {
+    const valor = req.body[campo];
+    if (typeof valor === 'string' && valor.trim() !== '') cambios[campo] = valor.trim().slice(0, 150);
+  });
+  if (Object.keys(cambios).length === 0) return res.status(400).json({ error: 'Indica qué cambiar: grupo, técnico o estatus.' });
+  if (cambios.estatus) cambios.colorEstatus = colorDeEstatus(cambios.estatus);
+
+  const actor = nombreActor(req);
+  const actualizados = [];
+  const noEncontrados = [];
+  try {
+    for (const folio of folios) {
+      const previo = await consulta('SELECT * FROM tickets WHERE folio = ? LIMIT 1', [folio]);
+      if (previo.length === 0) { noEncontrados.push(folio); continue; }
+      const datos = { ...cambios, updated_at: obtenerFechaMySQL() };
+      await consulta('UPDATE tickets SET ? WHERE folio = ?', [filtrarColumnas('tickets', datos), folio]);
+      const detalle = CAMPOS_AUDITADOS
+        .filter(c => cambios[c] !== undefined && String(cambios[c]) !== String(previo[0][c] ?? ''))
+        .map(c => ({ campo: c, anterior: previo[0][c], nuevo: cambios[c] }));
+      if (detalle.length > 0) registrarAuditoria(folio, actor, 'EDICION_MASIVA', detalle);
+      actualizados.push(folio);
+    }
+  } catch (err) {
+    return res.status(500).json({ error: err.message, actualizados });
+  }
+  actualizados.forEach(folio => io.emit('ticketActualizado', { folio }));
+  res.json({ message: 'Folios actualizados', actualizados, noEncontrados });
+});
+
+// Crea copias de un ticket (mismo asunto, categoría, grupo, etc.) como solicitudes nuevas y abiertas.
+app.post(['/api/tickets/:folio/copiar', '/tickets/:folio/copiar'], async (req, res) => {
+  const copias = Math.min(Math.max(parseInt(req.body && req.body.copias, 10) || 1, 1), 10);
+  const actor = nombreActor(req);
+  try {
+    const origen = await consulta('SELECT * FROM tickets WHERE folio = ? LIMIT 1', [req.params.folio]);
+    if (origen.length === 0) return res.status(404).json({ error: 'No se encontró el ticket.' });
+    const { fechaSolo, fechaHora } = obtenerFechaHoraMexico();
+    const nuevos = [];
+    for (let i = 0; i < copias; i++) {
+      const folio = await generarFolio();
+      const datos = { ...origen[0] };
+      ['id', 'notas', 'resolucion', 'updated_at'].forEach(k => delete datos[k]);
+      Object.assign(datos, {
+        folio, fecha: fechaSolo, created_at: fechaHora,
+        estatus: 'Abierto', colorEstatus: 'bg-green-500', tecnico: 'Sin Asignar'
+      });
+      await consulta('INSERT INTO tickets SET ?', filtrarColumnas('tickets', datos));
+      registrarAuditoria(folio, actor, 'CREADO', [{ campo: 'asunto', anterior: null, nuevo: `Copia del folio ${req.params.folio}` }]);
+      nuevos.push(folio);
+    }
+    nuevos.forEach(folio => io.emit('ticketActualizado', { folio }));
+    res.json({ message: 'Copias creadas', folios: nuevos });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Elimina un ticket. Antes se deja en la auditoría quién lo hizo y un resumen de lo que contenía.
+app.delete(['/api/tickets/:folio', '/tickets/:folio'], async (req, res) => {
+  try {
+    const previo = await consulta('SELECT * FROM tickets WHERE folio = ? LIMIT 1', [req.params.folio]);
+    if (previo.length === 0) return res.status(404).json({ error: 'No se encontró el ticket.' });
+    const t = previo[0];
+    const resumen = [t.asunto, t.categoria, t.grupo, t.estatus, t.creador].filter(Boolean).join(' | ');
+    registrarAuditoria(req.params.folio, nombreActor(req), 'ELIMINADO', [{ campo: 'ticket', anterior: resumen, nuevo: null }]);
+    await consulta('DELETE FROM tickets WHERE folio = ?', [req.params.folio]);
+    io.emit('ticketActualizado', { folio: req.params.folio });
+    res.json({ message: 'Ticket eliminado' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // Historial de cambios de un ticket (solo ADMINISTRADOR, ver reglas globales)

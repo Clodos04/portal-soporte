@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { nombrePresentable, normalizarTexto, perteneceAGrupo } from '../utils/texto';
+import { nombrePresentable, normalizarTexto, perteneceAGrupo, listaDeGrupos } from '../utils/texto';
 import { EstadoVacio } from '../components/Estados';
 import EtiquetaEstatus from '../components/EtiquetaEstatus';
 import { useAvisos } from '../components/Avisos';
-import { Plus, Search, StickyNote, Inbox, List, Columns3 } from 'lucide-react';
+import { Plus, Search, StickyNote, Inbox, List, Columns3, Copy, Trash2, ListFilter, X } from 'lucide-react';
 import TableroTickets from '../components/TableroTickets';
 import VistasGuardadas from '../components/VistasGuardadas';
 import { calcularSLA as calcularEstadoSLA, formatearDuracion } from '../utils/sla';
@@ -22,12 +22,14 @@ function SolicitudesView({
   onAbrirChat,
   onIrAEncuestaSpecific,
   filtroInicial,
+  usuarios = [],
+  grupos = [],
   foliosNuevos,
   onCambiarEstatus,
   onFiltroConsumido,
   estadisticasEncuestas = [] 
 }) {
-  const { avisar } = useAvisos();
+  const { avisar, confirmar } = useAvisos();
   // El panel de inicio puede mandar un filtro (texto) o un filtro con búsqueda ({ filtro, busqueda })
   const inicial = typeof filtroInicial === 'object' && filtroInicial ? filtroInicial : { filtro: filtroInicial, busqueda: '', grupo: '' };
   const [busqueda, setBusqueda] = useState(inicial.busqueda || '');
@@ -35,6 +37,11 @@ function SolicitudesView({
   const [vista, setVista] = useState('lista');
   const [filtroEstatus, setFiltroEstatus] = useState(inicial.filtro || 'activos');
   const [, setTick] = useState(0);
+  const [mostrarFiltros, setMostrarFiltros] = useState(false);
+  const [filtrosCol, setFiltrosCol] = useState({});
+  const [seleccion, setSeleccion] = useState(() => new Set());
+  const [masivo, setMasivo] = useState({ grupo: '', tecnico: '', estatus: '' });
+  const [enviando, setEnviando] = useState(false);
 
   // El filtro que llegó desde el panel de inicio se usa una sola vez
   useEffect(() => { if (filtroInicial && onFiltroConsumido) onFiltroConsumido(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
@@ -69,6 +76,15 @@ function SolicitudesView({
   const conteoMios = ticketsBase.filter(t => !(t.estatus || '').toLowerCase().includes('cerrado') && esMiTicket(t)).length;
   const conteoCerrados = ticketsBase.filter(t => (t.estatus || '').toLowerCase().includes('cerrado')).length;
 
+  const esAdmin = !esCliente;
+  const misGrupos = listaDeGrupos(user?.gruposAsignados);
+  const esDeMisGrupos = (t) => misGrupos.some(g => perteneceAGrupo(t, g));
+  const conteoMisGrupos = ticketsBase.filter(t => !(t.estatus || '').toLowerCase().includes('cerrado') && esDeMisGrupos(t)).length;
+
+  const hayFiltrosCol = Object.values(filtrosCol).some(Boolean);
+  const cambiarFiltroCol = (clave, valor) => setFiltrosCol(prev => ({ ...prev, [clave]: valor }));
+  const limpiarFiltros = () => { setFiltrosCol({}); setBusqueda(''); setGrupo(''); };
+
   // Semáforo de SLA (cálculo compartido en utils/sla.js)
   const calcularSLA = (ticket) => {
     const sla = calcularEstadoSLA(ticket, categorias);
@@ -99,6 +115,9 @@ function SolicitudesView({
 
   const coincideBusqueda = (t) => {
     if (grupo && !perteneceAGrupo(t, grupo)) return false;
+    for (const [clave, valor] of Object.entries(filtrosCol)) {
+      if (valor && !normalizarTexto(t[clave]).includes(normalizarTexto(valor))) return false;
+    }
     const query = normalizarTexto(busqueda);
     if (!query) return true;
 
@@ -114,6 +133,7 @@ function SolicitudesView({
     if (filtroEstatus === 'cerrados' && !esCerrado) return false;
     if (filtroEstatus === 'sin_asignar' && (esCerrado || !estaSinAsignar(t))) return false;
     if (filtroEstatus === 'mios' && (esCerrado || !esMiTicket(t))) return false;
+    if (filtroEstatus === 'mis_grupos' && (esCerrado || !esDeMisGrupos(t))) return false;
     // 'todos' no excluye nada: útil cuando se llega desde una gráfica
     if (filtroEstatus === 'vencidos' && nivelSLA(t) !== 'vencido') return false;
     if (filtroEstatus === 'por_vencer' && nivelSLA(t) !== 'riesgo') return false;
@@ -122,6 +142,63 @@ function SolicitudesView({
   });
 
   const ticketsTablero = ticketsBase.filter(coincideBusqueda);
+
+  const folioClave = (t) => String(t.folio);
+  const alternarSeleccion = (t) => setSeleccion(prev => {
+    const nuevo = new Set(prev);
+    if (nuevo.has(folioClave(t))) nuevo.delete(folioClave(t)); else nuevo.add(folioClave(t));
+    return nuevo;
+  });
+  const todosMarcados = ticketsFiltrados.length > 0 && ticketsFiltrados.every(t => seleccion.has(folioClave(t)));
+  const alternarTodos = () => setSeleccion(prev => {
+    const nuevo = new Set(prev);
+    ticketsFiltrados.forEach(t => { if (todosMarcados) nuevo.delete(folioClave(t)); else nuevo.add(folioClave(t)); });
+    return nuevo;
+  });
+
+  const tecnicos = usuarios
+    .filter(u => String(u.nivel || '').toUpperCase().includes('ADMIN') && String(u.estatus || 'ACTIVO').toUpperCase() === 'ACTIVO')
+    .map(u => `${u.nombre || ''} ${u.paterno || ''}`.trim())
+    .filter(Boolean);
+  const nombresGrupos = grupos.map(g => (typeof g === 'string' ? g : g?.nombre)).filter(Boolean);
+
+  const pedirAlServidor = async (url, opciones) => {
+    const res = await fetch(url, { headers: { 'Content-Type': 'application/json' }, ...opciones });
+    const datos = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(datos.error || 'No se pudo completar la acción.');
+    return datos;
+  };
+
+  const aplicarMasivo = async () => {
+    const cambios = Object.fromEntries(Object.entries(masivo).filter(([, v]) => v));
+    if (Object.keys(cambios).length === 0) { avisar('Elige qué cambiar: grupo, técnico o estatus.', 'info'); return; }
+    const folios = [...seleccion];
+    if (!(await confirmar(`Se actualizarán ${folios.length} solicitudes. ¿Continuar?`, { textoConfirmar: 'Aplicar', peligro: false }))) return;
+    setEnviando(true);
+    try {
+      const datos = await pedirAlServidor('/api/tickets/masivo', { method: 'POST', body: JSON.stringify({ folios, ...cambios }) });
+      avisar(`${datos.actualizados.length} solicitudes actualizadas.`, 'exito');
+      setSeleccion(new Set());
+      setMasivo({ grupo: '', tecnico: '', estatus: '' });
+    } catch (e) { avisar(e.message, 'error'); } finally { setEnviando(false); }
+  };
+
+  const copiarTicket = async (ticket) => {
+    if (!(await confirmar(`Se creará una solicitud nueva y abierta con los mismos datos del folio #${ticket.folio}.`, { textoConfirmar: 'Copiar', peligro: false }))) return;
+    try {
+      const datos = await pedirAlServidor(`/api/tickets/${encodeURIComponent(ticket.folio)}/copiar`, { method: 'POST', body: JSON.stringify({ copias: 1 }) });
+      avisar(`Copia creada: #${datos.folios[0]}.`, 'exito');
+    } catch (e) { avisar(e.message, 'error'); }
+  };
+
+  const eliminarTicket = async (ticket) => {
+    if (!(await confirmar(`¿Eliminar el folio #${ticket.folio}? No se puede deshacer; quedará registrado en la auditoría.`))) return;
+    try {
+      await pedirAlServidor(`/api/tickets/${encodeURIComponent(ticket.folio)}`, { method: 'DELETE' });
+      setSeleccion(prev => { const nuevo = new Set(prev); nuevo.delete(folioClave(ticket)); return nuevo; });
+      avisar(`Folio #${ticket.folio} eliminado.`, 'exito');
+    } catch (e) { avisar(e.message, 'error'); }
+  };
 
   const exportarListado = () => {
     if (ticketsFiltrados.length === 0) { avisar('No hay solicitudes para exportar con el filtro actual.', 'info'); return; }
@@ -176,6 +253,14 @@ function SolicitudesView({
             className="bg-slate-700 hover:bg-slate-600 text-slate-200 px-4 py-2 rounded-lg font-bold text-sm shadow transition-colors flex items-center gap-2 border border-slate-600 cursor-pointer"
           >
             Columnas
+          </button>
+
+          <button
+            onClick={() => setMostrarFiltros(v => !v)}
+            aria-pressed={mostrarFiltros}
+            className={`px-4 py-2 rounded-lg font-bold text-sm shadow transition-colors flex items-center gap-2 border cursor-pointer ${mostrarFiltros || hayFiltrosCol ? 'bg-indigo-600/20 text-indigo-300 border-indigo-500/40' : 'bg-slate-800 hover:bg-slate-700 text-slate-200 border-slate-700'}`}
+          >
+            <ListFilter size={15} strokeWidth={1.75} /> Filtros{hayFiltrosCol ? ' •' : ''}
           </button>
 
           {!esCliente && (
@@ -240,6 +325,19 @@ function SolicitudesView({
                     {conteoMios}
                   </span>
                 </button>
+
+                {misGrupos.length > 0 && (
+                  <button
+                    onClick={() => setFiltroEstatus('mis_grupos')}
+                    title={`Grupos: ${misGrupos.join(', ')}`}
+                    className={`px-3.5 py-2 rounded-lg font-bold text-xs transition-colors cursor-pointer flex items-center gap-2 ${filtroEstatus === 'mis_grupos' ? 'bg-indigo-600 text-white shadow-md' : 'bg-slate-900/60 text-slate-400 hover:text-white border border-slate-700'}`}
+                  >
+                    <span>Mis Grupos</span>
+                    <span className={`px-1.5 py-0.5 rounded-full text-[10px] ${filtroEstatus === 'mis_grupos' ? 'bg-black/20 text-white' : 'bg-slate-800 text-indigo-400'}`}>
+                      {conteoMisGrupos}
+                    </span>
+                  </button>
+                )}
               </>
             )}
 
@@ -330,10 +428,46 @@ function SolicitudesView({
           />
         )}
 
+        {esAdmin && vista === 'lista' && seleccion.size > 0 && (
+          <div className="flex flex-wrap items-center gap-3 bg-indigo-500/10 border border-indigo-500/30 rounded-lg px-4 py-3 animate-entrada">
+            <span className="text-sm font-semibold text-white">{seleccion.size} seleccionadas</span>
+            <select value={masivo.grupo} onChange={(e) => setMasivo(m => ({ ...m, grupo: e.target.value }))} aria-label="Asignar a grupo"
+              className="bg-slate-900 border border-slate-700 text-slate-200 text-xs rounded-lg px-2.5 py-2 outline-none focus:border-indigo-500">
+              <option value="">Grupo: sin cambio</option>
+              {nombresGrupos.map(g => <option key={g} value={g}>{g}</option>)}
+            </select>
+            <select value={masivo.tecnico} onChange={(e) => setMasivo(m => ({ ...m, tecnico: e.target.value }))} aria-label="Asignar a técnico"
+              className="bg-slate-900 border border-slate-700 text-slate-200 text-xs rounded-lg px-2.5 py-2 outline-none focus:border-indigo-500">
+              <option value="">Técnico: sin cambio</option>
+              {tecnicos.map(t => <option key={t} value={t}>{nombrePresentable(t)}</option>)}
+            </select>
+            <select value={masivo.estatus} onChange={(e) => setMasivo(m => ({ ...m, estatus: e.target.value }))} aria-label="Cambiar estatus"
+              className="bg-slate-900 border border-slate-700 text-slate-200 text-xs rounded-lg px-2.5 py-2 outline-none focus:border-indigo-500">
+              <option value="">Estatus: sin cambio</option>
+              <option value="Abierto">Abierto</option>
+              <option value="En Proceso">En Proceso</option>
+              <option value="Cerrado">Cerrado</option>
+            </select>
+            <button onClick={aplicarMasivo} disabled={enviando}
+              className="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold transition-colors disabled:opacity-50 cursor-pointer">
+              {enviando ? 'Aplicando…' : 'Aplicar'}
+            </button>
+            <button onClick={() => setSeleccion(new Set())}
+              className="ml-auto px-3 py-2 rounded-lg text-xs font-medium text-slate-300 hover:text-white hover:bg-slate-700 transition-colors cursor-pointer flex items-center gap-1.5">
+              <X size={14} strokeWidth={1.75} /> Quitar selección
+            </button>
+          </div>
+        )}
+
         <div className={vista === 'lista' ? 'overflow-x-auto border border-slate-700 rounded-lg' : 'hidden'}>
           <table className="w-full text-left text-sm text-slate-300 whitespace-nowrap">
             <thead className="bg-slate-700 text-slate-200 text-xs">
               <tr>
+                {esAdmin && (
+                  <th className="px-4 py-3 w-10">
+                    <input type="checkbox" checked={todosMarcados} onChange={alternarTodos} aria-label="Seleccionar todas las solicitudes visibles" className="cursor-pointer accent-indigo-500" />
+                  </th>
+                )}
                 <th className="px-4 py-3">Folio</th>
                 <th className="px-4 py-3">Notas</th>
                 <th className="px-4 py-3">Estatus</th>
@@ -343,17 +477,49 @@ function SolicitudesView({
                 ))}
                 <th className="px-4 py-3 text-center">Acciones</th>
               </tr>
+              {mostrarFiltros && (
+                <tr className="bg-slate-800/80">
+                  {esAdmin && <th className="px-4 py-2" />}
+                  <th className="px-2 py-2">
+                    <input value={filtrosCol.folio || ''} onChange={(e) => cambiarFiltroCol('folio', e.target.value)} placeholder="Folio" aria-label="Filtrar por folio"
+                      className="w-24 bg-slate-900 border border-slate-700 text-slate-200 text-xs font-normal rounded-md px-2 py-1.5 outline-none focus:border-indigo-500" />
+                  </th>
+                  <th className="px-2 py-2" />
+                  <th className="px-2 py-2">
+                    <select value={filtrosCol.estatus || ''} onChange={(e) => cambiarFiltroCol('estatus', e.target.value)} aria-label="Filtrar por estatus"
+                      className="bg-slate-900 border border-slate-700 text-slate-200 text-xs font-normal rounded-md px-2 py-1.5 outline-none focus:border-indigo-500">
+                      <option value="">Estatus</option>
+                      <option value="Abierto">Abierto</option>
+                      <option value="En Proceso">En Proceso</option>
+                      <option value="Cerrado">Cerrado</option>
+                    </select>
+                  </th>
+                  <th className="px-2 py-2" />
+                  {activeColumns.map(colKey => (
+                    <th key={colKey} className="px-2 py-2">
+                      <input value={filtrosCol[colKey] || ''} onChange={(e) => cambiarFiltroCol(colKey, e.target.value)}
+                        placeholder={columnLabels[colKey] || colKey} aria-label={`Filtrar por ${columnLabels[colKey] || colKey}`}
+                        className="w-full min-w-28 bg-slate-900 border border-slate-700 text-slate-200 text-xs font-normal rounded-md px-2 py-1.5 outline-none focus:border-indigo-500" />
+                    </th>
+                  ))}
+                  <th className="px-2 py-2 text-center">
+                    {hayFiltrosCol && (
+                      <button onClick={() => setFiltrosCol({})} className="text-xs font-medium text-indigo-300 hover:text-white cursor-pointer">Limpiar</button>
+                    )}
+                  </th>
+                </tr>
+              )}
             </thead>
             <tbody className="divide-y divide-slate-700">
               {ticketsFiltrados.length === 0 ? (
                 <tr>
-                  <td colSpan={activeColumns.length + 5}>
+                  <td colSpan={activeColumns.length + 5 + (esAdmin ? 1 : 0)}>
                     <EstadoVacio
                       icono={Inbox}
                       titulo="No hay solicitudes en esta vista"
-                      descripcion={busqueda ? 'Prueba con otro folio, equipo o nombre.' : 'Cuando se registre una solicitud aparecerá aquí.'}
-                      accion={esCliente ? 'Crear solicitud' : undefined}
-                      onAccion={onNuevaSolicitud}
+                      descripcion={(busqueda || hayFiltrosCol || grupo) ? 'Prueba con otro filtro o quita los filtros activos.' : 'Cuando se registre una solicitud aparecerá aquí.'}
+                      accion={(busqueda || hayFiltrosCol || grupo) ? 'Quitar filtros' : (esCliente ? 'Crear solicitud' : undefined)}
+                      onAccion={(busqueda || hayFiltrosCol || grupo) ? limpiarFiltros : onNuevaSolicitud}
                     />
                   </td>
                 </tr>
@@ -369,7 +535,12 @@ function SolicitudesView({
                   const infoSLA = calcularSLA(ticket);
 
                   return (
-                    <tr key={ticket.folio} className={`hover:bg-slate-700/50 transition-colors ${foliosNuevos && foliosNuevos.has(String(ticket.folio)) ? 'animate-resaltar' : ''}`}>
+                    <tr key={ticket.folio} className={`hover:bg-slate-700/50 transition-colors ${seleccion.has(folioClave(ticket)) ? 'bg-indigo-500/10' : ''} ${foliosNuevos && foliosNuevos.has(String(ticket.folio)) ? 'animate-resaltar' : ''}`}>
+                      {esAdmin && (
+                        <td className="px-4 py-3">
+                          <input type="checkbox" checked={seleccion.has(folioClave(ticket))} onChange={() => alternarSeleccion(ticket)} aria-label={`Seleccionar folio ${ticket.folio}`} className="cursor-pointer accent-indigo-500" />
+                        </td>
+                      )}
                       <td className="px-4 py-3 font-bold text-white">#{ticket.folio}</td>
 
                       <td className="px-4 py-3 text-center">
@@ -422,6 +593,19 @@ function SolicitudesView({
                           >
                             {esCliente ? 'Ver' : 'Gestionar'}
                           </button>
+
+                          {esAdmin && (
+                            <>
+                              <button onClick={() => copiarTicket(ticket)} title="Copiar folio" aria-label={`Copiar folio ${ticket.folio}`}
+                                className="p-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg transition-colors cursor-pointer">
+                                <Copy size={15} strokeWidth={1.75} />
+                              </button>
+                              <button onClick={() => eliminarTicket(ticket)} title="Eliminar folio" aria-label={`Eliminar folio ${ticket.folio}`}
+                                className="p-2 text-slate-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors cursor-pointer">
+                                <Trash2 size={15} strokeWidth={1.75} />
+                              </button>
+                            </>
+                          )}
 
                           {(ticket.estatus === 'Cerrado' || ticket.estatus === 'CERRADO') && user?.role === 'client' && (
                             yaEncuestado ? (

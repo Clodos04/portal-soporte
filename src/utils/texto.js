@@ -26,6 +26,13 @@ export const nombreSiEstaEnMayusculas = (texto = '') => {
   return t !== '' && t === t.toUpperCase() ? nombrePresentable(t) : t;
 };
 
+// Los grupos de un usuario llegan como lista o como texto JSON ("[\"SOPORTE TECNICO\"]").
+export const listaDeGrupos = (valor) => {
+  if (Array.isArray(valor)) return valor.map(String);
+  if (typeof valor !== 'string' || !valor.trim()) return [];
+  try { const lista = JSON.parse(valor); return Array.isArray(lista) ? lista.map(String) : []; } catch (e) { return []; }
+};
+
 // Compara sin importar mayúsculas ni acentos ("Soporte Técnico" = "SOPORTE TECNICO").
 export const normalizarTexto = (texto = '') =>
   String(texto ?? '').normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase().trim();
