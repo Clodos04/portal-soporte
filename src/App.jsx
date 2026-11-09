@@ -31,7 +31,7 @@ import useAlertasSla from './hooks/useAlertasSla';
 import useAtajoBuscador from './hooks/useAtajoBuscador';
 import useTicketsNuevos from './hooks/useTicketsNuevos';
 import { construirHash, interpretarHash } from './utils/rutas';
-import { nombrePresentable } from './utils/texto';
+import { nombrePresentable, listaDeGrupos } from './utils/texto';
 import { useAvisos } from './components/Avisos';
 
 function App() {
@@ -149,6 +149,7 @@ function App() {
             role: data.user.role,
             nivel: data.user.nivel,
             username: data.user.username,
+            gruposAsignados: listaDeGrupos(data.user.gruposAsignados),
             campana: data.user.campana || '*111'
           });
           setIsLoggedIn(true);
@@ -334,6 +335,7 @@ function App() {
         role: esAdmin ? 'support' : 'client',
         nivel: esAdmin ? 'ADMINISTRADOR' : 'CLIENTE',
         username: usuarioEncontrado.username,
+        gruposAsignados: listaDeGrupos(usuarioEncontrado.gruposAsignados),
         campana: usuarioEncontrado.campana || '*111'
       });
        
@@ -480,6 +482,8 @@ function App() {
         {currentView === 'solicitudes' && (
           <SolicitudesView 
             filtroInicial={filtroSolicitudesInicial}
+            usuarios={usuarios}
+            grupos={grupos}
             foliosNuevos={foliosNuevos}
             onCambiarEstatus={handleCambiarEstatusTablero}
             onFiltroConsumido={() => setFiltroSolicitudesInicial(null)}
