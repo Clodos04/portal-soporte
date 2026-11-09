@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { useAvisos } from '../components/Avisos';
 import { exportarCSV } from '../utils/exportar';
+import AvisoHistorial from '../components/AvisoHistorial';
 
-export default function AdminReportesView({ tickets = [], campanas = [], estadisticasEncuestas = [], user, onIrACentinela }) {
+export default function AdminReportesView({ historial, tickets = [], campanas = [], estadisticasEncuestas = [], user, onIrACentinela }) {
   const { avisar } = useAvisos();
   const [filtroCampana, setFiltroCampana] = useState('Todas');
   const [filtroEstatus, setFiltroEstatus] = useState('Todos');
@@ -142,6 +143,7 @@ export default function AdminReportesView({ tickets = [], campanas = [], estadis
 
   return (
     <div className="space-y-6 animate-fade-in">
+      <AvisoHistorial historial={historial} />
       {/* ENCABEZADO Y FILTROS */}
       <div className="bg-slate-800 border border-slate-700 p-6 rounded-xl shadow-lg flex flex-col md:flex-row justify-between items-center gap-4">
         <div>

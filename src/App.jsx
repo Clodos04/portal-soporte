@@ -59,7 +59,7 @@ function App() {
   const { alertaVisual, notificaciones, reproducirAlerta, marcarLeidas, limpiarNotificaciones } = useNotificaciones();
   const {
     tickets, setTickets, usuarios, setUsuarios, grupos, setGrupos, campanas, setCampanas,
-    categorias, setCategorias, estadisticasEncuestas, setEstadisticasEncuestas, senalChat, enVivo
+    categorias, setCategorias, estadisticasEncuestas, setEstadisticasEncuestas, senalChat, enVivo, historial
   } = useDatosPortal({ isLoggedIn, user, reproducirAlerta });
   useAlertasSla({ isLoggedIn, user, tickets, categorias, reproducirAlerta });
   const foliosNuevos = useTicketsNuevos(tickets);
@@ -454,6 +454,7 @@ function App() {
         <div key={currentView} className="animate-entrada">
         {currentView === 'inicio' && (
           <Dashboard 
+            historial={historial}
             user={user} 
             tickets={tickets} 
             categorias={categorias}
@@ -487,6 +488,7 @@ function App() {
 
         {currentView === 'solicitudes' && (
           <SolicitudesView 
+            historial={historial}
             filtroInicial={filtroSolicitudesInicial}
             usuarios={usuarios}
             grupos={grupos}
@@ -575,6 +577,7 @@ function App() {
 
         {currentView === 'admin-reportes' && (
           <AdminReportesView 
+            historial={historial}
             tickets={tickets} 
             campanas={campanas} 
             estadisticasEncuestas={estadisticasEncuestas}
