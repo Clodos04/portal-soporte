@@ -405,7 +405,8 @@ app.get(['/api/tickets', '/tickets'], (req, res) => {
     const dias = Math.min(Math.max(parseInt(req.query.reciente, 10) || 90, 1), 3650);
     const momentoCierre = (columnasTabla.tickets && columnasTabla.tickets.has('fecha_cierre'))
       ? 'COALESCE(fecha_cierre, updated_at, created_at)' : 'COALESCE(updated_at, created_at)';
-    return db.query('SELECT COUNT(*) AS total FROM tickets', (errCount, cnt) => {
+    // Importante: NO devolver el resultado de db.query (Express 5 lo trataría como promesa y mysql2 lanza un error)
+    db.query('SELECT COUNT(*) AS total FROM tickets', (errCount, cnt) => {
       if (errCount) return res.status(500).json({ error: errCount.message });
       db.query(`SELECT * FROM tickets WHERE LOWER(estatus) NOT LIKE '%cerrado%' OR ${momentoCierre} >= DATE_SUB(NOW(), INTERVAL ? DAY) ORDER BY id DESC`, [dias], (err, results) => {
         if (err) return res.status(500).json({ error: err.message });
@@ -413,6 +414,7 @@ app.get(['/api/tickets', '/tickets'], (req, res) => {
         res.json(formatear(results));
       });
     });
+    return;
   }
 
   // Paginación opcional: /api/tickets?limit=50&page=1&estatus=activos|cerrados&q=texto
@@ -430,7 +432,7 @@ app.get(['/api/tickets', '/tickets'], (req, res) => {
       for (let i = 0; i < 6; i++) params.push(`%${q}%`);
     }
     const where = condiciones.length ? `WHERE ${condiciones.join(' AND ')}` : '';
-    return db.query(`SELECT COUNT(*) AS total FROM tickets ${where}`, params, (errCount, cnt) => {
+    db.query(`SELECT COUNT(*) AS total FROM tickets ${where}`, params, (errCount, cnt) => {
       if (errCount) return res.status(500).json({ error: errCount.message });
       db.query(`SELECT * FROM tickets ${where} ORDER BY id DESC LIMIT ? OFFSET ?`, [...params, limit, (page - 1) * limit], (err, results) => {
         if (err) return res.status(500).json({ error: err.message });
@@ -438,6 +440,7 @@ app.get(['/api/tickets', '/tickets'], (req, res) => {
         res.json(formatear(results));
       });
     });
+    return;
   }
 
   db.query('SELECT * FROM tickets ORDER BY id DESC', (err, results) => {
