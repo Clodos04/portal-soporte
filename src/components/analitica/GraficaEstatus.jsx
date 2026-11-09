@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Sector } from 'recharts';
 import useReducirMovimiento from '../../hooks/useReducirMovimiento';
 
-const COLORES = { abierto: '#34d399', proceso: '#fbbf24', cerrado: '#62666d' };
+const COLORES = { abierto: 'var(--color-emerald-400, #34d399)', proceso: 'var(--color-amber-400, #fbbf24)', cerrado: '#62666d' };
 
 // Sector resaltado al pasar el cursor
 const SectorActivo = (props) => <Sector {...props} outerRadius={props.outerRadius + 5} />;

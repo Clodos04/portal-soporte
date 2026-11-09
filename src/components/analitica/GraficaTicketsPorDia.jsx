@@ -2,8 +2,8 @@ import React, { useState } from 'react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import useReducirMovimiento from '../../hooks/useReducirMovimiento';
 
-const COLOR_CREADOS = '#7480e0';
-const COLOR_CERRADOS = '#34d399';
+const COLOR_CREADOS = 'var(--color-indigo-500, #7480e0)';
+const COLOR_CERRADOS = 'var(--color-emerald-400, #34d399)';
 
 const formatoCorto = (fecha) => {
   const [, m, d] = fecha.split('-');

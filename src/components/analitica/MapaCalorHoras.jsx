@@ -17,7 +17,7 @@ export default function MapaCalorHoras({ matriz, maximo }) {
         <div className="min-w-[560px]">
           <div className="flex pl-10 mb-1">
             {Array.from({ length: 24 }, (_, h) => (
-              <div key={h} className="flex-1 text-[10px] text-slate-500 text-center tabular-nums">{h % 3 === 0 ? h : ''}</div>
+              <div key={h} className="flex-1 text-[11px] text-slate-500 text-center tabular-nums">{h % 3 === 0 ? h : ''}</div>
             ))}
           </div>
           {matriz.map((fila, d) => (

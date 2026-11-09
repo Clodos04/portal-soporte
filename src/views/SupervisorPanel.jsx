@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { nombrePresentable } from '../utils/texto';
+import { X } from 'lucide-react';
+import EscCierra from '../components/EscCierra';
 import { EsqueletoPanel } from '../components/Estados';
 import EtiquetaEstatus from '../components/EtiquetaEstatus';
 
@@ -154,7 +156,7 @@ function SupervisorPanel({ user, onVerDetallesCentinela }) {
       <div className="bg-gradient-to-r from-purple-950/50 to-slate-800 border border-purple-500/40 rounded-2xl p-6 shadow-xl space-y-4">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
           <div>
-            <h2 className="text-lg font-semibold text-purple-300 flex items-center gap-2 tracking-tight">
+            <h2 className="text-lg font-semibold text-white flex items-center gap-2 tracking-tight">
               Requisiciones de Compra por Periférico (5+ Centinelas)
             </h2>
             <p className="text-xs text-slate-300 mt-1">
@@ -188,12 +190,12 @@ function SupervisorPanel({ user, onVerDetallesCentinela }) {
               <div key={idx} className="bg-slate-900/90 border border-purple-500/30 p-4 rounded-xl flex justify-between items-center shadow-md">
                 <div className="space-y-1">
                   <div className="flex items-center gap-2">
-                    <span className="bg-purple-500/20 text-purple-300 text-[10px] font-extrabold px-2 py-0.5 rounded border border-purple-500/30">
+                    <span className="bg-purple-500/20 text-purple-300 text-[11px] font-extrabold px-2 py-0.5 rounded border border-purple-500/30">
                       {item.periférico}
                     </span>
                   </div>
                   <div>
-                    <span className="text-[10px] text-slate-400 block font-bold">Nodo:</span>
+                    <span className="text-[11px] text-slate-400 block font-bold">Nodo:</span>
                     <span className="text-sm font-mono font-extrabold text-white">{item.nodo}</span>
                   </div>
                 </div>
@@ -363,12 +365,13 @@ function SupervisorPanel({ user, onVerDetallesCentinela }) {
 
       {encuestaModal && (
         <div className="fixed inset-0 bg-slate-950/80 flex justify-center items-center z-50 p-4">
-          <div className="bg-slate-800 border border-slate-700 rounded-2xl shadow-2xl max-w-lg w-full overflow-hidden text-slate-200 p-6 space-y-4 animate-fade-in">
+          <div role="dialog" aria-modal="true" aria-labelledby="titulo-encuesta" className="bg-slate-800 border border-slate-700 rounded-2xl shadow-2xl max-w-lg w-full overflow-hidden text-slate-200 p-6 space-y-4 animate-fade-in">
+            <EscCierra onCerrar={() => setEncuestaModal(null)} />
             <div className="flex justify-between items-center border-b border-slate-700 pb-3">
-              <h3 className="text-lg font-semibold text-white flex items-center gap-2 tracking-tight">
+              <h3 id="titulo-encuesta" className="text-lg font-semibold text-white flex items-center gap-2 tracking-tight">
                 Resultados de Encuesta - {encuestaModal.folio}
               </h3>
-              <button onClick={() => setEncuestaModal(null)} className="text-slate-400 hover:text-white font-bold text-lg">✕</button>
+              <button onClick={() => setEncuestaModal(null)} aria-label="Cerrar" className="text-slate-400 hover:text-white transition-colors cursor-pointer p-1.5 -m-1.5 rounded-lg"><X size={18} strokeWidth={1.75} aria-hidden="true" /></button>
             </div>
 
             <div className="space-y-3 text-sm">

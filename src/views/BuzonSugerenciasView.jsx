@@ -237,16 +237,16 @@ function BuzonSugerenciasView({ user }) {
               <div key={item.id} className="bg-slate-900/70 border border-slate-700/80 p-4 rounded-xl space-y-3">
                 <div className="flex flex-wrap justify-between items-center gap-2">
                   <div className="flex items-center gap-2">
-                    <span className={`px-2.5 py-0.5 rounded-md text-[11px] font-bold border ${badgeTipo(item.tipo)}`}>
+                    <span className={`px-2.5 py-0.5 rounded-md text-xs font-bold border ${badgeTipo(item.tipo)}`}>
                       {item.tipo === 'ERROR' ? 'BUG / ERROR' : item.tipo === 'SUGERENCIA' ? 'SUGERENCIA' : 'COMENTARIO'}
                     </span>
                     <span className="text-xs font-bold text-white">{item.usuario}</span>
-                    <span className="text-[11px] text-slate-400">({item.campana || 'General'})</span>
+                    <span className="text-xs text-slate-400">({item.campana || 'General'})</span>
                   </div>
 
                   <div className="flex items-center gap-2">
-                    <span className="text-[11px] text-slate-400 font-mono">{item.fecha_creacion}</span>
-                    <span className={`px-2.5 py-0.5 rounded-md text-[10px] font-extrabold border${badgeEstatus(item.estatus)}`}>
+                    <span className="text-xs text-slate-400 font-mono">{item.fecha_creacion}</span>
+                    <span className={`px-2.5 py-0.5 rounded-md text-[11px] font-extrabold border${badgeEstatus(item.estatus)}`}>
                       {item.estatus || 'PENDIENTE'}
                     </span>
 

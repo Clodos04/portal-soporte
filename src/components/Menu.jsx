@@ -65,7 +65,7 @@ function Menu({ currentView, setCurrentView, user, abierto, onCerrar, onAbrirBus
           >
             <Search size={15} strokeWidth={1.75} />
             <span className="flex-1 text-left">Buscar…</span>
-            <kbd className="hidden lg:inline text-[10px] font-mono text-slate-500 border border-slate-700 rounded px-1.5 py-0.5">Ctrl K</kbd>
+            <kbd className="hidden lg:inline text-[11px] font-mono text-slate-500 border border-slate-700 rounded px-1.5 py-0.5">Ctrl K</kbd>
           </button>
         </div>
 
@@ -91,7 +91,7 @@ function Menu({ currentView, setCurrentView, user, abierto, onCerrar, onAbrirBus
           )}
         </nav>
 
-        <p className="px-4 py-3 text-[11px] text-slate-500 border-t border-slate-700">Clodos TI Assist · CTI</p>
+        <p className="px-4 py-3 text-xs text-slate-500 border-t border-slate-700">Clodos TI Assist · CTI</p>
       </aside>
     </>
   );

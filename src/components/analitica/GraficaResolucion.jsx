@@ -44,7 +44,7 @@ export default function GraficaResolucion({ datos, onSeleccionar, esPersona = fa
             label={{ position: 'right', fill: 'var(--color-slate-300)', fontSize: 11, formatter: (v) => formatearMinutos(v) }}
             style={{ cursor: onSeleccionar ? 'pointer' : 'default' }}
           >
-            {datos.map((d, i) => <Cell key={d.nombre} fill={i === 0 ? '#fbbf24' : '#7480e0'} />)}
+            {datos.map((d, i) => <Cell key={d.nombre} fill={i === 0 ? 'var(--color-amber-400, #fbbf24)' : 'var(--color-indigo-500, #7480e0)'} />)}
           </Bar>
         </BarChart>
       </ResponsiveContainer>

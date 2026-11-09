@@ -52,7 +52,7 @@ export default function VistasGuardadas({ usuario, actual, onAplicar }) {
         className="px-3.5 py-2 rounded-lg bg-slate-900/60 text-slate-300 hover:text-white border border-slate-700 text-xs font-medium flex items-center gap-2 cursor-pointer transition-colors"
       >
         <Bookmark size={14} strokeWidth={1.75} /> Vistas
-        {vistas.length > 0 && <span className="px-1.5 py-0.5 rounded-full text-[10px] bg-slate-800 text-slate-300">{vistas.length}</span>}
+        {vistas.length > 0 && <span className="px-1.5 py-0.5 rounded-full text-[11px] bg-slate-800 text-slate-300">{vistas.length}</span>}
       </button>
 
       {abierto && (

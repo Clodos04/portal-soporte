@@ -265,7 +265,7 @@ function Dashboard({ user, tickets = [], categorias = [], onIrASolicitudes, grup
           >
             <AlertOctagon size={22} strokeWidth={1.75} className="text-red-400 shrink-0" />
             <div>
-              <p className="text-2xl font-semibold text-white leading-none">{slaVencidos}</p>
+              <p className="text-2xl font-semibold text-slate-50 leading-none">{slaVencidos}</p>
               <p className="text-xs text-red-300 mt-1">{slaVencidos === 1 ? 'ticket con SLA vencido' : 'tickets con SLA vencido'}</p>
             </div>
           </button>
@@ -276,7 +276,7 @@ function Dashboard({ user, tickets = [], categorias = [], onIrASolicitudes, grup
           >
             <Clock size={22} strokeWidth={1.75} className="text-amber-400 shrink-0" />
             <div>
-              <p className="text-2xl font-semibold text-white leading-none">{slaPorVencer}</p>
+              <p className="text-2xl font-semibold text-slate-50 leading-none">{slaPorVencer}</p>
               <p className="text-xs text-amber-300 mt-1">{slaPorVencer === 1 ? 'ticket por vencer (80% del tiempo)' : 'tickets por vencer (80% del tiempo)'}</p>
             </div>
           </button>
@@ -306,7 +306,7 @@ function Dashboard({ user, tickets = [], categorias = [], onIrASolicitudes, grup
           <div className="flex justify-center items-center mb-4 px-2"><span className="text-4xl sm:text-5xl font-semibold text-white"><Numero valor={ticketsDeHoy.length} /></span></div>
           <div className="-mt-2 mb-2">
             <Suspense fallback={<div className="h-9" />}><Sparkline datos={tendenciaCreados} clave="creados" /></Suspense>
-            <p className="text-[10px] text-slate-500 text-center mt-0.5">creados · últimos 7 días</p>
+            <p className="text-[11px] text-slate-500 text-center mt-0.5">creados · últimos 7 días</p>
           </div>
           <div className="w-full bg-slate-700 rounded-full h-2"><div className="bg-indigo-500 h-2 rounded-full" style={{ width: `${Math.min(ticketsDeHoy.length * 10, 100)}%` }}></div></div>
         </div>
@@ -315,8 +315,8 @@ function Dashboard({ user, tickets = [], categorias = [], onIrASolicitudes, grup
           <h3 className="text-xs font-medium text-slate-400 mb-4 text-center">Cumplimiento de SLA</h3>
           <div className="flex justify-center items-center mb-4 px-2"><span className="text-4xl sm:text-5xl font-semibold text-white">{porcentajeSla === null ? '—' : <Numero valor={porcentajeSla} sufijo="%" />}</span></div>
           <div className="-mt-2 mb-2">
-            <Suspense fallback={<div className="h-9" />}><Sparkline datos={tendenciaSla} clave="cumplimiento" color="#34d399" /></Suspense>
-            <p className="text-[10px] text-slate-500 text-center mt-0.5">por semana · últimas 6</p>
+            <Suspense fallback={<div className="h-9" />}><Sparkline datos={tendenciaSla} clave="cumplimiento" color="var(--color-emerald-400, #34d399)" /></Suspense>
+            <p className="text-[11px] text-slate-500 text-center mt-0.5">por semana · últimas 6</p>
           </div>
           <div className="w-full bg-slate-700 rounded-full h-2"><div className="bg-indigo-600 h-2 rounded-full" style={{ width: `${porcentajeSla ?? 0}%` }}></div></div>
         </div>
@@ -341,7 +341,7 @@ function Dashboard({ user, tickets = [], categorias = [], onIrASolicitudes, grup
                 <div>
                   <div className="flex justify-between items-center text-xs text-indigo-400 font-bold mb-1">
                     <span>Folio #{t.folio}</span>
-                    <span className="text-[10px] text-slate-400 font-normal">{t.fecha}</span>
+                    <span className="text-[11px] text-slate-400 font-normal">{t.fecha}</span>
                   </div>
                   <p className="font-bold text-white text-sm line-clamp-1">{t.asunto || t.subcategoria}</p>
                   <p className="text-xs text-slate-400 mt-0.5">{nombrePresentable(t.creador) || 'Cliente'} | {t.equipo || 'Nodo General'}</p>

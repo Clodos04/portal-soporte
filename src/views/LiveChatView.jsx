@@ -182,10 +182,10 @@ function LiveChatView({ folio, user, onFinalizarChat, onAbrirModalEdicion, ticke
           return (
             <div key={idx} className={`flex flex-col ${esCliente ? 'items-end' : 'items-start'}`}>
               <div className="flex items-center gap-2 mb-1">
-                <span className="text-[11px] font-bold text-slate-400">
+                <span className="text-xs font-bold text-slate-400">
                   {esSistema ? 'Asistente TI (Sistema)' : nombreSiEstaEnMayusculas(m.remitente)}
                 </span>
-                <span className="text-[10px] text-slate-400">{m.hora}</span>
+                <span className="text-[11px] text-slate-400">{m.hora}</span>
               </div>
               <div className={`p-4 rounded-2xl max-w-2xl text-sm shadow-md whitespace-pre-line leading-relaxed ${
                 esCliente 
@@ -205,14 +205,14 @@ function LiveChatView({ folio, user, onFinalizarChat, onAbrirModalEdicion, ticke
       {opcionesActivas.length > 0 && (
         <div className="p-4 bg-slate-900/95 border-t border-indigo-500/30 space-y-2 shrink-0 animate-fade-in">
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold text-indigo-400">
+            <span className="text-xs font-bold text-indigo-400">
               Selecciona una opción para continuar:
             </span>
             <button
               type="button"
               disabled={enviandoOpcion}
               onClick={() => enviarTextoAlChat('¡Ya quedó solucionado, muchas gracias!')}
-              className="text-[11px] font-bold text-emerald-400 hover:text-emerald-300 underline cursor-pointer"
+              className="text-xs font-bold text-emerald-400 hover:text-emerald-300 underline cursor-pointer"
             >
               ¿Ya se solucionó el problema? Clic aquí
             </button>
