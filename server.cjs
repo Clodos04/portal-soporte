@@ -174,6 +174,14 @@ const columnasTabla = {};
     columnasTabla[tabla] = new Set(cols.map(c => c.Field));
   });
 });
+// Tickets cerrados antes de existir fecha_cierre: se toma su última modificación (solo rellena los vacíos).
+setTimeout(() => {
+  if (columnasTabla.tickets && columnasTabla.tickets.has('fecha_cierre')) {
+    db.query("UPDATE tickets SET fecha_cierre = updated_at WHERE LOWER(estatus) LIKE '%cerrado%' AND fecha_cierre IS NULL AND updated_at IS NOT NULL", (err) => {
+      if (err) console.error('No se pudo rellenar fecha_cierre:', err.message);
+    });
+  }
+}, 5000);
 const filtrarColumnas = (tabla, datos) => {
   const permitidas = columnasTabla[tabla];
   if (!permitidas) return datos;
@@ -823,6 +831,10 @@ app.delete(['/api/tickets/:folio', '/tickets/:folio'], async (req, res) => {
     const t = previo[0];
     const resumen = [t.asunto, t.categoria, t.grupo, t.estatus, t.creador].filter(Boolean).join(' | ');
     registrarAuditoria(req.params.folio, nombreActor(req), 'ELIMINADO', [{ campo: 'ticket', anterior: resumen, nuevo: null }]);
+    // Los archivos adjuntos se borran junto con el ticket, para no dejar archivos huérfanos en el disco
+    const adjuntos = await consulta('SELECT nombre_archivo FROM ticket_adjuntos WHERE folio = ?', [req.params.folio]);
+    await consulta('DELETE FROM ticket_adjuntos WHERE folio = ?', [req.params.folio]);
+    adjuntos.forEach(a => fs.promises.unlink(path.join(UPLOADS_DIR, path.basename(a.nombre_archivo))).catch(() => {}));
     await consulta('DELETE FROM tickets WHERE folio = ?', [req.params.folio]);
     io.emit('ticketActualizado', { folio: req.params.folio });
     res.json({ message: 'Ticket eliminado' });
