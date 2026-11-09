@@ -3,7 +3,7 @@ import { AreaChart, Area, ResponsiveContainer } from 'recharts';
 import useReducirMovimiento from '../../hooks/useReducirMovimiento';
 
 // Mini gráfica de tendencia para las tarjetas de números (sin ejes ni textos).
-export default function Sparkline({ datos, clave, color = '#7480e0', alto = 36 }) {
+export default function Sparkline({ datos, clave, color = 'var(--color-indigo-500, #7480e0)', alto = 36 }) {
   const reducirMovimiento = useReducirMovimiento();
   const id = `spark-${useId().replace(/:/g, '')}`;
   const hayMovimiento = datos.some(d => d[clave] !== null && d[clave] !== undefined && d[clave] !== 0);

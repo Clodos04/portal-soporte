@@ -40,13 +40,13 @@ export default function GraficaSla({ datos }) {
           <XAxis dataKey="semana" axisLine={false} tickLine={false} tick={{ fill: 'var(--color-slate-400)', fontSize: 11 }} />
           <YAxis domain={[0, 100]} ticks={[0, 25, 50, 75, 100]} tickFormatter={(v) => `${v}%`} axisLine={false} tickLine={false} tick={{ fill: 'var(--color-slate-400)', fontSize: 11 }} />
           <Tooltip content={<Etiqueta />} cursor={{ stroke: 'var(--color-slate-600)', strokeDasharray: '3 3' }} />
-          <ReferenceLine y={META_SLA} stroke="#34d399" strokeDasharray="5 5" label={{ value: `Meta ${META_SLA}%`, position: 'insideTopRight', fill: '#34d399', fontSize: 11 }} />
+          <ReferenceLine y={META_SLA} stroke="var(--color-emerald-400, #34d399)" strokeDasharray="5 5" label={{ value: `Meta ${META_SLA}%`, position: 'insideTopRight', fill: 'var(--color-emerald-400, #34d399)', fontSize: 11 }} />
           <Line
             type="monotone"
             dataKey="cumplimiento"
-            stroke="#7480e0"
+            stroke="var(--color-indigo-500, #7480e0)"
             strokeWidth={2.5}
-            dot={{ r: 4, fill: '#7480e0', strokeWidth: 0 }}
+            dot={{ r: 4, fill: 'var(--color-indigo-500, #7480e0)', strokeWidth: 0 }}
             activeDot={{ r: 6 }}
             connectNulls
             isAnimationActive={!reducirMovimiento}

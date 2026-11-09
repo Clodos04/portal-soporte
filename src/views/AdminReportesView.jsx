@@ -214,7 +214,7 @@ export default function AdminReportesView({ tickets = [], campanas = [], estadis
         </div>
         <div className="bg-slate-800 border border-slate-700 p-5 rounded-xl shadow">
           <p className="text-slate-400 text-xs font-semibold">Satisfacción Promedio</p>
-          <p className="text-3xl font-extrabold text-purple-400 mt-2">{promedioSatisfaccion ?? '—'} </p>
+          <p className="text-3xl font-semibold text-white mt-2">{promedioSatisfaccion ?? '—'} </p>
         </div>
       </div>
 

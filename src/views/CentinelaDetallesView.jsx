@@ -155,7 +155,7 @@ function CentinelaDetallesView({ tickets = [], onVolver, onEditarTicket }) {
                           <td className="py-3 px-3 text-slate-300">{rep.fecha || rep.created_at?.split('T')[0]}</td>
                           <td className="py-3 px-3 text-white">{rep.elemento || 'Falla general'}</td>
                           <td className="py-3 px-3">
-                            <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${rep.estatus === 'Cerrado' ? 'bg-red-500/20 text-red-400 border border-red-500/30' : 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'}`}>
+                            <span className={`px-2 py-0.5 rounded text-[11px] font-bold ${rep.estatus === 'Cerrado' ? 'bg-red-500/20 text-red-400 border border-red-500/30' : 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'}`}>
                               {rep.estatus}
                             </span>
                           </td>

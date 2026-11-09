@@ -86,7 +86,7 @@ function TableroTickets({ tickets, categorias, puedeMover, onAbrir, onMover, fol
                     <div className="flex items-center justify-between gap-2">
                       <span className="font-mono text-xs text-indigo-300">#{t.folio}</span>
                       {sla && (
-                        <span className={`flex items-center gap-1.5 text-[11px] ${sla.clase}`}>
+                        <span className={`flex items-center gap-1.5 text-xs ${sla.clase}`}>
                           <span className={`w-1.5 h-1.5 rounded-full ${sla.punto}`} />
                           {sla.texto}
                         </span>

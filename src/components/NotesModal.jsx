@@ -1,5 +1,8 @@
 import React, { useState } from 'react';
 
+import EscCierra from './EscCierra';
+import { X } from 'lucide-react';
+
 function NotesModal({ folio, ticket, onClose, onSaveNote }) {
   const [nuevaNotaTexto, setNuevaNotaTexto] = useState('');
 
@@ -13,10 +16,11 @@ function NotesModal({ folio, ticket, onClose, onSaveNote }) {
 
   return (
     <div className="fixed inset-0 bg-black/70 flex justify-center items-center z-50 p-4">
-      <div className="max-w-3xl w-full bg-slate-800 rounded-xl shadow-2xl border border-slate-700 text-slate-200 flex flex-col h-[80vh]">
+      <div role="dialog" aria-modal="true" aria-labelledby="titulo-notas" className="max-w-3xl w-full bg-slate-800 rounded-xl shadow-2xl border border-slate-700 text-slate-200 flex flex-col h-[80vh]">
+        <EscCierra onCerrar={onClose} />
         <div className="flex justify-between items-center p-6 border-b border-slate-700">
-          <h2 className="text-xl font-bold text-white">Historial de Notas - Folio #{ticket.folio}</h2>
-          <button onClick={onClose} className="text-slate-500 hover:text-white">✕</button>
+          <h2 id="titulo-notas" className="text-xl font-bold text-white">Historial de Notas - Folio #{ticket.folio}</h2>
+          <button onClick={onClose} aria-label="Cerrar" className="text-slate-400 hover:text-white transition-colors cursor-pointer p-1.5 -m-1.5 rounded-lg"><X size={18} strokeWidth={1.75} aria-hidden="true" /></button>
         </div>
         
         <div className="p-6 flex-grow flex flex-col overflow-hidden">

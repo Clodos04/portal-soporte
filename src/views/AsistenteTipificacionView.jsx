@@ -317,7 +317,7 @@ function AsistenteTipificacionView({ categorias = [], campanas = [], equipos = [
                         <div className="pr-3">
                           <div className="font-medium text-white text-sm">{cat.nombre}</div>
                           {cat.descripcion && (
-                            <div className="text-[11px] text-slate-400 mt-1 leading-snug">{cat.descripcion}</div>
+                            <div className="text-xs text-slate-400 mt-1 leading-snug">{cat.descripcion}</div>
                           )}
                         </div>
                         <span className="text-indigo-400 group-hover:translate-x-1.5 transition-transform font-bold shrink-0">→</span>
@@ -355,7 +355,7 @@ function AsistenteTipificacionView({ categorias = [], campanas = [], equipos = [
                           <div className="pr-3">
                             <div className="font-medium text-white text-xs">{sub.nombre}</div>
                             {sub.descripcion && (
-                              <div className="text-[11px] text-slate-400 mt-1 leading-relaxed font-normal">
+                              <div className="text-xs text-slate-400 mt-1 leading-relaxed font-normal">
                                 {sub.descripcion}
                               </div>
                             )}
@@ -482,7 +482,7 @@ function AsistenteTipificacionView({ categorias = [], campanas = [], equipos = [
                             </button>
                           ))}
                         </div>
-                        <button type="button" onClick={() => setSubFallaCentinela(null)} className="text-[11px] text-slate-400 hover:text-white underline pt-1 cursor-pointer">
+                        <button type="button" onClick={() => setSubFallaCentinela(null)} className="text-xs text-slate-400 hover:text-white underline pt-1 cursor-pointer">
                           « Volver a opciones de diadema
                         </button>
                       </div>
@@ -519,7 +519,7 @@ function AsistenteTipificacionView({ categorias = [], campanas = [], equipos = [
                           <div className="pr-3">
                             <div className="font-medium text-white text-xs">{elem.nombre}</div>
                             {elem.descripcion && (
-                              <div className="text-[11px] text-slate-400 mt-1 leading-relaxed font-normal">
+                              <div className="text-xs text-slate-400 mt-1 leading-relaxed font-normal">
                                 {elem.descripcion}
                               </div>
                             )}
@@ -554,7 +554,7 @@ function AsistenteTipificacionView({ categorias = [], campanas = [], equipos = [
                         <div>
                           Módulo: <strong className="text-white">{subcatSeleccionada?.nombre}</strong>
                           {subcatSeleccionada?.descripcion && (
-                            <p className="text-[11px] text-slate-400 mt-0.5 italic">{subcatSeleccionada.descripcion}</p>
+                            <p className="text-xs text-slate-400 mt-0.5 italic">{subcatSeleccionada.descripcion}</p>
                           )}
                         </div>
                       )}
@@ -562,7 +562,7 @@ function AsistenteTipificacionView({ categorias = [], campanas = [], equipos = [
                         <div>
                           Falla: <strong className="text-indigo-400">{elementoSeleccionado?.nombre}</strong>
                           {elementoSeleccionado?.descripcion && (
-                            <p className="text-[11px] text-slate-400 mt-0.5 italic">{elementoSeleccionado.descripcion}</p>
+                            <p className="text-xs text-slate-400 mt-0.5 italic">{elementoSeleccionado.descripcion}</p>
                           )}
                         </div>
                       )}
@@ -597,7 +597,7 @@ function AsistenteTipificacionView({ categorias = [], campanas = [], equipos = [
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-[11px] font-bold text-slate-300 mb-1">Área (Campaña):</label>
+                    <label className="block text-xs font-bold text-slate-300 mb-1">Área (Campaña):</label>
                     <select value={campanaSeleccionadaId} onChange={(e) => setCampanaSeleccionadaId(e.target.value)} className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-700 text-white text-xs outline-none">
                       <option value="">Seleccione Campaña</option>
                       {campanas.map((camp) => (
@@ -606,7 +606,7 @@ function AsistenteTipificacionView({ categorias = [], campanas = [], equipos = [
                     </select>
                   </div>
                   <div>
-                    <label className="block text-[11px] font-bold text-slate-300 mb-1">Nombre (Usuario Logueado):</label>
+                    <label className="block text-xs font-bold text-slate-300 mb-1">Nombre (Usuario Logueado):</label>
                     <input type="text" value={user?.name || 'VALERIA GOMEZ'} readOnly className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-700 text-indigo-300 text-xs font-bold cursor-not-allowed" />
                   </div>
                 </div>
@@ -614,7 +614,7 @@ function AsistenteTipificacionView({ categorias = [], campanas = [], equipos = [
                 {tipoReporte !== 'CENTINELA' ? (
                   <>
                     <div>
-                      <label className="block text-[11px] font-bold text-slate-300 mb-1">Asunto:</label>
+                      <label className="block text-xs font-bold text-slate-300 mb-1">Asunto:</label>
                       <input 
                         type="text" 
                         placeholder="Breve resumen del problema…"
@@ -625,7 +625,7 @@ function AsistenteTipificacionView({ categorias = [], campanas = [], equipos = [
                     </div>
 
                     <div>
-                      <label className="block text-[11px] font-bold text-slate-300 mb-1">Descripción:</label>
+                      <label className="block text-xs font-bold text-slate-300 mb-1">Descripción:</label>
                       <textarea 
                         rows="2" 
                         placeholder="Detalla los síntomas o pasos para reproducir el fallo…"
@@ -643,7 +643,7 @@ function AsistenteTipificacionView({ categorias = [], campanas = [], equipos = [
                 )}
 
                 <div>
-                  <label className="block text-[11px] font-bold text-slate-300 mb-1">Equipo / Nodo (Seleccione uno o más):</label>
+                  <label className="block text-xs font-bold text-slate-300 mb-1">Equipo / Nodo (Seleccione uno o más):</label>
                   <div className="w-full h-28 overflow-y-auto px-3 py-2 rounded-xl bg-slate-950 border border-slate-700 text-xs space-y-1">
                     {listaEquiposActuales.length === 0 ? (
                       <span className="text-slate-500 italic">Seleccione una campaña</span>
@@ -662,21 +662,21 @@ function AsistenteTipificacionView({ categorias = [], campanas = [], equipos = [
                             }}
                             className="rounded bg-slate-900 border-slate-700 text-indigo-600 w-3 h-3 cursor-pointer"
                           />
-                          <span className="text-slate-200 font-mono text-[11px]">{eq}</span>
+                          <span className="text-slate-200 font-mono text-xs">{eq}</span>
                         </label>
                       ))
                     )}
                   </div>
-                  <p className="text-[10px] text-indigo-400 mt-1">Seleccionados ({equiposSeleccionados.length}): {equiposSeleccionados.length > 0 ? equiposSeleccionados.join(', ') : 'Ninguno'}</p>
+                  <p className="text-[11px] text-indigo-400 mt-1">Seleccionados ({equiposSeleccionados.length}): {equiposSeleccionados.length > 0 ? equiposSeleccionados.join(', ') : 'Ninguno'}</p>
                 </div>
 
                 <div>
-                  <label className="block text-[11px] font-bold text-slate-300 mb-1">Adjuntar Archivo:</label>
+                  <label className="block text-xs font-bold text-slate-300 mb-1">Adjuntar Archivo:</label>
                   <input 
                     type="file" 
                     accept={TIPOS_ADJUNTO}
                     onChange={(e) => { const f = e.target.files[0]; const problema = validarAdjunto(f); if (problema) { setErrorDuplicado(problema); e.target.value = ''; setArchivo(null); } else setArchivo(f || null); }}
-                    className="text-[11px] text-slate-400 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-slate-800 file:text-slate-200 cursor-pointer bg-slate-950 p-1.5 rounded-xl border border-slate-700 w-full" 
+                    className="text-xs text-slate-400 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-slate-800 file:text-slate-200 cursor-pointer bg-slate-950 p-1.5 rounded-xl border border-slate-700 w-full" 
                   />
                 </div>
 

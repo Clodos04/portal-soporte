@@ -289,7 +289,7 @@ function SolicitudesView({
               className={`px-3.5 py-2 rounded-lg font-medium text-xs transition-colors cursor-pointer flex items-center gap-2 ${filtroEstatus === 'todos' ? 'bg-indigo-600 text-white' : 'bg-slate-900/60 text-slate-400 hover:text-white border border-slate-700'}`}
             >
               <span>Todos</span>
-              <span className={`px-1.5 py-0.5 rounded-full text-[10px] ${filtroEstatus === 'todos' ? 'bg-black/20 text-white' : 'bg-slate-800 text-slate-300'}`}>
+              <span className={`px-1.5 py-0.5 rounded-full text-[11px] ${filtroEstatus === 'todos' ? 'bg-black/20 text-white' : 'bg-slate-800 text-slate-300'}`}>
                 {ticketsBase.length}
               </span>
             </button>
@@ -299,7 +299,7 @@ function SolicitudesView({
               className={`px-3.5 py-2 rounded-lg font-bold text-xs transition-colors cursor-pointer flex items-center gap-2 ${filtroEstatus === 'activos' ? 'bg-indigo-600 text-white' : 'bg-slate-900/60 text-slate-400 hover:text-white border border-slate-700'}`}
             >
               <span>Abiertos / En Proceso</span>
-              <span className={`px-1.5 py-0.5 rounded-full text-[10px] ${filtroEstatus === 'activos' ? 'bg-black/20 text-white' : 'bg-slate-800 text-slate-300'}`}>
+              <span className={`px-1.5 py-0.5 rounded-full text-[11px] ${filtroEstatus === 'activos' ? 'bg-black/20 text-white' : 'bg-slate-800 text-slate-300'}`}>
                 {conteoActivos}
               </span>
             </button>
@@ -311,7 +311,7 @@ function SolicitudesView({
                   className={`px-3.5 py-2 rounded-lg font-bold text-xs transition-colors cursor-pointer flex items-center gap-2 ${filtroEstatus === 'sin_asignar' ? 'bg-indigo-600 text-white' : 'bg-slate-900/60 text-slate-400 hover:text-white border border-slate-700'}`}
                 >
                   <span>Sin Asignar</span>
-                  <span className={`px-1.5 py-0.5 rounded-full text-[10px] ${filtroEstatus === 'sin_asignar' ? 'bg-black/20 text-white' : 'bg-slate-800 text-amber-400'}`}>
+                  <span className={`px-1.5 py-0.5 rounded-full text-[11px] ${filtroEstatus === 'sin_asignar' ? 'bg-black/20 text-white' : 'bg-slate-800 text-amber-400'}`}>
                     {conteoSinAsignar}
                   </span>
                 </button>
@@ -321,7 +321,7 @@ function SolicitudesView({
                   className={`px-3.5 py-2 rounded-lg font-bold text-xs transition-colors cursor-pointer flex items-center gap-2 ${filtroEstatus === 'mios' ? 'bg-indigo-600 text-white shadow-md' : 'bg-slate-900/60 text-slate-400 hover:text-white border border-slate-700'}`}
                 >
                   <span>Mis Tickets</span>
-                  <span className={`px-1.5 py-0.5 rounded-full text-[10px] ${filtroEstatus === 'mios' ? 'bg-black/20 text-white' : 'bg-slate-800 text-indigo-400'}`}>
+                  <span className={`px-1.5 py-0.5 rounded-full text-[11px] ${filtroEstatus === 'mios' ? 'bg-black/20 text-white' : 'bg-slate-800 text-indigo-400'}`}>
                     {conteoMios}
                   </span>
                 </button>
@@ -333,7 +333,7 @@ function SolicitudesView({
                     className={`px-3.5 py-2 rounded-lg font-bold text-xs transition-colors cursor-pointer flex items-center gap-2 ${filtroEstatus === 'mis_grupos' ? 'bg-indigo-600 text-white shadow-md' : 'bg-slate-900/60 text-slate-400 hover:text-white border border-slate-700'}`}
                   >
                     <span>Mis Grupos</span>
-                    <span className={`px-1.5 py-0.5 rounded-full text-[10px] ${filtroEstatus === 'mis_grupos' ? 'bg-black/20 text-white' : 'bg-slate-800 text-indigo-400'}`}>
+                    <span className={`px-1.5 py-0.5 rounded-full text-[11px] ${filtroEstatus === 'mis_grupos' ? 'bg-black/20 text-white' : 'bg-slate-800 text-indigo-400'}`}>
                       {conteoMisGrupos}
                     </span>
                   </button>
@@ -348,7 +348,7 @@ function SolicitudesView({
                   className={`px-3.5 py-2 rounded-lg font-bold text-xs transition-colors cursor-pointer flex items-center gap-2 ${filtroEstatus === 'vencidos' ? 'bg-indigo-600 text-white' : 'bg-slate-900/60 text-slate-400 hover:text-white border border-slate-700'}`}
                 >
                   <span>SLA Vencido</span>
-                  <span className={`px-1.5 py-0.5 rounded-full text-[10px] ${filtroEstatus === 'vencidos' ? 'bg-black/20 text-white' : 'bg-slate-800 text-red-400'}`}>
+                  <span className={`px-1.5 py-0.5 rounded-full text-[11px] ${filtroEstatus === 'vencidos' ? 'bg-black/20 text-white' : 'bg-slate-800 text-red-400'}`}>
                     {conteoVencidos}
                   </span>
                 </button>
@@ -358,7 +358,7 @@ function SolicitudesView({
                   className={`px-3.5 py-2 rounded-lg font-bold text-xs transition-colors cursor-pointer flex items-center gap-2 ${filtroEstatus === 'por_vencer' ? 'bg-indigo-600 text-white' : 'bg-slate-900/60 text-slate-400 hover:text-white border border-slate-700'}`}
                 >
                   <span>Por Vencer</span>
-                  <span className={`px-1.5 py-0.5 rounded-full text-[10px] ${filtroEstatus === 'por_vencer' ? 'bg-black/20 text-white' : 'bg-slate-800 text-amber-400'}`}>
+                  <span className={`px-1.5 py-0.5 rounded-full text-[11px] ${filtroEstatus === 'por_vencer' ? 'bg-black/20 text-white' : 'bg-slate-800 text-amber-400'}`}>
                     {conteoPorVencer}
                   </span>
                 </button>
@@ -370,7 +370,7 @@ function SolicitudesView({
               className={`px-3.5 py-2 rounded-lg font-bold text-xs transition-colors cursor-pointer flex items-center gap-2 ${filtroEstatus === 'cerrados' ? 'bg-indigo-600 text-white' : 'bg-slate-900/60 text-slate-400 hover:text-white border border-slate-700'}`}
             >
               <span>Cerrados</span>
-              <span className={`px-1.5 py-0.5 rounded-full text-[10px] ${filtroEstatus === 'cerrados' ? 'bg-black/20 text-white' : 'bg-slate-800 text-slate-400'}`}>
+              <span className={`px-1.5 py-0.5 rounded-full text-[11px] ${filtroEstatus === 'cerrados' ? 'bg-black/20 text-white' : 'bg-slate-800 text-slate-400'}`}>
                 {conteoCerrados}
               </span>
             </button>
@@ -551,7 +551,7 @@ function SolicitudesView({
                         >
                           <StickyNote size={15} strokeWidth={1.75} />
                           {ticket.notas && ticket.notas.length > 0 && (
-                            <span className="absolute -top-1.5 -right-1.5 bg-indigo-600 text-white text-[10px] font-semibold w-4 h-4 rounded-full flex items-center justify-center shadow">
+                            <span className="absolute -top-1.5 -right-1.5 bg-indigo-600 text-white text-[11px] font-semibold w-4 h-4 rounded-full flex items-center justify-center shadow">
                               {ticket.notas.length}
                             </span>
                           )}

@@ -99,7 +99,7 @@ function Buscador({ abierto, onCerrar, user, tickets = [], onIrAVista, onAbrirTi
             placeholder="Busca una pantalla o un ticket (folio, asunto, equipo…)"
             className="flex-1 bg-transparent py-4 text-sm text-white placeholder-slate-500 outline-none"
           />
-          <kbd className="text-[10px] font-mono text-slate-500 border border-slate-700 rounded px-1.5 py-0.5">Esc</kbd>
+          <kbd className="text-[11px] font-mono text-slate-500 border border-slate-700 rounded px-1.5 py-0.5">Esc</kbd>
         </div>
 
         <div className="max-h-[50vh] overflow-y-auto p-2" role="listbox">

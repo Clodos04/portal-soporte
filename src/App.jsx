@@ -364,7 +364,7 @@ function App() {
   return (
     <div className={`${!isDarkMode ? 'light-mode' : ''} min-h-screen flex bg-slate-900 font-sans text-slate-200 relative`}>
       {alertaVisual && (
-        <div className="fixed bottom-6 right-6 z-50 bg-slate-800 border border-indigo-500/50 text-slate-100 px-5 py-4 rounded-2xl shadow-2xl flex items-center space-x-3 animate-bounce">
+        <div className="fixed bottom-6 right-6 z-50 bg-slate-800 border border-indigo-500/50 text-slate-100 px-5 py-4 rounded-2xl shadow-2xl flex items-center space-x-3 animate-aviso">
                     <div>
             <p className="text-xs font-medium text-indigo-400">Clodos TI Assist (CTI)</p>
             <p className="text-sm font-medium">{alertaVisual}</p>

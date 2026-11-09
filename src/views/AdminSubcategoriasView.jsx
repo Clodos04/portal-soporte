@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useAvisos } from '../components/Avisos';
-import { Pencil, Trash2 } from 'lucide-react';
+import { Pencil, Trash2, X } from 'lucide-react';
+import EscCierra from '../components/EscCierra';
 
 function AdminSubcategoriasView({ categoria, categorias, setCategorias, user, onBack }) {
   const { confirmar } = useAvisos();
@@ -232,10 +233,11 @@ function AdminSubcategoriasView({ categoria, categorias, setCategorias, user, on
 
           {isElementoModalOpen && (
             <div className="fixed inset-0 bg-slate-950/80 flex justify-center items-center z-50 p-4">
-              <div className="bg-slate-800 border border-slate-700 rounded-2xl shadow-2xl max-w-md w-full overflow-hidden text-slate-200 p-6 space-y-4">
+              <div role="dialog" aria-modal="true" aria-labelledby="titulo-elemento" className="bg-slate-800 border border-slate-700 rounded-2xl shadow-2xl max-w-md w-full overflow-hidden text-slate-200 p-6 space-y-4">
+                <EscCierra onCerrar={() => setIsElementoModalOpen(false)} />
                 <div className="flex justify-between items-center border-b border-slate-700 pb-3">
-                  <h3 className="text-lg font-semibold text-white tracking-tight">{elementoActual ? 'Editar elemento' : 'Nuevo elemento'}</h3>
-                  <button onClick={() => setIsElementoModalOpen(false)} className="text-slate-400 hover:text-white font-bold">✕</button>
+                  <h3 id="titulo-elemento" className="text-lg font-semibold text-white tracking-tight">{elementoActual ? 'Editar elemento' : 'Nuevo elemento'}</h3>
+                  <button onClick={() => setIsElementoModalOpen(false)} aria-label="Cerrar" className="text-slate-400 hover:text-white transition-colors cursor-pointer p-1.5 -m-1.5 rounded-lg"><X size={18} strokeWidth={1.75} aria-hidden="true" /></button>
                 </div>
                 <form onSubmit={guardarElemento} className="space-y-4">
                   <div>

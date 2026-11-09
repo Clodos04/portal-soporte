@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { useAvisos } from './Avisos';
 
+import EscCierra from './EscCierra';
+
 function EditarSolicitudModal({ ticket = {}, user, usuarios = [], grupos = [], usuariosPorGrupo = {}, categorias = [], onClose, onActualizar, onAbrirChat }) {
   const { avisar } = useAvisos();
   const esCentinela = ticket.tipo_solicitud === 'CENTINELA' || (ticket.categoria || '').toUpperCase().includes('CENTINELA') || (ticket.asunto || '').toUpperCase().includes('CENTINELA');
@@ -182,11 +184,12 @@ function EditarSolicitudModal({ ticket = {}, user, usuarios = [], grupos = [], u
 
   return (
     <div className="fixed inset-0 bg-slate-950/80 flex justify-center items-center z-50 p-4">
-      <div className="bg-slate-800 border border-slate-700 rounded-2xl shadow-2xl max-w-3xl w-full overflow-hidden text-slate-200 animate-fade-in max-h-[90vh] flex flex-col">
+      <div role="dialog" aria-modal="true" aria-labelledby="titulo-editar-solicitud" className="bg-slate-800 border border-slate-700 rounded-2xl shadow-2xl max-w-3xl w-full overflow-hidden text-slate-200 animate-fade-in max-h-[90vh] flex flex-col">
+        <EscCierra onCerrar={onClose} />
         
         <div className="flex justify-between items-center bg-slate-900/80 px-6 py-4 border-b border-slate-700">
           <div className="flex flex-wrap items-center gap-2">
-            <h2 className="mr-2 text-lg font-semibold text-white flex items-center gap-2 tracking-tight">
+            <h2 id="titulo-editar-solicitud" className="mr-2 text-lg font-semibold text-white flex items-center gap-2 tracking-tight">
               {esCliente ? `Ver Solicitud #${ticket.folio}` : `Gestionar Solicitud #${ticket.folio}`}
             </h2>
             

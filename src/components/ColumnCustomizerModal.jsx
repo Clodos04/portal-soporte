@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { ChevronUp, ChevronDown } from 'lucide-react';
+import { ChevronUp, ChevronDown, X } from 'lucide-react';
+import EscCierra from './EscCierra';
 
 function ColumnCustomizerModal({ activeColumns, availableColumns, columnLabels, onClose, onSave }) {
   const [tempActive, setTempActive] = useState([...activeColumns]);
@@ -39,13 +40,14 @@ function ColumnCustomizerModal({ activeColumns, availableColumns, columnLabels, 
 
   return (
     <div className="fixed inset-0 bg-black/70 flex justify-center items-center z-50 p-4">
-      <div className="max-w-4xl w-full bg-slate-800 rounded-xl shadow-2xl border border-slate-700 text-slate-200 flex flex-col max-h-[85vh]">
+      <div role="dialog" aria-modal="true" aria-labelledby="titulo-personalizar" className="max-w-4xl w-full bg-slate-800 rounded-xl shadow-2xl border border-slate-700 text-slate-200 flex flex-col max-h-[85vh]">
+        <EscCierra onCerrar={onClose} />
         <div className="flex justify-between items-center p-6 border-b border-slate-700">
           <div>
-            <h2 className="text-xl font-bold tracking-tight text-white">Personalizar lista de solicitudes</h2>
+            <h2 id="titulo-personalizar" className="text-xl font-bold tracking-tight text-white">Personalizar lista de solicitudes</h2>
             <p className="text-sm text-slate-400 mt-1">Folio, Notas y Estatus están fijos por defecto.</p>
           </div>
-          <button onClick={onClose} className="text-slate-500 hover:text-white transition-colors">✕</button>
+          <button onClick={onClose} aria-label="Cerrar" className="text-slate-400 hover:text-white transition-colors cursor-pointer p-1.5 -m-1.5 rounded-lg"><X size={18} strokeWidth={1.75} aria-hidden="true" /></button>
         </div>
         
         <div className="flex gap-8 p-6 flex-grow overflow-hidden">
