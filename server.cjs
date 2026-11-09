@@ -1071,12 +1071,82 @@ app.get(['/api/categorias', '/categorias'], (req, res) => {
   });
 });
 
-app.post(['/api/categorias/sincronizar', '/categorias/sincronizar'], (req, res) => {
+// ---- Clave para cambiar el SLA ----
+// Cambiar un SLA (de categoría o de elemento) exige una clave aparte, aunque la sesión sea de administrador.
+// Se define en SLA_CLAVE (texto o hash bcrypt). Si no está definida, se pide la contraseña de la cuenta del administrador.
+const limitadorClaveSla = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 10,
+  skipSuccessfulRequests: true,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Demasiados intentos con la clave de SLA. Espera 15 minutos.' }
+});
+
+const compararTexto = (a, b) => {
+  const x = Buffer.from(String(a));
+  const y = Buffer.from(String(b));
+  return x.length === y.length && crypto.timingSafeEqual(x, y);
+};
+
+const validarClaveSla = (sesion, clave, cb) => {
+  clave = String(clave || '');
+  if (!clave) return cb(false);
+  const claveConfigurada = process.env.SLA_CLAVE;
+  if (claveConfigurada) {
+    return cb(esHashBcrypt(claveConfigurada) ? bcrypt.compareSync(clave, claveConfigurada) : compararTexto(clave, claveConfigurada));
+  }
+  db.query('SELECT password FROM usuarios WHERE id = ? AND estatus = "ACTIVO" LIMIT 1', [sesion.id], (err, filas) => {
+    if (err || filas.length === 0) return cb(false);
+    const guardada = filas[0].password;
+    cb(esHashBcrypt(guardada) ? bcrypt.compareSync(clave, guardada) : compararTexto(clave, guardada || ''));
+  });
+};
+
+// Mapa "cat|sub|elemento" -> SLA, para detectar si algún SLA cambió o se agregó
+const mapaSla = (categorias) => {
+  const mapa = new Map();
+  (Array.isArray(categorias) ? categorias : []).forEach(cat => {
+    if (!cat) return;
+    mapa.set(`c${cat.id}`, String(cat.sla ?? 24));
+    parseJsonSeguro(cat.subcategorias).forEach(sub => {
+      if (!sub || typeof sub !== 'object') return;
+      (Array.isArray(sub.elementos) ? sub.elementos : []).forEach(el => {
+        if (el && typeof el === 'object') mapa.set(`c${cat.id}|s${sub.id}|e${el.id}`, String(el.sla ?? ''));
+      });
+    });
+  });
+  return mapa;
+};
+
+app.post(['/api/sla/verificar', '/sla/verificar'], requireAdmin, limitadorClaveSla, (req, res) => {
+  validarClaveSla(req.sesion, req.body && req.body.clave, (ok) => {
+    if (!ok) return res.status(403).json({ error: 'Clave incorrecta.' });
+    res.json({ ok: true });
+  });
+});
+
+app.post(['/api/categorias/sincronizar', '/categorias/sincronizar'], requireAdmin, limitadorClaveSla, (req, res) => {
   const categorias = req.body;
   if (!Array.isArray(categorias)) {
     return res.status(400).json({ error: 'Formato inválido, se esperaba un arreglo' });
   }
 
+  db.query('SELECT id, sla, subcategorias FROM categorias', (errPrev, previas) => {
+    if (errPrev) return res.status(500).json({ error: errPrev.message });
+
+    const antes = mapaSla(previas);
+    const cambioSla = [...mapaSla(categorias)].some(([clave, valor]) => antes.get(clave) !== valor);
+    if (!cambioSla) return guardarCategorias(categorias, res);
+
+    validarClaveSla(req.sesion, req.get('x-clave-sla'), (ok) => {
+      if (!ok) return res.status(403).json({ error: 'Para cambiar un SLA se necesita la clave de SLA.', requiereClaveSla: true });
+      guardarCategorias(categorias, res);
+    });
+  });
+});
+
+function guardarCategorias(categorias, res) {
   db.query('DELETE FROM categorias', (errDel) => {
     if (errDel) {
       console.error('Error al limpiar categorías:', errDel);
@@ -1110,7 +1180,7 @@ app.post(['/api/categorias/sincronizar', '/categorias/sincronizar'], (req, res) 
       res.json({ success: true, message: 'Categorías y subcategorías guardadas en MySQL correctamente' });
     });
   });
-});
+}
 
 app.get(['/api/subcategorias', '/subcategorias'], (req, res) => {
   db.query('SELECT * FROM subcategorias', (err, results) => {

@@ -3,7 +3,7 @@ import { nombrePresentable, normalizarTexto, perteneceAGrupo, listaDeGrupos } fr
 import { EstadoVacio } from '../components/Estados';
 import EtiquetaEstatus from '../components/EtiquetaEstatus';
 import { useAvisos } from '../components/Avisos';
-import { Plus, Search, StickyNote, Inbox, List, Columns3, Copy, Trash2, ListFilter, X } from 'lucide-react';
+import { Plus, Search, Inbox, List, Columns3, Copy, Trash2, ListFilter, X } from 'lucide-react';
 import TableroTickets from '../components/TableroTickets';
 import VistasGuardadas from '../components/VistasGuardadas';
 import { calcularSLA as calcularEstadoSLA, formatearDuracion } from '../utils/sla';
@@ -18,7 +18,6 @@ function SolicitudesView({
   columnLabels = {}, 
   user, 
   onOpenCustomizer, 
-  onOpenNotes, 
   onNuevaSolicitud, 
   onEditarTicket,
   onAbrirChat,
@@ -472,7 +471,7 @@ function SolicitudesView({
                   </th>
                 )}
                 <th className="px-4 py-3">Folio</th>
-                <th className="px-4 py-3">Notas</th>
+                <th className="px-4 py-3">{esCliente ? 'Ver' : 'Gestionar'}</th>
                 <th className="px-4 py-3">Estatus</th>
                 <th className="px-4 py-3">SLA / Tiempo</th>
                 {activeColumns.map(colKey => (
@@ -546,19 +545,24 @@ function SolicitudesView({
                       )}
                       <td className="px-4 py-3 font-bold text-white">#{ticket.folio}</td>
 
-                      <td className="px-4 py-3 text-center">
-                        <button 
-                          onClick={() => onOpenNotes(ticket.folio)}
-                          className="relative p-2 bg-slate-900/60 hover:bg-slate-700 rounded-lg text-slate-300 hover:text-white transition-colors border border-slate-700 inline-flex items-center justify-center cursor-pointer"
-                          title="Ver Notas"
-                        >
-                          <StickyNote size={15} strokeWidth={1.75} />
-                          {ticket.notas && ticket.notas.length > 0 && (
-                            <span className="absolute -top-1.5 -right-1.5 bg-indigo-600 text-white text-[11px] font-semibold w-4 h-4 rounded-full flex items-center justify-center shadow">
-                              {ticket.notas.length}
-                            </span>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => onEditarTicket(ticket)}
+                            className="px-3 py-1.5 bg-indigo-600/20 text-indigo-400 hover:bg-indigo-600 hover:text-white rounded-lg font-semibold text-xs transition-colors border border-indigo-500/30 cursor-pointer"
+                          >
+                            {esCliente ? 'Ver' : 'Gestionar'}
+                          </button>
+                          {esActivo && onAbrirChat && (
+                            <button
+                              onClick={() => onAbrirChat(ticket.folio)}
+                              className="px-3 py-1.5 bg-emerald-600/20 text-emerald-400 hover:bg-emerald-600 hover:text-white rounded-lg font-semibold text-xs transition-colors border border-emerald-500/30 cursor-pointer"
+                              title="Abrir Chat en Vivo"
+                            >
+                              Chat
+                            </button>
                           )}
-                        </button>
+                        </div>
                       </td>
 
                       <td className="px-4 py-3 whitespace-nowrap">
@@ -580,23 +584,6 @@ function SolicitudesView({
 
                       <td className="px-4 py-3 text-center">
                         <div className="flex justify-center items-center gap-2">
-                          {esActivo && onAbrirChat && (
-                            <button 
-                              onClick={() => onAbrirChat(ticket.folio)}
-                              className="px-3 py-1.5 bg-emerald-600/20 text-emerald-400 hover:bg-emerald-600 hover:text-white rounded-lg font-semibold text-xs transition-colors border border-emerald-500/30 cursor-pointer"
-                              title="Abrir Chat en Vivo"
-                            >
-                              Chat
-                            </button>
-                          )}
-
-                          <button 
-                            onClick={() => onEditarTicket(ticket)}
-                            className="px-3 py-1.5 bg-indigo-600/20 text-indigo-400 hover:bg-indigo-600 hover:text-white rounded-lg font-semibold text-xs transition-colors border border-indigo-500/30 cursor-pointer"
-                          >
-                            {esCliente ? 'Ver' : 'Gestionar'}
-                          </button>
-
                           {esAdmin && (
                             <>
                               <button onClick={() => copiarTicket(ticket)} title="Copiar folio" aria-label={`Copiar folio ${ticket.folio}`}

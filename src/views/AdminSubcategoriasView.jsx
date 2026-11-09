@@ -126,7 +126,7 @@ function AdminSubcategoriasView({ categoria, categorias, setCategorias, user, on
     setIsElementoModalOpen(true);
   };
 
-  const guardarElemento = (e) => {
+  const guardarElemento = async (e) => {
     e.preventDefault();
     if (!nombreElemento.trim() || !subcatActiva) return;
 
@@ -172,7 +172,7 @@ function AdminSubcategoriasView({ categoria, categorias, setCategorias, user, on
       return c;
     });
 
-    setCategorias(nuevasCategorias);
+    if (!(await setCategorias(nuevasCategorias))) return;
     setIsElementoModalOpen(false);
 
     // Actualizar la referencia de la subcategoría activa para que la tabla se refresque
