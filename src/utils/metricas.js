@@ -15,7 +15,7 @@ export const claveFecha = (fecha) => {
 };
 
 const fechaCreacion = (t) => parsearFechaLocal(t.created_at || t.fecha);
-const fechaCierre = (t) => parsearFechaLocal(t.updated_at) || fechaCreacion(t);
+const fechaCierre = (t) => parsearFechaLocal(t.fecha_cierre || t.updated_at) || fechaCreacion(t);
 
 /** Devuelve los tickets creados dentro de los últimos `dias` días (0 = todos). */
 export function filtrarPorRango(tickets, dias, ahora = new Date()) {

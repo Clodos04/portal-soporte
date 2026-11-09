@@ -536,7 +536,10 @@ app.post(['/api/tickets', '/tickets'], (req, res) => {
 
           if (esSubsecuente) {
             const horaMexActual = obtenerFechaMySQL();
-            db.query("UPDATE tickets SET estatus = 'Cerrado', colorEstatus = 'bg-red-600', updated_at = ? WHERE folio = ?", [horaMexActual, nuevoFolio]);
+            db.query("UPDATE tickets SET estatus = 'Cerrado', colorEstatus = 'bg-red-600', updated_at = ?, fecha_cierre = ? WHERE folio = ?", [horaMexActual, horaMexActual, nuevoFolio], (errCierre) => {
+              // Si la columna fecha_cierre aún no existe (migración pendiente), se cierra igual sin ella
+              if (errCierre) db.query("UPDATE tickets SET estatus = 'Cerrado', colorEstatus = 'bg-red-600', updated_at = ? WHERE folio = ?", [horaMexActual, nuevoFolio]);
+            });
             registrarAuditoria(nuevoFolio, 'Sistema', 'CIERRE_AUTOMATICO', [{ campo: 'estatus', anterior: 'Abierto', nuevo: 'Cerrado (reporte subsecuente del mes)' }]);
           }
 
@@ -559,6 +562,7 @@ app.put(['/api/tickets/:folio', '/tickets/:folio'], (req, res) => {
   delete ticketData.folio;
   delete ticketData.archivos;
   delete ticketData.yaGuardadoEnBD;
+  delete ticketData.fecha_cierre; // la fecha de cierre la decide el servidor, nunca el cliente
   for (let key in ticketData) {
     if (typeof ticketData[key] === 'object' && ticketData[key] !== null) {
       ticketData[key] = JSON.stringify(ticketData[key]);
@@ -570,6 +574,16 @@ app.put(['/api/tickets/:folio', '/tickets/:folio'], (req, res) => {
   // Se lee el ticket antes de actualizarlo para poder registrar qué campos cambiaron
   db.query('SELECT * FROM tickets WHERE folio = ? LIMIT 1', [req.params.folio], (errPrev, prev) => {
     const anterior = (!errPrev && prev && prev.length > 0) ? prev[0] : null;
+
+    // El SLA se mide hasta el momento del cierre. Solo se fija al pasar a Cerrado y se limpia al reabrir;
+    // editar un ticket ya cerrado (notas, técnico…) no mueve esa fecha.
+    if (ticketData.estatus !== undefined) {
+      const seraCerrado = String(ticketData.estatus).toLowerCase().includes('cerrado');
+      const yaCerrado = anterior && String(anterior.estatus || '').toLowerCase().includes('cerrado');
+      if (!seraCerrado) ticketData.fecha_cierre = null;
+      else if (!yaCerrado) ticketData.fecha_cierre = ticketData.updated_at;
+      else if (!anterior.fecha_cierre) ticketData.fecha_cierre = anterior.updated_at; // ticket cerrado antes de existir esta columna
+    }
 
     db.query('UPDATE tickets SET ? WHERE folio = ?', [filtrarColumnas('tickets', ticketData), req.params.folio], (err, result) => {
       if (err) return res.status(500).json({ error: err.message });
@@ -647,6 +661,13 @@ app.post(['/api/tickets/masivo', '/tickets/masivo'], async (req, res) => {
       const previo = await consulta('SELECT * FROM tickets WHERE folio = ? LIMIT 1', [folio]);
       if (previo.length === 0) { noEncontrados.push(folio); continue; }
       const datos = { ...cambios, updated_at: obtenerFechaMySQL() };
+      if (cambios.estatus) {
+        const seraCerrado = cambios.estatus.toLowerCase().includes('cerrado');
+        const yaCerrado = String(previo[0].estatus || '').toLowerCase().includes('cerrado');
+        if (!seraCerrado) datos.fecha_cierre = null;
+        else if (!yaCerrado) datos.fecha_cierre = datos.updated_at;
+        else if (!previo[0].fecha_cierre) datos.fecha_cierre = previo[0].updated_at;
+      }
       await consulta('UPDATE tickets SET ? WHERE folio = ?', [filtrarColumnas('tickets', datos), folio]);
       const detalle = CAMPOS_AUDITADOS
         .filter(c => cambios[c] !== undefined && String(cambios[c]) !== String(previo[0][c] ?? ''))
@@ -673,7 +694,7 @@ app.post(['/api/tickets/:folio/copiar', '/tickets/:folio/copiar'], async (req, r
     for (let i = 0; i < copias; i++) {
       const folio = await generarFolio();
       const datos = { ...origen[0] };
-      ['id', 'notas', 'resolucion', 'updated_at'].forEach(k => delete datos[k]);
+      ['id', 'notas', 'resolucion', 'updated_at', 'fecha_cierre'].forEach(k => delete datos[k]);
       Object.assign(datos, {
         folio, fecha: fechaSolo, created_at: fechaHora,
         estatus: 'Abierto', colorEstatus: 'bg-green-500', tecnico: 'Sin Asignar'
@@ -784,7 +805,9 @@ app.post(['/api/chat', '/chat'], (req, res) => {
           if (evaluacion && evaluacion.textoRespuesta) {
             if (evaluacion.cerrarTicket) {
               const horaMexActual = obtenerFechaMySQL();
-              db.query("UPDATE tickets SET estatus = 'Cerrado', colorEstatus = 'bg-red-600', updated_at = ? WHERE folio = ?", [horaMexActual, folio]);
+              db.query("UPDATE tickets SET estatus = 'Cerrado', colorEstatus = 'bg-red-600', updated_at = ?, fecha_cierre = ? WHERE folio = ?", [horaMexActual, horaMexActual, folio], (errCierre) => {
+                if (errCierre) db.query("UPDATE tickets SET estatus = 'Cerrado', colorEstatus = 'bg-red-600', updated_at = ? WHERE folio = ?", [horaMexActual, folio]);
+              });
               registrarAuditoria(folio, 'Sistema', 'CIERRE_AUTOMATICO', [{ campo: 'estatus', anterior: ticket.estatus, nuevo: 'Cerrado (flujo de chat)' }]);
             }
             db.query('INSERT INTO mensajes_chat (folio, remitente, texto, hora) VALUES (?, ?, ?, ?)', [folio, 'Sistema', evaluacion.textoRespuesta, horaActual], () => {
@@ -1005,9 +1028,10 @@ app.get(['/api/encuestas/reporte', '/encuestas/reporte'], (req, res) => {
 });
 
 app.get(['/api/kpis/tiempos', '/kpis/tiempos'], (req, res) => {
-  db.query('SELECT id, folio, estatus, created_at, updated_at FROM tickets', (err, results) => {
+  const conCierre = columnasTabla.tickets && columnasTabla.tickets.has('fecha_cierre');
+  db.query(`SELECT id, folio, estatus, created_at, updated_at${conCierre ? ', fecha_cierre' : ''} FROM tickets`, (err, results) => {
     if (err) return res.status(500).json({ error: err.message });
-    res.json(results.map(t => ({ id: t.id, folio: t.folio, minutos_resolucion: Math.round(((t.estatus === 'Cerrado' ? new Date(t.updated_at) : new Date()) - new Date(t.created_at)) / (1000 * 60)) || 5 })));
+    res.json(results.map(t => ({ id: t.id, folio: t.folio, minutos_resolucion: Math.round(((t.estatus === 'Cerrado' ? new Date(t.fecha_cierre || t.updated_at) : new Date()) - new Date(t.created_at)) / (1000 * 60)) || 5 })));
   });
 });
 

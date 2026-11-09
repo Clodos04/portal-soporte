@@ -45,8 +45,9 @@ export const calcularSLA = (ticket, categorias = [], ahora = new Date()) => {
   const inicioEfectivo = inicio > ahora ? ahora : inicio;
   const cerrado = esTicketCerrado(ticket);
   let fin = ahora;
-  if (cerrado && ticket.updated_at) {
-    const finTicket = parsearFechaLocal(ticket.updated_at);
+  const marcaCierre = ticket?.fecha_cierre || ticket?.updated_at; // fecha_cierre no cambia al editar el ticket
+  if (cerrado && marcaCierre) {
+    const finTicket = parsearFechaLocal(marcaCierre);
     if (finTicket) fin = finTicket;
   }
 
