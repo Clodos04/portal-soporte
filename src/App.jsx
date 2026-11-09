@@ -32,6 +32,7 @@ import useAtajoBuscador from './hooks/useAtajoBuscador';
 import useTicketsNuevos from './hooks/useTicketsNuevos';
 import { construirHash, interpretarHash } from './utils/rutas';
 import { nombrePresentable, listaDeGrupos } from './utils/texto';
+import { subirAdjunto } from './utils/adjuntos';
 import { useAvisos } from './components/Avisos';
 
 function App() {
@@ -262,15 +263,20 @@ function App() {
       return;
     }
 
+    const { archivo, ...ticketSinArchivo } = nuevoTicket; // el archivo se sube aparte, tras crear el folio
     fetch('/api/tickets', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(nuevoTicket)
+      body: JSON.stringify(ticketSinArchivo)
     })
     .then(res => res.json())
-    .then((data) => {
+    .then(async (data) => {
       const folioFinal = data.folio || nuevoTicket.folio;
-      const ticketConFolioOficial = { ...nuevoTicket, folio: folioFinal, id: data.id };
+      if (archivo && data.folio) {
+        const subida = await subirAdjunto(data.folio, archivo);
+        if (!subida.ok) avisar(`El ticket se creó, pero el archivo no se adjuntó: ${subida.error}`, 'error');
+      }
+      const ticketConFolioOficial = { ...ticketSinArchivo, folio: folioFinal, id: data.id };
       setTickets(prev => [ticketConFolioOficial, ...prev]);
       setFolioChatActivo(folioFinal);
       setCurrentView('live-chat'); 

@@ -3,6 +3,7 @@ const express = require('express');
 const mysql = require('mysql2');
 const cors = require('cors');
 const path = require('path');
+const fs = require('fs');
 const http = require('http');
 const crypto = require('crypto');
 const bcrypt = require('bcryptjs');
@@ -708,6 +709,110 @@ app.post(['/api/tickets/:folio/copiar', '/tickets/:folio/copiar'], async (req, r
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
+});
+
+// ---------------------------------------------------------------------------
+// Archivos adjuntos de los tickets. Se guardan en disco (UPLOADS_DIR, ¡debe ser un volumen permanente!)
+// y en la BD solo queda el registro. El archivo llega como binario crudo, con el nombre en una cabecera.
+// ---------------------------------------------------------------------------
+const UPLOADS_DIR = path.resolve(process.env.UPLOADS_DIR || path.join(__dirname, 'uploads'));
+const ADJUNTO_MAX_BYTES = (parseInt(process.env.ADJUNTO_MAX_MB, 10) || 10) * 1024 * 1024;
+const ADJUNTOS_POR_TICKET = 5;
+const EXTENSIONES_ADJUNTO = {
+  '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.gif': 'image/gif', '.webp': 'image/webp',
+  '.pdf': 'application/pdf', '.txt': 'text/plain', '.csv': 'text/csv', '.log': 'text/plain',
+  '.doc': 'application/msword', '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  '.xls': 'application/vnd.ms-excel', '.xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  '.zip': 'application/zip'
+};
+try { fs.mkdirSync(UPLOADS_DIR, { recursive: true }); } catch (e) { console.error('No se pudo crear la carpeta de adjuntos:', e.message); }
+
+db.query(`
+  CREATE TABLE IF NOT EXISTS ticket_adjuntos (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    folio VARCHAR(20) NOT NULL,
+    nombre_original VARCHAR(255) NOT NULL,
+    nombre_archivo VARCHAR(80) NOT NULL,
+    tipo VARCHAR(100) NOT NULL,
+    tamano INT NOT NULL,
+    subido_por VARCHAR(150) DEFAULT '',
+    created_at DATETIME,
+    INDEX idx_adjuntos_folio (folio)
+  )
+`, (err) => { if (err) console.error('Error al crear/verificar tabla ticket_adjuntos:', err.message); });
+
+const rawAdjunto = express.raw({ type: () => true, limit: ADJUNTO_MAX_BYTES });
+
+app.post(['/api/tickets/:folio/adjuntos', '/tickets/:folio/adjuntos'], (req, res, next) => {
+  rawAdjunto(req, res, (err) => {
+    if (err) return res.status(err.status === 413 ? 413 : 400).json({ error: err.status === 413 ? `El archivo supera el máximo de ${ADJUNTO_MAX_BYTES / 1024 / 1024} MB.` : 'No se pudo leer el archivo.' });
+    next();
+  });
+}, async (req, res) => {
+  try {
+    const folio = req.params.folio;
+    const buffer = req.body;
+    if (!Buffer.isBuffer(buffer) || buffer.length === 0) return res.status(400).json({ error: 'El archivo está vacío.' });
+    let nombre = '';
+    try { nombre = decodeURIComponent(String(req.headers['x-nombre-archivo'] || '')); } catch (e) { /* nombre inválido */ }
+    nombre = path.basename(nombre).replace(/[\x00-\x1f]/g, '').slice(0, 200);
+    const extension = path.extname(nombre).toLowerCase();
+    if (!nombre || !EXTENSIONES_ADJUNTO[extension]) {
+      return res.status(400).json({ error: 'Tipo de archivo no permitido. Usa imágenes, PDF, Office, TXT, CSV o ZIP.' });
+    }
+    const ticket = await consulta('SELECT folio FROM tickets WHERE folio = ? LIMIT 1', [folio]);
+    if (ticket.length === 0) return res.status(404).json({ error: 'No se encontró el ticket.' });
+    const [{ total }] = await consulta('SELECT COUNT(*) AS total FROM ticket_adjuntos WHERE folio = ?', [folio]);
+    if (total >= ADJUNTOS_POR_TICKET) return res.status(400).json({ error: `Máximo ${ADJUNTOS_POR_TICKET} archivos por ticket.` });
+
+    const nombreArchivo = crypto.randomBytes(16).toString('hex') + extension;
+    await fs.promises.writeFile(path.join(UPLOADS_DIR, nombreArchivo), buffer);
+    const resultado = await consulta(
+      'INSERT INTO ticket_adjuntos (folio, nombre_original, nombre_archivo, tipo, tamano, subido_por, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
+      [folio, nombre, nombreArchivo, EXTENSIONES_ADJUNTO[extension], buffer.length, nombreActor(req), obtenerFechaMySQL()]
+    );
+    registrarAuditoria(folio, nombreActor(req), 'ADJUNTO', [{ campo: 'adjunto', anterior: null, nuevo: nombre }]);
+    io.emit('ticketActualizado', { folio });
+    res.json({ id: resultado.insertId, nombre, tamano: buffer.length });
+  } catch (err) {
+    console.error('Error al guardar adjunto:', err.message);
+    res.status(500).json({ error: 'No se pudo guardar el archivo.' });
+  }
+});
+
+app.get(['/api/tickets/:folio/adjuntos', '/tickets/:folio/adjuntos'], async (req, res) => {
+  try {
+    const filas = await consulta('SELECT id, nombre_original AS nombre, tipo, tamano, subido_por AS subidoPor, created_at AS fecha FROM ticket_adjuntos WHERE folio = ? ORDER BY id', [req.params.folio]);
+    res.json(filas);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// Descarga siempre como archivo (attachment) y sin que el navegador adivine el tipo: un HTML subido no se ejecuta.
+app.get(['/api/adjuntos/:id', '/adjuntos/:id'], async (req, res) => {
+  try {
+    const filas = await consulta('SELECT * FROM ticket_adjuntos WHERE id = ? LIMIT 1', [parseInt(req.params.id, 10) || 0]);
+    if (filas.length === 0) return res.status(404).json({ error: 'Archivo no encontrado.' });
+    const a = filas[0];
+    const ruta = path.join(UPLOADS_DIR, path.basename(a.nombre_archivo));
+    if (!fs.existsSync(ruta)) return res.status(404).json({ error: 'El archivo ya no está en el servidor.' });
+    res.set('X-Content-Type-Options', 'nosniff');
+    res.set('Content-Type', a.tipo);
+    res.set('Content-Disposition', `attachment; filename*=UTF-8''${encodeURIComponent(a.nombre_original)}`);
+    fs.createReadStream(ruta).pipe(res);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.delete(['/api/adjuntos/:id', '/adjuntos/:id'], async (req, res) => {
+  if (req.sesion.nivel !== 'ADMINISTRADOR') return res.status(403).json({ error: 'No tienes permisos para esta acción.' });
+  try {
+    const filas = await consulta('SELECT * FROM ticket_adjuntos WHERE id = ? LIMIT 1', [parseInt(req.params.id, 10) || 0]);
+    if (filas.length === 0) return res.status(404).json({ error: 'Archivo no encontrado.' });
+    await consulta('DELETE FROM ticket_adjuntos WHERE id = ?', [filas[0].id]);
+    fs.promises.unlink(path.join(UPLOADS_DIR, path.basename(filas[0].nombre_archivo))).catch(() => {});
+    registrarAuditoria(filas[0].folio, nombreActor(req), 'ADJUNTO_ELIMINADO', [{ campo: 'adjunto', anterior: filas[0].nombre_original, nuevo: null }]);
+    io.emit('ticketActualizado', { folio: filas[0].folio });
+    res.json({ message: 'Archivo eliminado' });
+  } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
 // Elimina un ticket. Antes se deja en la auditoría quién lo hizo y un resumen de lo que contenía.
