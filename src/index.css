@@ -271,3 +271,8 @@ img { outline: 1px solid rgba(255, 255, 255, 0.1); outline-offset: -1px; }
 /* Aviso flotante de alerta: entra una vez desde abajo (antes rebotaba sin parar) */
 @keyframes entrar-aviso { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
 .animate-aviso { animation: entrar-aviso 0.35s cubic-bezier(0.22, 1, 0.36, 1) both; }
+
+/* Cambio entre modo oscuro y claro: fundido suave de toda la pantalla */
+::view-transition-old(root), ::view-transition-new(root) { animation-duration: 0.4s; animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1); }
+/* Mientras dura el fundido, los elementos no animan por su cuenta (evita capturar colores a medias) */
+.cambiando-tema *, .cambiando-tema *::before, .cambiando-tema *::after { transition: none !important; }
