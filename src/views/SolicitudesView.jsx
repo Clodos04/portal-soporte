@@ -8,8 +8,10 @@ import TableroTickets from '../components/TableroTickets';
 import VistasGuardadas from '../components/VistasGuardadas';
 import { calcularSLA as calcularEstadoSLA, formatearDuracion } from '../utils/sla';
 import { exportarCSV } from '../utils/exportar';
+import AvisoHistorial from '../components/AvisoHistorial';
 
 function SolicitudesView({ 
+  historial,
   tickets = [], 
   categorias = [], 
   activeColumns = [], 
@@ -225,6 +227,7 @@ function SolicitudesView({
 
   return (
     <div className="animate-fade-in max-w-7xl mx-auto space-y-6 text-slate-200">
+      <AvisoHistorial historial={historial} />
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-slate-800 p-6 rounded-xl border border-slate-700 shadow-lg">
         <div>
           <h1 className="text-2xl font-semibold text-white tracking-tight">Listado de Solicitudes</h1>

@@ -6,6 +6,7 @@ import { Plus, CheckCircle2, AlertOctagon, Clock } from 'lucide-react';
 import { calcularSLA, esTicketCerrado } from '../utils/sla';
 import useContarHasta from '../hooks/useContarHasta';
 import { ticketsPorDia, cumplimientoSlaSemanal } from '../utils/metricas';
+import AvisoHistorial from '../components/AvisoHistorial';
 const GraficaGrupos = lazy(() => import('../components/GraficaGrupos'));
 const Sparkline = lazy(() => import('../components/analitica/Sparkline'));
 const PanelAnalitica = lazy(() => import('../components/analitica/PanelAnalitica'));
@@ -16,7 +17,7 @@ function Numero({ valor, sufijo = '' }) {
   return <>{mostrado}{sufijo}</>;
 }
 
-function Dashboard({ user, tickets = [], categorias = [], onIrASolicitudes, grupos = [], onIrANuevaSolicitud, onIrAEncuesta, onIrABuzon, estadisticasEncuestas = [], onTomarTicket, onAbrirChat }) {
+function Dashboard({ historial, user, tickets = [], categorias = [], onIrASolicitudes, grupos = [], onIrANuevaSolicitud, onIrAEncuesta, onIrABuzon, estadisticasEncuestas = [], onTomarTicket, onAbrirChat }) {
   const safeTickets = Array.isArray(tickets) ? tickets : [];
   const [gruposBD, setGruposBD] = useState(Array.isArray(grupos) ? grupos : []);
   const [soloHoyGrafica, setSoloHoyGrafica] = useState(false);
@@ -249,6 +250,7 @@ function Dashboard({ user, tickets = [], categorias = [], onIrASolicitudes, grup
 
   return (
     <div className="animate-fade-in space-y-6">
+      <AvisoHistorial historial={historial} />
       <div className="flex flex-wrap gap-3 justify-between items-center mb-2">
         <h1 className="text-xl sm:text-2xl font-semibold text-white tracking-tight">Panel de Control de Inicio</h1>
         <button onClick={onIrANuevaSolicitud} className="bg-indigo-600 hover:bg-indigo-500 text-white px-5 py-2.5 rounded-xl shadow-lg font-bold text-sm transition-colors cursor-pointer flex items-center gap-2">

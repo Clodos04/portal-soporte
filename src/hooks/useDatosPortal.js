@@ -3,6 +3,8 @@ import { io } from 'socket.io-client';
 
 // Datos del portal (tickets, usuarios, grupos, campañas, categorías, encuestas) y conexión en tiempo real.
 // Solo carga cuando hay sesión iniciada. Socket.io avisa cada cambio y se recargan los tickets.
+const DIAS_RECIENTES = 90;
+
 export default function useDatosPortal({ isLoggedIn, user, reproducirAlerta }) {
   const [tickets, setTickets] = useState([]);
   const [usuarios, setUsuarios] = useState([]);
@@ -14,6 +16,11 @@ export default function useDatosPortal({ isLoggedIn, user, reproducirAlerta }) {
   const [senalChat, setSenalChat] = useState(0);
   // true mientras Socket.io está conectado (indicador "En vivo" del encabezado)
   const [enVivo, setEnVivo] = useState(false);
+  // Carga inicial = tickets activos + cerrados de los últimos DIAS_RECIENTES. El historial completo se pide a demanda.
+  const [totalTickets, setTotalTickets] = useState(0);
+  const [cargandoHistorial, setCargandoHistorial] = useState(false);
+  const historialCompletoRef = useRef(false);
+  const recargarRef = useRef(null);
 
   const userRef = useRef(null);
   useEffect(() => { userRef.current = user; }, [user]);
@@ -26,8 +33,10 @@ export default function useDatosPortal({ isLoggedIn, user, reproducirAlerta }) {
 
     const cargarDatosIniciales = async () => {
       try {
-        const resTickets = await fetch('/api/tickets');
+        const resTickets = await fetch(historialCompletoRef.current ? '/api/tickets' : `/api/tickets?reciente=${DIAS_RECIENTES}`);
         const dataTickets = await resTickets.json();
+        const total = parseInt(resTickets.headers.get('X-Total-Count'), 10);
+        setTotalTickets(Number.isFinite(total) ? total : (Array.isArray(dataTickets) ? dataTickets.length : 0));
 
         // Solo en desarrollo: con ?demo en la dirección se muestran tickets de ejemplo en lugar de los reales
         if (import.meta.env.DEV && new URLSearchParams(window.location.search).has('demo')) {
@@ -58,6 +67,7 @@ export default function useDatosPortal({ isLoggedIn, user, reproducirAlerta }) {
       }
     };
 
+    recargarRef.current = cargarDatosIniciales;
     cargarDatosIniciales();
 
     fetch('/api/usuarios').then(res => res.json()).then(data => { if (Array.isArray(data)) setUsuarios(data); });
@@ -100,7 +110,24 @@ export default function useDatosPortal({ isLoggedIn, user, reproducirAlerta }) {
     };
   }, [isLoggedIn, reproducirAlerta]);
 
+  // Trae también los tickets cerrados más antiguos (y los mantiene al recargar por eventos en vivo)
+  const cargarHistorialCompleto = async () => {
+    historialCompletoRef.current = true;
+    setCargandoHistorial(true);
+    try { if (recargarRef.current) await recargarRef.current(); } finally { setCargandoHistorial(false); }
+  };
+
+  const historial = {
+    parcial: totalTickets > tickets.length,
+    cargados: tickets.length,
+    total: Math.max(totalTickets, tickets.length),
+    dias: DIAS_RECIENTES,
+    cargando: cargandoHistorial,
+    cargarTodo: cargarHistorialCompleto
+  };
+
   return {
+    historial,
     tickets, setTickets,
     usuarios, setUsuarios,
     grupos, setGrupos,

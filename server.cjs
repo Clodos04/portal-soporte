@@ -399,6 +399,22 @@ app.get(['/api/me', '/me'], (req, res) => {
 app.get(['/api/tickets', '/tickets'], (req, res) => {
   const formatear = (results) => results.map(t => ({ ...t, notas: parseJsonSeguro(t.notas) }));
 
+  // Carga reciente: /api/tickets?reciente=90 devuelve TODOS los tickets activos más los cerrados en los últimos
+  // N días (1–3650). La cabecera X-Total-Count trae el total de la tabla para avisar que hay historial sin cargar.
+  if (req.query.reciente !== undefined) {
+    const dias = Math.min(Math.max(parseInt(req.query.reciente, 10) || 90, 1), 3650);
+    const momentoCierre = (columnasTabla.tickets && columnasTabla.tickets.has('fecha_cierre'))
+      ? 'COALESCE(fecha_cierre, updated_at, created_at)' : 'COALESCE(updated_at, created_at)';
+    return db.query('SELECT COUNT(*) AS total FROM tickets', (errCount, cnt) => {
+      if (errCount) return res.status(500).json({ error: errCount.message });
+      db.query(`SELECT * FROM tickets WHERE LOWER(estatus) NOT LIKE '%cerrado%' OR ${momentoCierre} >= DATE_SUB(NOW(), INTERVAL ? DAY) ORDER BY id DESC`, [dias], (err, results) => {
+        if (err) return res.status(500).json({ error: err.message });
+        res.set('X-Total-Count', String(cnt[0].total));
+        res.json(formatear(results));
+      });
+    });
+  }
+
   // Paginación opcional: /api/tickets?limit=50&page=1&estatus=activos|cerrados&q=texto
   // Sin "limit" se devuelve la lista completa (compatibilidad con el portal actual).
   if (req.query.limit !== undefined) {
