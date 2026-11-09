@@ -23,6 +23,8 @@ const ESTILOS = {
 export function AvisosProvider({ children }) {
   const [avisos, setAvisos] = useState([]);
   const [confirmacion, setConfirmacion] = useState(null);
+  const [clavePedida, setClavePedida] = useState(null);
+  const [claveTexto, setClaveTexto] = useState('');
   const contador = useRef(0);
 
   const cerrarAviso = useCallback((id) => setAvisos(prev => prev.filter(a => a.id !== id)), []);
@@ -42,6 +44,18 @@ export function AvisosProvider({ children }) {
     setConfirmacion(null);
   };
 
+  // Pide una clave en un cuadro propio. Devuelve el texto escrito o null si se cancela.
+  const pedirClave = useCallback((mensaje, opciones = {}) => new Promise((resolve) => {
+    setClavePedida({ mensaje, resolve, textoConfirmar: opciones.textoConfirmar || 'Continuar' });
+    setClaveTexto('');
+  }), []);
+
+  const responderClave = (valor) => {
+    clavePedida?.resolve(valor);
+    setClavePedida(null);
+    setClaveTexto('');
+  };
+
   useEffect(() => {
     if (!confirmacion) return;
     const alTeclear = (e) => { if (e.key === 'Escape') responder(false); };
@@ -50,7 +64,15 @@ export function AvisosProvider({ children }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [confirmacion]);
 
-  const valor = useMemo(() => ({ avisar, confirmar }), [avisar, confirmar]);
+  useEffect(() => {
+    if (!clavePedida) return;
+    const alTeclear = (e) => { if (e.key === 'Escape') responderClave(null); };
+    window.addEventListener('keydown', alTeclear);
+    return () => window.removeEventListener('keydown', alTeclear);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [clavePedida]);
+
+  const valor = useMemo(() => ({ avisar, confirmar, pedirClave }), [avisar, confirmar, pedirClave]);
 
   return (
     <AvisosContext.Provider value={valor}>
@@ -99,6 +121,46 @@ export function AvisosProvider({ children }) {
               </button>
             </div>
           </div>
+        </div>
+      )}
+
+      {clavePedida && (
+        <div className="fixed inset-0 z-[70] bg-slate-950/70 flex items-center justify-center p-4" onClick={() => responderClave(null)}>
+          <form
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="clave-texto"
+            onClick={(e) => e.stopPropagation()}
+            onSubmit={(e) => { e.preventDefault(); if (claveTexto) responderClave(claveTexto); }}
+            className="bg-slate-800 border border-slate-700 rounded-2xl shadow-2xl w-full max-w-sm p-6"
+          >
+            <p id="clave-texto" className="text-sm text-slate-100 leading-relaxed">{clavePedida.mensaje}</p>
+            <input
+              type="password"
+              autoFocus
+              autoComplete="off"
+              value={claveTexto}
+              onChange={(e) => setClaveTexto(e.target.value)}
+              aria-label="Clave"
+              className="mt-4 w-full px-3 py-2 rounded-lg bg-slate-900 border border-slate-700 text-white text-sm outline-none focus:border-indigo-500"
+            />
+            <div className="flex justify-end gap-2 mt-6">
+              <button
+                type="button"
+                onClick={() => responderClave(null)}
+                className="px-4 py-2 rounded-lg text-sm font-medium text-slate-200 bg-slate-700 hover:bg-slate-600 transition-colors cursor-pointer"
+              >
+                Cancelar
+              </button>
+              <button
+                type="submit"
+                disabled={!claveTexto}
+                className="px-4 py-2 rounded-lg text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-500 transition-colors cursor-pointer disabled:opacity-50"
+              >
+                {clavePedida.textoConfirmar}
+              </button>
+            </div>
+          </form>
         </div>
       )}
     </AvisosContext.Provider>

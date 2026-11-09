@@ -28,7 +28,7 @@ function AdminCategoriasView({ categorias = [], setCategorias, user, onVerSubcat
     setModo('form');
   };
 
-  const guardarCategoria = (e) => {
+  const guardarCategoria = async (e) => {
     e.preventDefault();
     if (!formNombre.trim()) return;
 
@@ -51,14 +51,15 @@ function AdminCategoriasView({ categorias = [], setCategorias, user, onVerSubcat
         usuario: usuarioNombre,
         subcategorias: []
       };
-      setCategorias([...categorias, nueva]);
+      if (!(await setCategorias([...categorias, nueva]))) return;
     } else {
-      setCategorias(categorias.map(c => c.id === categoriaActual.id ? {
+      const guardado = await setCategorias(categorias.map(c => c.id === categoriaActual.id ? {
         ...c,
         nombre: formNombre.trim().toUpperCase(),
         sla: slaValidado,
         estatus: formEstatus
       } : c));
+      if (!guardado) return;
     }
     setModo('lista');
   };

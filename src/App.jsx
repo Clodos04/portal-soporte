@@ -34,9 +34,10 @@ import { construirHash, interpretarHash } from './utils/rutas';
 import { nombrePresentable, listaDeGrupos } from './utils/texto';
 import { subirAdjunto } from './utils/adjuntos';
 import { useAvisos } from './components/Avisos';
+import { slaCambio } from './utils/claveSla';
 
 function App() {
-  const { avisar, confirmar } = useAvisos();
+  const { avisar, confirmar, pedirClave } = useAvisos();
   const [isLoggedIn, setIsLoggedIn] = useState(false); 
   const [user, setUser] = useState(null); 
   const [currentView, setCurrentView] = useState('inicio'); 
@@ -216,13 +217,28 @@ function App() {
     }
   };
 
-  const handleSetCategorias = (nuevasCategorias) => {
-    setCategorias(nuevasCategorias);
-    fetch('/api/categorias/sincronizar', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(nuevasCategorias)
-    }).catch(err => console.error('Error al sincronizar categorías:', err));
+  // Devuelve true si el cambio se guardó. Si cambia o agrega algún SLA, antes pide la clave de SLA.
+  const handleSetCategorias = async (nuevasCategorias) => {
+    const headers = { 'Content-Type': 'application/json' };
+    if (slaCambio(categorias, nuevasCategorias)) {
+      const clave = await pedirClave('Cambiar un SLA requiere la clave de SLA.', { textoConfirmar: 'Guardar cambio' });
+      if (!clave) return false;
+      headers['X-Clave-SLA'] = clave;
+    }
+    try {
+      const res = await fetch('/api/categorias/sincronizar', { method: 'POST', headers, body: JSON.stringify(nuevasCategorias) });
+      if (!res.ok) {
+        const datos = await res.json().catch(() => ({}));
+        avisar(res.status === 403 && datos.requiereClaveSla ? 'Clave de SLA incorrecta. No se guardó ningún cambio.' : (datos.error || 'No se pudo guardar el cambio.'), 'error');
+        return false;
+      }
+      setCategorias(nuevasCategorias);
+      return true;
+    } catch (err) {
+      console.error('Error al sincronizar categorías:', err);
+      avisar('No se pudo guardar el cambio. Revisa tu conexión.', 'error');
+      return false;
+    }
   };
 
   const usuariosPorGrupo = grupos.reduce((acc, grupo) => {
@@ -502,7 +518,6 @@ function App() {
             user={user}
             estadisticasEncuestas={estadisticasEncuestas}
             onOpenCustomizer={() => setIsColumnCustomizerOpen(true)}
-            onOpenNotes={(folio) => { setFolioActivo(folio); setIsNotesModalOpen(true); }}
             onNuevaSolicitud={() => setCurrentView('nueva-solicitud')}
             onEditarTicket={(ticket) => { setTicketEnEdicion(ticket); setIsEditModalOpen(true); }}
             onAbrirChat={(folio) => {
