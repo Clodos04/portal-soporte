@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import AsistenteTipificacionView from './AsistenteTipificacionView';
 import { useAvisos } from '../components/Avisos';
+import { validarAdjunto, TIPOS_ADJUNTO } from '../utils/adjuntos';
 
 function NuevaSolicitudView({ user, usuarios = [], grupos = [], usuariosPorGrupo = {}, categorias = [], onVolver, onGuardar }) {
   const [estado, setEstado] = useState('ABIERTO');
@@ -43,7 +44,7 @@ function NuevaSolicitudView({ user, usuarios = [], grupos = [], usuariosPorGrupo
   const [modo] = useState('WEB');
   const [archivo, setArchivo] = useState(null);
   const [enviando, setEnviando] = useState(false); // <--- Candado anti-doble clic
-  const { confirmar } = useAvisos();
+  const { avisar, confirmar } = useAvisos();
   const [errores, setErrores] = useState({});
   const asuntoRef = useRef(null);
   const descripcionRef = useRef(null);
@@ -171,8 +172,7 @@ function NuevaSolicitudView({ user, usuarios = [], grupos = [], usuariosPorGrupo
         subcategoria: subCategoria || '',
         elemento: elemento || '',
         resolucion: '',
-        archivoNombre: archivo ? archivo.name : null,
-        archivoUrl: archivo ? URL.createObjectURL(archivo) : null,
+        archivo: archivo || null,
         tipo_solicitud: 'REPORTE'
       };
 
@@ -411,7 +411,8 @@ function NuevaSolicitudView({ user, usuarios = [], grupos = [], usuariosPorGrupo
             <label className="block text-xs font-medium text-slate-300 mb-1.5">Adjuntar Archivo:</label>
             <input 
               type="file" 
-              onChange={(e) => setArchivo(e.target.files[0])}
+              accept={TIPOS_ADJUNTO}
+              onChange={(e) => { const f = e.target.files[0]; const problema = validarAdjunto(f); if (problema) { avisar(problema, 'error'); e.target.value = ''; setArchivo(null); } else setArchivo(f || null); }}
               className="text-xs text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-bold file:bg-slate-700 file:text-slate-200 hover:file:bg-slate-600 cursor-pointer bg-slate-900/60 p-2 rounded-xl border border-slate-700 w-full" 
             />
           </div>

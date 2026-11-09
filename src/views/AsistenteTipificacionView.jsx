@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { subirAdjunto, validarAdjunto, TIPOS_ADJUNTO } from '../utils/adjuntos';
 
 function AsistenteTipificacionView({ categorias = [], campanas = [], equipos = [], ticketsExistentes = [], user, usuarios = [], onGuardarTicket, onCancelar }) {
   const [tipoReporte, setTipoReporte] = useState(null); // 'REPORTE' o 'CENTINELA'
@@ -142,8 +143,6 @@ function AsistenteTipificacionView({ categorias = [], campanas = [], equipos = [
             subcategoria: compNombre,
             elemento: detalleFalla,
             resolucion: '',
-            archivoNombre: archivo ? archivo.name : null,
-            archivoUrl: archivo ? URL.createObjectURL(archivo) : null,
             tipo_solicitud: 'CENTINELA'
           };
 
@@ -160,6 +159,8 @@ function AsistenteTipificacionView({ categorias = [], campanas = [], equipos = [
             setEnviando(false);
             return;
           }
+
+          if (archivo && data.folio) await subirAdjunto(data.folio, archivo);
 
           const ticketConfirmado = {
             ...ticketIndependiente,
@@ -202,8 +203,6 @@ function AsistenteTipificacionView({ categorias = [], campanas = [], equipos = [
         subcategoria: subcatSeleccionada?.nombre || '',
         elemento: elementoSeleccionado?.nombre || '',
         resolucion: '',
-        archivoNombre: archivo ? archivo.name : null,
-        archivoUrl: archivo ? URL.createObjectURL(archivo) : null,
         tipo_solicitud: 'REPORTE'
       };
 
@@ -213,6 +212,8 @@ function AsistenteTipificacionView({ categorias = [], campanas = [], equipos = [
         body: JSON.stringify(ticketNuevo)
       });
       const data = await response.json();
+
+      if (response.ok && archivo && data.folio) await subirAdjunto(data.folio, archivo);
 
       if (response.ok && onGuardarTicket) {
         onGuardarTicket({
@@ -673,7 +674,8 @@ function AsistenteTipificacionView({ categorias = [], campanas = [], equipos = [
                   <label className="block text-[11px] font-bold text-slate-300 mb-1">Adjuntar Archivo:</label>
                   <input 
                     type="file" 
-                    onChange={(e) => setArchivo(e.target.files[0])}
+                    accept={TIPOS_ADJUNTO}
+                    onChange={(e) => { const f = e.target.files[0]; const problema = validarAdjunto(f); if (problema) { setErrorDuplicado(problema); e.target.value = ''; setArchivo(null); } else setArchivo(f || null); }}
                     className="text-[11px] text-slate-400 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-slate-800 file:text-slate-200 cursor-pointer bg-slate-950 p-1.5 rounded-xl border border-slate-700 w-full" 
                   />
                 </div>

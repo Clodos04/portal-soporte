@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Headset } from 'lucide-react';
 import RespuestasRapidas from '../components/RespuestasRapidas';
+import AdjuntosTicket from '../components/AdjuntosTicket';
 import { sinEmojis, nombrePresentable, nombreSiEstaEnMayusculas } from '../utils/texto';
 
 function LiveChatView({ folio, user, onFinalizarChat, onAbrirModalEdicion, ticket, onTomarTicket, senalActualizacion = 0 }) {
@@ -168,6 +169,8 @@ function LiveChatView({ folio, user, onFinalizarChat, onAbrirModalEdicion, ticke
           </button>
         </div>
       </div>
+
+      <AdjuntosTicket folio={folio} esAdmin={esSoporte} senal={senalActualizacion} />
 
       {/* Cuerpo de Mensajes */}
       <div className="flex-1 p-6 overflow-y-auto space-y-4 bg-slate-950/60">
