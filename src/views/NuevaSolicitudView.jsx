@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import AsistenteTipificacionView from './AsistenteTipificacionView';
 import { useAvisos } from '../components/Avisos';
 import EscCierra from '../components/EscCierra';
@@ -211,7 +212,7 @@ function NuevaSolicitudView({ user, usuarios = [], grupos = [], usuariosPorGrupo
         </div>
       </div>
 
-      {isAsistenteOpen && (
+      {isAsistenteOpen && createPortal(
         <div className="fixed inset-0 bg-slate-950/85 backdrop-blur-md flex justify-center items-center z-50 p-4 animate-fade-in">
           <div role="dialog" aria-modal="true" aria-label="Asistente guiado de solicitud" className="max-w-4xl w-full flex justify-center">
             <EscCierra onCerrar={() => setIsAsistenteOpen(false)} />
@@ -230,7 +231,8 @@ function NuevaSolicitudView({ user, usuarios = [], grupos = [], usuariosPorGrupo
               }}
             />
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       <div className="bg-slate-800 rounded-2xl shadow-xl border border-slate-700 p-6">
