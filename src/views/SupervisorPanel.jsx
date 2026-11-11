@@ -4,8 +4,10 @@ import { X } from 'lucide-react';
 import EscCierra from '../components/EscCierra';
 import { EsqueletoPanel } from '../components/Estados';
 import EtiquetaEstatus from '../components/EtiquetaEstatus';
+import { useAvisos } from '../components/Avisos';
 
 function SupervisorPanel({ user, onVerDetallesCentinela }) {
+  const { avisar } = useAvisos();
   const [tickets, setTickets] = useState([]);
   const [encuestasData, setEncuestasData] = useState({ estadisticas: { promedio: 0, total: 0 }, historial: [] });
   const [kpiTiempos, setKpiTiempos] = useState([]);
@@ -18,6 +20,40 @@ function SupervisorPanel({ user, onVerDetallesCentinela }) {
   const [busquedaFolio, setBusquedaFolio] = useState('');
 
   const [encuestaModal, setEncuestaModal] = useState(null);
+  const [feedbackTexto, setFeedbackTexto] = useState('');
+  const [guardandoFeedback, setGuardandoFeedback] = useState(false);
+
+  const abrirEncuesta = (encuesta, ticket) => {
+    setFeedbackTexto('');
+    setEncuestaModal({ ...encuesta, ticketActual: ticket });
+  };
+
+  // Guarda el feedback del supervisor sobre la encuesta y lo muestra sin recargar
+  const guardarFeedback = async () => {
+    if (!feedbackTexto.trim() || guardandoFeedback || !encuestaModal) return;
+    setGuardandoFeedback(true);
+    try {
+      const res = await fetch(`/api/encuestas/${encuestaModal.id}/feedback`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ feedback: feedbackTexto })
+      });
+      const datos = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(datos.error || 'No se pudo guardar el feedback.');
+      const nuevo = { id: datos.id, encuesta_id: datos.encuesta_id, feedback: datos.feedback, autor: datos.autor, created_at: datos.created_at };
+      setEncuestaModal(prev => ({ ...prev, feedback_supervisor: [...(prev.feedback_supervisor || []), nuevo] }));
+      setEncuestasData(prev => ({
+        ...prev,
+        historial: prev.historial.map(e => (e.id === datos.encuesta_id ? { ...e, feedback_supervisor: [...(e.feedback_supervisor || []), nuevo] } : e))
+      }));
+      setFeedbackTexto('');
+      avisar('Feedback guardado.', 'exito');
+    } catch (e) {
+      avisar(e.message, 'error');
+    } finally {
+      setGuardandoFeedback(false);
+    }
+  };
 
   useEffect(() => {
     const cargarDatosSupervisor = async () => {
@@ -307,7 +343,7 @@ function SupervisorPanel({ user, onVerDetallesCentinela }) {
                 <th className="px-4 py-3">Técnico</th>
                 <th className="px-4 py-3">Estatus</th>
                 <th className="px-4 py-3 text-center">Calificación CSAT</th>
-                <th className="px-4 py-3 text-center">Acciones / Encuesta</th>
+                <th className="px-4 py-3 text-center">Encuesta</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-700">
@@ -345,10 +381,10 @@ function SupervisorPanel({ user, onVerDetallesCentinela }) {
                       <td className="px-4 py-3 text-center">
                         {encuestaAsociada ? (
                           <button
-                            onClick={() => setEncuestaModal({ ...encuestaAsociada, ticketActual: t })}
+                            onClick={() => abrirEncuesta(encuestaAsociada, t)}
                             className="px-3 py-1 bg-indigo-600/30 hover:bg-indigo-600 text-indigo-300 hover:text-white rounded-lg text-xs font-bold transition-colors border border-indigo-500/40"
                           >
-                            Ver Comentarios
+                            Ver encuesta{(encuestaAsociada.feedback_supervisor || []).length > 0 ? ' · con feedback' : ''}
                           </button>
                         ) : (
                           <span className="text-slate-600 text-xs">—</span>
@@ -365,7 +401,7 @@ function SupervisorPanel({ user, onVerDetallesCentinela }) {
 
       {encuestaModal && (
         <div className="fixed inset-0 bg-slate-950/80 flex justify-center items-center z-50 p-4">
-          <div role="dialog" aria-modal="true" aria-labelledby="titulo-encuesta" className="bg-slate-800 border border-slate-700 rounded-2xl shadow-2xl max-w-lg w-full overflow-hidden text-slate-200 p-6 space-y-4 animate-fade-in">
+          <div role="dialog" aria-modal="true" aria-labelledby="titulo-encuesta" className="bg-slate-800 border border-slate-700 rounded-2xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto text-slate-200 p-6 space-y-4 animate-fade-in">
             <EscCierra onCerrar={() => setEncuestaModal(null)} />
             <div className="flex justify-between items-center border-b border-slate-700 pb-3">
               <h3 id="titulo-encuesta" className="text-lg font-semibold text-white flex items-center gap-2 tracking-tight">
@@ -392,6 +428,38 @@ function SupervisorPanel({ user, onVerDetallesCentinela }) {
                         ? `"${encuestaModal.ticketActual.resolucion}"` 
                         : <span className="text-slate-500 not-italic">El cliente no dejó comentarios escritos.</span>)}
                 </div>
+              </div>
+            </div>
+
+            <div className="space-y-2 border-t border-slate-700 pt-3">
+              <label htmlFor="feedback-supervisor" className="block text-xs font-medium text-slate-400">Feedback del supervisor sobre esta encuesta:</label>
+              {(encuestaModal.feedback_supervisor || []).length > 0 && (
+                <ul className="space-y-2 max-h-40 overflow-y-auto">
+                  {encuestaModal.feedback_supervisor.map(f => (
+                    <li key={f.id} className="bg-indigo-950/40 border border-indigo-500/30 rounded-lg p-3 text-xs">
+                      <p className="text-slate-200 whitespace-pre-line">{f.feedback}</p>
+                      <p className="text-slate-500 mt-1">{f.autor || 'Supervisor'}{f.created_at ? ` · ${new Date(f.created_at).toLocaleString()}` : ''}</p>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              <textarea
+                id="feedback-supervisor"
+                rows="3"
+                maxLength={2000}
+                value={feedbackTexto}
+                onChange={(e) => setFeedbackTexto(e.target.value)}
+                placeholder="Ej.: Se platicó con el técnico; se reforzará el seguimiento al cliente."
+                className="w-full p-3 rounded-xl bg-slate-900 border border-slate-700 text-white text-sm outline-none focus:border-indigo-500 resize-none"
+              />
+              <div className="flex justify-end">
+                <button
+                  onClick={guardarFeedback}
+                  disabled={!feedbackTexto.trim() || guardandoFeedback}
+                  className="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-xl text-xs font-bold transition-colors cursor-pointer disabled:opacity-50"
+                >
+                  {guardandoFeedback ? 'Guardando…' : 'Guardar feedback'}
+                </button>
               </div>
             </div>
 

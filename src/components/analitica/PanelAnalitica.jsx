@@ -3,20 +3,20 @@ import { TrendingUp, TrendingDown, Minus, BarChart3 } from 'lucide-react';
 import TarjetaGrafica from './TarjetaGrafica';
 import GraficaTicketsPorDia from './GraficaTicketsPorDia';
 import GraficaEstatus from './GraficaEstatus';
-import GraficaSla, { META_SLA } from './GraficaSla';
+import GraficaSla from './GraficaSla';
 import GraficaResolucion from './GraficaResolucion';
 import MapaCalorHoras from './MapaCalorHoras';
 import { EstadoVacio } from '../Estados';
-import { calcularSLA, esTicketCerrado } from '../../utils/sla';
+import { calcularSLA, esTicketCerrado, META_SLA, semaforoCumplimiento, ESTILOS_SEMAFORO } from '../../utils/sla';
 import {
   filtrarPorRango, ticketsPorDia, conteoPorEstatus, cumplimientoSlaSemanal,
   mapaDeCalorHoras, resolucionPromedio, compararConPeriodoAnterior, formatearMinutos
 } from '../../utils/metricas';
 
 const RANGOS = [
+  { dias: 1, texto: 'Hoy' },
   { dias: 7, texto: '7 días' },
   { dias: 30, texto: '30 días' },
-  { dias: 90, texto: '90 días' },
   { dias: 0, texto: 'Todo' }
 ];
 
@@ -33,11 +33,11 @@ function Variacion({ comparacion }) {
   );
 }
 
-function Resumen({ titulo, valor, detalle }) {
+function Resumen({ titulo, valor, detalle, colorValor = 'text-white' }) {
   return (
     <div className="bg-slate-800 border border-slate-700 rounded-2xl px-5 py-4 animate-entrada">
       <p className="text-xs text-slate-400">{titulo}</p>
-      <p className="text-2xl font-semibold text-white mt-1 tabular-nums">{valor}</p>
+      <p className={`text-2xl font-semibold mt-1 tabular-nums ${colorValor}`}>{valor}</p>
       <div className="mt-1 min-h-[1rem]">{detalle}</div>
     </div>
   );
@@ -60,9 +60,10 @@ export default function PanelAnalitica({ tickets, categorias, onFiltrar }) {
       cerradosTotal: cerrados.length,
       cumplimientoGlobal: cerrados.length ? Math.round((dentroDeSla / cerrados.length) * 100) : null,
       resolucionGlobal: ticketsResueltos ? Math.round(minutosTotales / ticketsResueltos) : null,
-      porDia: ticketsPorDia(tickets, rango || 90),
+      // Con "Hoy" una sola barra no dice nada: la gráfica muestra la última semana
+      porDia: ticketsPorDia(tickets, rango === 1 ? 7 : (rango || 90)),
       estatus: conteoPorEstatus(enRango),
-      slaSemanal: cumplimientoSlaSemanal(tickets, categorias, rango === 7 ? 4 : rango === 30 ? 6 : rango === 90 ? 13 : 12),
+      slaSemanal: cumplimientoSlaSemanal(tickets, categorias, rango <= 7 && rango > 0 ? 4 : rango === 30 ? 6 : 12),
       mapa: mapaDeCalorHoras(enRango),
       resolucionCategoria: resolucionPromedio(enRango, 'categoria'),
       resolucionTecnico: resolucionPromedio(enRango, 'tecnico'),
@@ -129,13 +130,14 @@ export default function PanelAnalitica({ tickets, categorias, onFiltrar }) {
         <Resumen
           titulo="Cumplimiento de SLA"
           valor={datos.cumplimientoGlobal === null ? '—' : `${datos.cumplimientoGlobal}%`}
-          detalle={<span className="text-xs text-slate-500">Meta {META_SLA}%</span>}
+          colorValor={ESTILOS_SEMAFORO[semaforoCumplimiento(datos.cumplimientoGlobal)].texto}
+          detalle={<span className="text-xs text-slate-500">Meta {META_SLA}% · {ESTILOS_SEMAFORO[semaforoCumplimiento(datos.cumplimientoGlobal)].leyenda}</span>}
         />
         <Resumen titulo="Resolución promedio" valor={datos.resolucionGlobal === null ? '—' : formatearMinutos(datos.resolucionGlobal)} detalle={<span className="text-xs text-slate-500">de tickets cerrados</span>} />
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
-        <TarjetaGrafica className="xl:col-span-2" titulo="Tickets por día" descripcion={rango ? `Últimos ${rango} días` : 'Últimos 90 días'}>
+        <TarjetaGrafica className="xl:col-span-2" titulo="Tickets por día" descripcion={rango === 1 ? 'Última semana (el resumen de arriba es de hoy)' : rango ? `Últimos ${rango} días` : 'Últimos 90 días'}>
           <GraficaTicketsPorDia datos={datos.porDia} />
         </TarjetaGrafica>
         <TarjetaGrafica titulo="Tickets por estatus" descripcion="Haz clic para filtrar el listado">
@@ -156,7 +158,7 @@ export default function PanelAnalitica({ tickets, categorias, onFiltrar }) {
         </TarjetaGrafica>
       </div>
 
-      <TarjetaGrafica titulo="¿Cuándo se crean más tickets?" descripcion="Día de la semana y hora (hora de creación)" exportable={false}>
+      <TarjetaGrafica titulo="¿Cuándo se crean más tickets?" descripcion="Día de la semana y hora de creación, dentro del horario de atención (08:00 a 22:00)" exportable={false}>
         <MapaCalorHoras matriz={datos.mapa.matriz} maximo={datos.mapa.maximo} />
       </TarjetaGrafica>
     </section>

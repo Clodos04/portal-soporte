@@ -4,6 +4,25 @@
 export const UMBRAL_RIESGO = 0.5;      // a partir de 50% del tiempo consumido: "Por vencer"
 export const UMBRAL_CRITICO = 0.8;     // a partir de 80%: se avisa al equipo de soporte
 
+// Meta de cumplimiento de SLA: 95 % o más = verde, de 90 a 94 % = amarillo, menos de 90 % = rojo.
+export const META_SLA = 95;
+export const UMBRAL_SLA_AMARILLO = 90;
+
+export const semaforoCumplimiento = (porcentaje) => {
+  if (porcentaje === null || porcentaje === undefined) return 'sin_datos';
+  if (porcentaje >= META_SLA) return 'verde';
+  if (porcentaje >= UMBRAL_SLA_AMARILLO) return 'amarillo';
+  return 'rojo';
+};
+
+// Clases de Tailwind y textos de cada color del semáforo
+export const ESTILOS_SEMAFORO = {
+  verde: { texto: 'text-emerald-400', barra: 'bg-emerald-500', color: 'var(--color-emerald-400, #34d399)', leyenda: 'En meta' },
+  amarillo: { texto: 'text-amber-400', barra: 'bg-amber-500', color: 'var(--color-amber-400, #fbbf24)', leyenda: 'Cerca de la meta' },
+  rojo: { texto: 'text-red-400', barra: 'bg-red-500', color: 'var(--color-red-400, #f87171)', leyenda: 'Bajo la meta' },
+  sin_datos: { texto: 'text-white', barra: 'bg-slate-600', color: 'var(--color-slate-400, #94a3b8)', leyenda: 'Sin tickets cerrados' }
+};
+
 // Las fechas llegan como "YYYY-MM-DD HH:mm:ss" en hora de México; se interpretan como hora local sin desfases.
 export const parsearFechaLocal = (str) => {
   if (!str) return null;

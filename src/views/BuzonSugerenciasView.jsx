@@ -136,7 +136,7 @@ function BuzonSugerenciasView({ user }) {
             <button
               type="button"
               onClick={() => setTipo('SUGERENCIA')}
-              className={`flex-1 py-3 px-4 rounded-xl border text-xs font-medium transition-colors cursor-pointer flex items-center justify-center gap-2${
+              className={`flex-1 py-3 px-4 rounded-xl border text-xs font-medium transition-colors cursor-pointer flex items-center justify-center gap-2 ${
                 tipo === 'SUGERENCIA'
                   ? 'bg-amber-500/20 border-amber-500 text-amber-300 shadow-md'
                   : 'bg-slate-900/60 border-slate-700 text-slate-400 hover:text-white'
@@ -148,25 +148,13 @@ function BuzonSugerenciasView({ user }) {
             <button
               type="button"
               onClick={() => setTipo('ERROR')}
-              className={`flex-1 py-3 px-4 rounded-xl border text-xs font-medium transition-colors cursor-pointer flex items-center justify-center gap-2${
+              className={`flex-1 py-3 px-4 rounded-xl border text-xs font-medium transition-colors cursor-pointer flex items-center justify-center gap-2 ${
                 tipo === 'ERROR'
                   ? 'bg-red-500/20 border-red-500 text-red-300 shadow-md'
                   : 'bg-slate-900/60 border-slate-700 text-slate-400 hover:text-white'
               }`}
             >
               Reportar Error / Bug Visual
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setTipo('COMENTARIO')}
-              className={`flex-1 py-3 px-4 rounded-xl border text-xs font-medium transition-colors cursor-pointer flex items-center justify-center gap-2${
-                tipo === 'COMENTARIO'
-                  ? 'bg-indigo-500/20 border-indigo-500 text-indigo-300 shadow-md'
-                  : 'bg-slate-900/60 border-slate-700 text-slate-400 hover:text-white'
-              }`}
-            >
-              Comentario General
             </button>
           </div>
 
@@ -246,7 +234,7 @@ function BuzonSugerenciasView({ user }) {
 
                   <div className="flex items-center gap-2">
                     <span className="text-xs text-slate-400 font-mono">{item.fecha_creacion}</span>
-                    <span className={`px-2.5 py-0.5 rounded-md text-[11px] font-extrabold border${badgeEstatus(item.estatus)}`}>
+                    <span className={`px-2.5 py-0.5 rounded-md text-[11px] font-extrabold border ${badgeEstatus(item.estatus)}`}>
                       {item.estatus || 'PENDIENTE'}
                     </span>
 
