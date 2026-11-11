@@ -596,6 +596,7 @@ function App() {
             campanas={campanas} 
             estadisticasEncuestas={estadisticasEncuestas}
             user={user}
+            categorias={categorias}
             onIrACentinela={() => setCurrentView('centinela-detalles')}
           />
         )}
