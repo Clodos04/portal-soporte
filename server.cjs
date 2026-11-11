@@ -517,6 +517,15 @@ app.post(['/api/tickets', '/tickets'], (req, res) => {
   const ticketData = { ...req.body };
   delete ticketData.archivos;
   delete ticketData.yaGuardadoEnBD;
+  // Un cliente siempre crea un ticket abierto, sin técnico y a su propio nombre; solo soporte decide eso
+  if (!(req.sesion && req.sesion.nivel === 'ADMINISTRADOR')) {
+    ticketData.estatus = 'Abierto';
+    ticketData.colorEstatus = 'bg-green-500';
+    ticketData.tecnico = 'Sin Asignar';
+    ticketData.resolucion = '';
+    delete ticketData.fecha_cierre;
+    if (req.sesion && req.sesion.nombre) ticketData.creador = req.sesion.nombre;
+  }
 
   const { fechaSolo, fechaHora, horaCorta, prefijoFolio } = obtenerFechaHoraMexico();
 

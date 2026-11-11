@@ -6,6 +6,8 @@ import EscCierra from '../components/EscCierra';
 import { validarAdjunto, TIPOS_ADJUNTO } from '../utils/adjuntos';
 
 function NuevaSolicitudView({ user, usuarios = [], grupos = [], usuariosPorGrupo = {}, categorias = [], onVolver, onGuardar }) {
+  const rolUsuarioForm = (user?.role || user?.nivel || '').toLowerCase();
+  const esClienteForm = rolUsuarioForm === 'client' || rolUsuarioForm === 'cliente';
   const [estado, setEstado] = useState('ABIERTO');
   const [grupo, setGrupo] = useState('');
   const [usuarioAsignado, setUsuarioAsignado] = useState('Sin Asignar');
@@ -239,6 +241,7 @@ function NuevaSolicitudView({ user, usuarios = [], grupos = [], usuariosPorGrupo
         <form onSubmit={handleSubmit} noValidate className="space-y-6">
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-slate-900/60 p-6 rounded-xl border border-slate-700">
+            {!esClienteForm && (
             <div className="space-y-4">
               <div>
                 <label className="block text-xs font-medium text-slate-300 mb-1.5">Estado:</label>
@@ -269,6 +272,7 @@ function NuevaSolicitudView({ user, usuarios = [], grupos = [], usuariosPorGrupo
                 </select>
               </div>
             </div>
+            )}
 
             <div className="space-y-4">
               <div className="flex justify-between items-center mb-1">
