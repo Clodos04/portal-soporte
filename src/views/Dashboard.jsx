@@ -226,7 +226,7 @@ function Dashboard({ historial, user, tickets = [], categorias = [], onIrASolici
   // SLA real: cerrados dentro de su tiempo / (cerrados + abiertos ya vencidos)
   const estadosSla = safeTickets.map(t => calcularSLA(t, categorias));
   const slaVencidos = estadosSla.filter(e => e.nivel === 'vencido').length;
-  const slaPorVencer = estadosSla.filter(e => e.nivel === 'riesgo' && e.critico).length;
+  const slaPorVencer = estadosSla.filter(e => e.nivel === 'riesgo').length;
   const cerradosEnSla = estadosSla.filter(e => e.nivel === 'cerrado' && e.cumplido).length;
   const cerradosTotal = estadosSla.filter(e => e.nivel === 'cerrado').length;
   const baseCumplimiento = cerradosTotal + slaVencidos;
@@ -280,7 +280,7 @@ function Dashboard({ historial, user, tickets = [], categorias = [], onIrASolici
             <Clock size={22} strokeWidth={1.75} className="text-amber-400 shrink-0" />
             <div>
               <p className="text-2xl font-semibold text-slate-50 leading-none">{slaPorVencer}</p>
-              <p className="text-xs text-amber-300 mt-1">{slaPorVencer === 1 ? 'ticket por vencer (80% del tiempo)' : 'tickets por vencer (80% del tiempo)'}</p>
+              <p className="text-xs text-amber-300 mt-1">{slaPorVencer === 1 ? 'ticket por vencer (más de la mitad de su tiempo)' : 'tickets por vencer (más de la mitad de su tiempo)'}</p>
             </div>
           </button>
         </div>

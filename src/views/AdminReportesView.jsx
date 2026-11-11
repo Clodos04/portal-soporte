@@ -6,16 +6,51 @@ import { exportarCSV } from '../utils/exportar';
 import AvisoHistorial from '../components/AvisoHistorial';
 import SupervisorPanel from './SupervisorPanel';
 import EscCierra from '../components/EscCierra';
-import { parsearFechaLocal } from '../utils/sla';
+import { parsearFechaLocal, calcularSLA, esTicketCerrado, META_SLA, semaforoCumplimiento, ESTILOS_SEMAFORO } from '../utils/sla';
 import { claveFecha } from '../utils/metricas';
 import { normalizarTexto } from '../utils/texto';
 
-export default function AdminReportesView({ historial, tickets = [], campanas = [], estadisticasEncuestas = [], user, onIrACentinela }) {
+const DIA_MS = 24 * 60 * 60 * 1000;
+const PERIODOS = [
+  { clave: 'hoy', texto: 'Hoy' },
+  { clave: 'semana', texto: 'Esta semana' },
+  { clave: 'mes', texto: 'Este mes' },
+  { clave: 'todo', texto: 'Todo' },
+  { clave: 'rango', texto: 'Rango' }
+];
+
+const inicioDia = (f) => new Date(f.getFullYear(), f.getMonth(), f.getDate());
+const finDia = (f) => new Date(f.getFullYear(), f.getMonth(), f.getDate(), 23, 59, 59, 999);
+const aFecha = (texto, fin = false) => {
+  if (!texto) return null;
+  const [y, m, d] = texto.split('-').map(Number);
+  return fin ? new Date(y, m - 1, d, 23, 59, 59, 999) : new Date(y, m - 1, d);
+};
+const textoCorto = (f) => f.toLocaleDateString('es-MX', { day: '2-digit', month: 'short' }).replace('.', '');
+
+// Rango de fechas de cada periodo: semana = desde el lunes, mes = desde el día 1. null = sin límite.
+function rangoDelPeriodo(periodo, desdeTexto, hastaTexto, ahora = new Date()) {
+  if (periodo === 'hoy') return { desde: inicioDia(ahora), hasta: finDia(ahora) };
+  if (periodo === 'semana') {
+    const lunes = new Date(inicioDia(ahora).getTime() - ((ahora.getDay() + 6) % 7) * DIA_MS);
+    return { desde: lunes, hasta: finDia(ahora) };
+  }
+  if (periodo === 'mes') return { desde: new Date(ahora.getFullYear(), ahora.getMonth(), 1), hasta: finDia(ahora) };
+  if (periodo === 'rango') return { desde: aFecha(desdeTexto), hasta: aFecha(hastaTexto, true) };
+  return { desde: null, hasta: null };
+}
+
+export default function AdminReportesView({ historial, categorias = [], tickets = [], campanas = [], estadisticasEncuestas = [], user, onIrACentinela }) {
   const { avisar } = useAvisos();
   const [filtroCampana, setFiltroCampana] = useState('Todas');
   const [filtroEstatus, setFiltroEstatus] = useState('Todos');
   
   const [pestana, setPestana] = useState('resumen'); // 'resumen' | 'satisfaccion'
+
+  // Periodo del reporte: todo el resumen se calcula con los tickets creados dentro de ese periodo
+  const [periodo, setPeriodo] = useState('mes');
+  const [rangoDesde, setRangoDesde] = useState('');
+  const [rangoHasta, setRangoHasta] = useState('');
 
   // Exportación a Excel con rango de fechas, categoría y subcategoría
   const [exportAbierto, setExportAbierto] = useState(false);
@@ -31,12 +66,28 @@ export default function AdminReportesView({ historial, tickets = [], campanas = 
   const rolUsuario = (user?.role || user?.nivel || '').toLowerCase();
   const esAdmin = rolUsuario === 'support' || rolUsuario === 'administrador' || rolUsuario === 'admin';
 
-  // Filtrar tickets según los selectores superiores
-  const ticketsFiltrados = tickets.filter(t => {
+  // Filtros de campaña y estatus (sin periodo): sirven para el mapa de nodos y la exportación
+  const ticketsSinPeriodo = tickets.filter(t => {
     const matchCampana = filtroCampana === 'Todas' || (t.campana || '').trim().toUpperCase() === filtroCampana.trim().toUpperCase();
     const matchEstatus = filtroEstatus === 'Todos' || (t.estatus || '').trim().toUpperCase() === filtroEstatus.trim().toUpperCase();
     return matchCampana && matchEstatus;
   });
+
+  // Periodo elegido y el periodo anterior de la misma duración, para comparar
+  const { desde, hasta } = rangoDelPeriodo(periodo, rangoDesde, rangoHasta);
+  const dentro = (t, d, h) => {
+    if (!d && !h) return true;
+    const f = parsearFechaLocal(t.created_at || t.fecha);
+    if (!f) return false;
+    return (!d || f >= d) && (!h || f <= h);
+  };
+  const ticketsFiltrados = ticketsSinPeriodo.filter(t => dentro(t, desde, hasta));
+  const rangoAnterior = desde && hasta ? { desde: new Date(desde.getTime() - (hasta.getTime() - desde.getTime() + 1)), hasta: new Date(desde.getTime() - 1) } : null;
+  const totalAnterior = rangoAnterior ? ticketsSinPeriodo.filter(t => dentro(t, rangoAnterior.desde, rangoAnterior.hasta)).length : null;
+  const variacionTotal = totalAnterior ? Math.round(((ticketsFiltrados.length - totalAnterior) / totalAnterior) * 100) : null;
+  const etiquetaPeriodo = !desde && !hasta ? 'Todo el historial cargado'
+    : periodo === 'hoy' ? `Hoy, ${textoCorto(desde)}`
+    : `${desde ? textoCorto(desde) : 'inicio'} – ${hasta ? textoCorto(hasta) : 'hoy'}`;
 
   // Métricas generales
   const totalTickets = ticketsFiltrados.length;
@@ -97,11 +148,20 @@ export default function AdminReportesView({ historial, tickets = [], campanas = 
     ? estadisticasEncuestas 
     : (estadisticasEncuestas?.historial || []);
 
-  const promedioSatisfaccion = estadisticasEncuestas?.estadisticas?.promedio 
-    ? Number(estadisticasEncuestas.estadisticas.promedio).toFixed(1)
-    : (listaEncuestas.length > 0
-        ? (listaEncuestas.reduce((acc, e) => acc + (Number(e.calificacion) || Number(e.promedio) || 0), 0) / listaEncuestas.length).toFixed(1)
-        : null);
+  // Encuestas respondidas dentro del periodo (por su fecha de respuesta)
+  const encuestasPeriodo = periodo === 'todo' ? listaEncuestas : listaEncuestas.filter(e => {
+    const f = parsearFechaLocal(e.fecha_respuesta || e.fecha);
+    return f && (!desde || f >= desde) && (!hasta || f <= hasta);
+  });
+  const promedioSatisfaccion = encuestasPeriodo.length > 0
+    ? (encuestasPeriodo.reduce((acc, e) => acc + (Number(e.calificacion) || Number(e.promedio) || 0), 0) / encuestasPeriodo.length).toFixed(1)
+    : null;
+
+  // Cumplimiento de SLA de los tickets cerrados del periodo (misma meta y colores que Inicio)
+  const cerradosPeriodo = ticketsFiltrados.filter(esTicketCerrado);
+  const cumplidosPeriodo = cerradosPeriodo.filter(t => calcularSLA(t, categorias).cumplido).length;
+  const cumplimientoSla = cerradosPeriodo.length > 0 ? Math.round((cumplidosPeriodo / cerradosPeriodo.length) * 100) : null;
+  const estiloSla = ESTILOS_SEMAFORO[semaforoCumplimiento(cumplimientoSla)];
 
   // Nodo activo a consultar (prioriza el input de texto libre si se escribió algo, de lo contrario usa el select)
   const nodoActivo = (busquedaNodoTexto.trim() !== '' ? busquedaNodoTexto.trim() : nodoSeleccionadoHistorial);
@@ -122,7 +182,7 @@ export default function AdminReportesView({ historial, tickets = [], campanas = 
   // Mapa de calor: cuántos reportes tuvo cada nodo en los últimos 90 días
   const UMBRAL_REQUISICION = 5;
   const reportesPorNodo = Object.entries(
-    ticketsFiltrados.reduce((acc, t) => {
+    ticketsSinPeriodo.reduce((acc, t) => {
       const nodo = (t.equipo || '').trim();
       if (!nodo || nodo === 'Ninguno') return acc;
       const fechaT = new Date(t.created_at || t.fecha);
@@ -144,13 +204,13 @@ export default function AdminReportesView({ historial, tickets = [], campanas = 
     valores.forEach(v => { const n = (v || '').trim(); if (n && !mapa.has(normalizarTexto(n))) mapa.set(normalizarTexto(n), n); });
     return [...mapa.values()].sort((a, b) => a.localeCompare(b, 'es'));
   };
-  const categoriasExport = unicos(ticketsFiltrados.map(t => t.categoria));
-  const subcategoriasExport = unicos(ticketsFiltrados
+  const categoriasExport = unicos(ticketsSinPeriodo.map(t => t.categoria));
+  const subcategoriasExport = unicos(ticketsSinPeriodo
     .filter(t => !expCategoria || normalizarTexto(t.categoria) === normalizarTexto(expCategoria))
     .map(t => t.subcategoria));
 
   // Los filtros de arriba (campaña y estatus) también aplican; aquí se afina por fechas, categoría y subcategoría
-  const ticketsAExportar = ticketsFiltrados.filter(t => {
+  const ticketsAExportar = ticketsSinPeriodo.filter(t => {
     if (expCategoria && normalizarTexto(t.categoria) !== normalizarTexto(expCategoria)) return false;
     if (expSubcategoria && normalizarTexto(t.subcategoria) !== normalizarTexto(expSubcategoria)) return false;
     if (expDesde || expHasta) {
@@ -247,7 +307,12 @@ export default function AdminReportesView({ historial, tickets = [], campanas = 
           </select>
 
           <button 
-            onClick={() => setExportAbierto(true)}
+            onClick={() => {
+              // La exportación arranca con las fechas del periodo elegido (se pueden cambiar en la ventana)
+              setExpDesde(desde ? claveFecha(desde) : '');
+              setExpHasta(hasta ? claveFecha(hasta) : '');
+              setExportAbierto(true);
+            }}
             className="bg-indigo-600 hover:bg-indigo-500 text-white font-medium text-sm px-4 py-2 rounded-lg transition shadow flex items-center gap-2 cursor-pointer"
           >
             Exportar Excel
@@ -255,11 +320,43 @@ export default function AdminReportesView({ historial, tickets = [], campanas = 
         </div>
       </div>
 
+      {/* PERIODO DEL REPORTE */}
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="inline-flex rounded-lg border border-slate-700 bg-slate-900 p-0.5" role="group" aria-label="Periodo del reporte">
+          {PERIODOS.map(o => (
+            <button
+              key={o.clave}
+              onClick={() => setPeriodo(o.clave)}
+              aria-pressed={periodo === o.clave}
+              className={`px-3.5 py-1.5 rounded-md text-sm font-medium transition-colors cursor-pointer ${periodo === o.clave ? 'bg-slate-700 text-white' : 'text-slate-400 hover:text-slate-100'}`}
+            >
+              {o.texto}
+            </button>
+          ))}
+        </div>
+        {periodo === 'rango' && (
+          <div className="flex items-center gap-2 text-sm text-slate-400">
+            <input aria-label="Desde" type="date" value={rangoDesde} max={rangoHasta || undefined} onChange={(e) => setRangoDesde(e.target.value)}
+              className="px-2.5 py-1.5 rounded-lg bg-slate-900 border border-slate-700 text-white text-sm outline-none focus:border-indigo-500" />
+            a
+            <input aria-label="Hasta" type="date" value={rangoHasta} min={rangoDesde || undefined} onChange={(e) => setRangoHasta(e.target.value)}
+              className="px-2.5 py-1.5 rounded-lg bg-slate-900 border border-slate-700 text-white text-sm outline-none focus:border-indigo-500" />
+          </div>
+        )}
+        <span className="text-xs text-slate-400">
+          {etiquetaPeriodo} · tickets creados en ese periodo
+          {periodo !== 'todo' && historial && historial.parcial && ` · solo hay ${historial.dias} días de historial cargados`}
+        </span>
+      </div>
+
       {/* TARJETAS DE MÉTRICAS PRINCIPALES */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
         <div className="bg-slate-800 border border-slate-700 p-5 rounded-xl shadow">
-          <p className="text-slate-400 text-xs font-semibold">Total de Tickets</p>
+          <p className="text-slate-400 text-xs font-semibold">Tickets creados</p>
           <p className="text-3xl font-extrabold text-white mt-2">{totalTickets}</p>
+          {variacionTotal !== null && (
+            <p className="text-xs text-slate-400 mt-1">{variacionTotal > 0 ? '+' : ''}{variacionTotal}% vs. periodo anterior ({totalAnterior})</p>
+          )}
         </div>
         <div className="bg-slate-800 border border-slate-700 p-5 rounded-xl shadow">
           <p className="text-slate-400 text-xs font-semibold">Abiertos</p>
@@ -274,8 +371,14 @@ export default function AdminReportesView({ historial, tickets = [], campanas = 
           <p className="text-3xl font-extrabold text-emerald-400 mt-2">{cerrados}</p>
         </div>
         <div className="bg-slate-800 border border-slate-700 p-5 rounded-xl shadow">
-          <p className="text-slate-400 text-xs font-semibold">Satisfacción Promedio</p>
+          <p className="text-slate-400 text-xs font-semibold">Cumplimiento de SLA</p>
+          <p className={`text-3xl font-extrabold mt-2 ${estiloSla.texto}`}>{cumplimientoSla === null ? '—' : `${cumplimientoSla}%`}</p>
+          <p className="text-xs text-slate-400 mt-1">Meta {META_SLA}% · {estiloSla.leyenda}</p>
+        </div>
+        <div className="bg-slate-800 border border-slate-700 p-5 rounded-xl shadow">
+          <p className="text-slate-400 text-xs font-semibold">Satisfacción promedio</p>
           <p className="text-3xl font-semibold text-white mt-2">{promedioSatisfaccion ?? '—'} </p>
+          <p className="text-xs text-slate-400 mt-1">{encuestasPeriodo.length} {encuestasPeriodo.length === 1 ? 'encuesta' : 'encuestas'} en el periodo</p>
         </div>
       </div>
 
