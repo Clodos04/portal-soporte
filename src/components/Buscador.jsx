@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Search, Home, Ticket, Inbox, LayoutDashboard, BarChart3, UserCog, Users, FolderTree, Megaphone, BookOpen, Plus, CornerDownLeft } from 'lucide-react';
+import { Search, Home, Ticket, Inbox, BarChart3, UserCog, Users, FolderTree, Megaphone, BookOpen, Plus, CornerDownLeft } from 'lucide-react';
 import EtiquetaEstatus from './EtiquetaEstatus';
 
 // Buscador global (Ctrl + K): saltar a una pantalla o abrir un ticket por folio, asunto, usuario o equipo.
@@ -23,7 +23,6 @@ function Buscador({ abierto, onCerrar, user, tickets = [], onIrAVista, onAbrirTi
     if (user?.role === 'client') base.push({ id: 'guia-tickets', texto: 'Guía de ayuda', icono: BookOpen });
     if (esAdmin) {
       base.push(
-        { id: 'admin-supervisor-panel', texto: 'Panel de supervisor', icono: LayoutDashboard },
         { id: 'admin-reportes', texto: 'Reportes', icono: BarChart3 },
         { id: 'admin-usuarios', texto: 'Usuarios', icono: UserCog },
         { id: 'admin-grupos', texto: 'Grupos', icono: Users },

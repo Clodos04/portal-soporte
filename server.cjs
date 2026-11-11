@@ -1226,13 +1226,47 @@ app.post(['/api/encuestas', '/encuestas'], (req, res) => {
   }
 });
 
+// Feedback del supervisor sobre una encuesta (seguimiento de lo que dijo el cliente). Tabla aparte: no se modifica 'encuestas'.
+db.query(`
+  CREATE TABLE IF NOT EXISTS encuesta_feedback (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    encuesta_id INT NOT NULL,
+    folio VARCHAR(30) DEFAULT '',
+    feedback TEXT NOT NULL,
+    autor VARCHAR(150) DEFAULT '',
+    created_at DATETIME,
+    INDEX idx_feedback_encuesta (encuesta_id)
+  )
+`, (err) => { if (err) console.error('Error al crear/verificar tabla encuesta_feedback:', err.message); });
+
 app.get(['/api/encuestas/reporte', '/encuestas/reporte'], (req, res) => {
   db.query('SELECT * FROM encuestas', (err, results) => {
     if (err) return res.status(500).json({ error: err.message });
-    const encuestasFormateadas = results.map(e => ({ ...e, respuestas: parseJsonSeguro(e.respuestas) }));
-    let suma = 0;
-    encuestasFormateadas.forEach(r => suma += (Number(r.calificacion) || 0));
-    res.json({ estadisticas: { promedio: encuestasFormateadas.length > 0 ? (suma / encuestasFormateadas.length).toFixed(1) : 0, total: encuestasFormateadas.length }, historial: encuestasFormateadas });
+    db.query('SELECT id, encuesta_id, feedback, autor, created_at FROM encuesta_feedback ORDER BY id ASC', (errFb, filasFb) => {
+      const porEncuesta = new Map();
+      (errFb ? [] : filasFb).forEach(f => {
+        if (!porEncuesta.has(f.encuesta_id)) porEncuesta.set(f.encuesta_id, []);
+        porEncuesta.get(f.encuesta_id).push(f);
+      });
+      const encuestasFormateadas = results.map(e => ({ ...e, respuestas: parseJsonSeguro(e.respuestas), feedback_supervisor: porEncuesta.get(e.id) || [] }));
+      let suma = 0;
+      encuestasFormateadas.forEach(r => suma += (Number(r.calificacion) || 0));
+      res.json({ estadisticas: { promedio: encuestasFormateadas.length > 0 ? (suma / encuestasFormateadas.length).toFixed(1) : 0, total: encuestasFormateadas.length }, historial: encuestasFormateadas });
+    });
+  });
+});
+
+app.post(['/api/encuestas/:id/feedback', '/encuestas/:id/feedback'], requireAdmin, (req, res) => {
+  const texto = String((req.body && req.body.feedback) || '').trim().slice(0, 2000);
+  if (!texto) return res.status(400).json({ error: 'Escribe el feedback antes de guardar.' });
+  db.query('SELECT id, folio FROM encuestas WHERE id = ? LIMIT 1', [req.params.id], (err, filas) => {
+    if (err) return res.status(500).json({ error: err.message });
+    if (filas.length === 0) return res.status(404).json({ error: 'Esa encuesta no existe.' });
+    const registro = { encuesta_id: filas[0].id, folio: filas[0].folio || '', feedback: texto, autor: req.sesion.nombre || req.sesion.username || '', created_at: obtenerFechaMySQL() };
+    db.query('INSERT INTO encuesta_feedback SET ?', registro, (errIns, r) => {
+      if (errIns) return res.status(500).json({ error: errIns.message });
+      res.json({ id: r.insertId, ...registro });
+    });
   });
 });
 

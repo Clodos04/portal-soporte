@@ -1,13 +1,29 @@
 import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
+import { X } from 'lucide-react';
 import { useAvisos } from '../components/Avisos';
 import { exportarCSV } from '../utils/exportar';
 import AvisoHistorial from '../components/AvisoHistorial';
+import SupervisorPanel from './SupervisorPanel';
+import EscCierra from '../components/EscCierra';
+import { parsearFechaLocal } from '../utils/sla';
+import { claveFecha } from '../utils/metricas';
+import { normalizarTexto } from '../utils/texto';
 
 export default function AdminReportesView({ historial, tickets = [], campanas = [], estadisticasEncuestas = [], user, onIrACentinela }) {
   const { avisar } = useAvisos();
   const [filtroCampana, setFiltroCampana] = useState('Todas');
   const [filtroEstatus, setFiltroEstatus] = useState('Todos');
   
+  const [pestana, setPestana] = useState('resumen'); // 'resumen' | 'satisfaccion'
+
+  // Exportación a Excel con rango de fechas, categoría y subcategoría
+  const [exportAbierto, setExportAbierto] = useState(false);
+  const [expDesde, setExpDesde] = useState('');
+  const [expHasta, setExpHasta] = useState('');
+  const [expCategoria, setExpCategoria] = useState('');
+  const [expSubcategoria, setExpSubcategoria] = useState('');
+
   // Estados para la consulta de Historial de Nodos
   const [nodoSeleccionadoHistorial, setNodoSeleccionadoHistorial] = useState('');
   const [busquedaNodoTexto, setBusquedaNodoTexto] = useState('');
@@ -122,9 +138,34 @@ export default function AdminReportesView({ historial, tickets = [], campanas = 
     new Set(tickets.map(t => t.equipo).filter(eq => eq && eq !== 'Ninguno' && eq.trim() !== ''))
   ).sort();
 
-  const exportarExcelSimulado = () => {
-    if (ticketsFiltrados.length === 0) { avisar('No hay tickets para exportar con los filtros seleccionados.', 'info'); return; }
-    exportarCSV(ticketsFiltrados, [
+  // Categorías y subcategorías que aparecen en los tickets (sin duplicados por mayúsculas o acentos)
+  const unicos = (valores) => {
+    const mapa = new Map();
+    valores.forEach(v => { const n = (v || '').trim(); if (n && !mapa.has(normalizarTexto(n))) mapa.set(normalizarTexto(n), n); });
+    return [...mapa.values()].sort((a, b) => a.localeCompare(b, 'es'));
+  };
+  const categoriasExport = unicos(ticketsFiltrados.map(t => t.categoria));
+  const subcategoriasExport = unicos(ticketsFiltrados
+    .filter(t => !expCategoria || normalizarTexto(t.categoria) === normalizarTexto(expCategoria))
+    .map(t => t.subcategoria));
+
+  // Los filtros de arriba (campaña y estatus) también aplican; aquí se afina por fechas, categoría y subcategoría
+  const ticketsAExportar = ticketsFiltrados.filter(t => {
+    if (expCategoria && normalizarTexto(t.categoria) !== normalizarTexto(expCategoria)) return false;
+    if (expSubcategoria && normalizarTexto(t.subcategoria) !== normalizarTexto(expSubcategoria)) return false;
+    if (expDesde || expHasta) {
+      const f = parsearFechaLocal(t.created_at || t.fecha);
+      if (!f) return false;
+      const dia = claveFecha(f);
+      if (expDesde && dia < expDesde) return false;
+      if (expHasta && dia > expHasta) return false;
+    }
+    return true;
+  });
+
+  const exportarExcel = () => {
+    if (ticketsAExportar.length === 0) { avisar('No hay tickets para exportar con esos filtros.', 'info'); return; }
+    exportarCSV(ticketsAExportar, [
       { titulo: 'Folio', valor: t => t.folio },
       { titulo: 'Fecha', valor: t => t.fecha },
       { titulo: 'Estatus', valor: t => t.estatus },
@@ -139,11 +180,29 @@ export default function AdminReportesView({ historial, tickets = [], campanas = 
       { titulo: 'Creado', valor: t => t.created_at },
       { titulo: 'Cerrado / Actualizado', valor: t => t.updated_at }
     ], 'reporte_tickets');
+    setExportAbierto(false);
   };
 
   return (
     <div className="space-y-6 animate-fade-in">
       <AvisoHistorial historial={historial} />
+      <div className="inline-flex rounded-lg border border-slate-700 bg-slate-900 p-0.5" role="group" aria-label="Sección de reportes">
+        {[{ clave: 'resumen', texto: 'Resumen' }, { clave: 'satisfaccion', texto: 'Satisfacción y encuestas' }].map(o => (
+          <button
+            key={o.clave}
+            onClick={() => setPestana(o.clave)}
+            aria-pressed={pestana === o.clave}
+            className={`px-4 py-2 rounded-md text-sm font-medium transition-colors cursor-pointer ${pestana === o.clave ? 'bg-slate-700 text-white' : 'text-slate-400 hover:text-slate-100'}`}
+          >
+            {o.texto}
+          </button>
+        ))}
+      </div>
+
+      {pestana === 'satisfaccion' ? (
+        <SupervisorPanel user={user} embebido />
+      ) : (
+      <>
       {/* ENCABEZADO Y FILTROS */}
       <div className="bg-slate-800 border border-slate-700 p-6 rounded-xl shadow-lg flex flex-col md:flex-row justify-between items-center gap-4">
         <div>
@@ -188,7 +247,7 @@ export default function AdminReportesView({ historial, tickets = [], campanas = 
           </select>
 
           <button 
-            onClick={exportarExcelSimulado}
+            onClick={() => setExportAbierto(true)}
             className="bg-indigo-600 hover:bg-indigo-500 text-white font-medium text-sm px-4 py-2 rounded-lg transition shadow flex items-center gap-2 cursor-pointer"
           >
             Exportar Excel
@@ -433,6 +492,78 @@ export default function AdminReportesView({ historial, tickets = [], campanas = 
         )}
       </div>
 
+      </>
+      )}
+
+      {exportAbierto && createPortal(
+        <div className="fixed inset-0 bg-slate-950/80 flex justify-center items-center z-50 p-4" onClick={() => setExportAbierto(false)}>
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="titulo-exportar"
+            onClick={(e) => e.stopPropagation()}
+            className="bg-slate-800 border border-slate-700 rounded-2xl shadow-2xl max-w-lg w-full p-6 space-y-4 text-slate-200"
+          >
+            <EscCierra onCerrar={() => setExportAbierto(false)} />
+            <div className="flex justify-between items-center border-b border-slate-700 pb-3">
+              <h3 id="titulo-exportar" className="text-lg font-semibold text-white tracking-tight">Exportar a Excel</h3>
+              <button onClick={() => setExportAbierto(false)} aria-label="Cerrar" className="text-slate-400 hover:text-white transition-colors cursor-pointer p-1.5 -m-1.5 rounded-lg"><X size={18} strokeWidth={1.75} aria-hidden="true" /></button>
+            </div>
+
+            {historial && historial.parcial && (
+              <p className="text-xs text-amber-300 bg-amber-500/10 border border-amber-500/30 rounded-lg px-3 py-2">
+                Solo se cargaron los tickets activos y los cerrados de los últimos {historial.dias} días. Para exportar fechas más antiguas, carga primero el historial completo.
+                {' '}<button type="button" onClick={historial.cargarTodo} disabled={historial.cargando} className="underline font-medium cursor-pointer">{historial.cargando ? 'Cargando…' : 'Cargar historial completo'}</button>
+              </p>
+            )}
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label htmlFor="exp-desde" className="block text-xs font-medium text-slate-300 mb-1">Desde</label>
+                <input id="exp-desde" type="date" value={expDesde} max={expHasta || undefined} onChange={(e) => setExpDesde(e.target.value)}
+                  className="w-full px-3 py-2 rounded-lg bg-slate-900 border border-slate-700 text-white text-sm outline-none focus:border-indigo-500" />
+              </div>
+              <div>
+                <label htmlFor="exp-hasta" className="block text-xs font-medium text-slate-300 mb-1">Hasta</label>
+                <input id="exp-hasta" type="date" value={expHasta} min={expDesde || undefined} onChange={(e) => setExpHasta(e.target.value)}
+                  className="w-full px-3 py-2 rounded-lg bg-slate-900 border border-slate-700 text-white text-sm outline-none focus:border-indigo-500" />
+              </div>
+              <div>
+                <label htmlFor="exp-categoria" className="block text-xs font-medium text-slate-300 mb-1">Categoría</label>
+                <select id="exp-categoria" value={expCategoria} onChange={(e) => { setExpCategoria(e.target.value); setExpSubcategoria(''); }}
+                  className="w-full px-3 py-2 rounded-lg bg-slate-900 border border-slate-700 text-white text-sm outline-none focus:border-indigo-500">
+                  <option value="">Todas las categorías</option>
+                  {categoriasExport.map(c => <option key={c} value={c}>{c}</option>)}
+                </select>
+              </div>
+              <div>
+                <label htmlFor="exp-subcategoria" className="block text-xs font-medium text-slate-300 mb-1">Subcategoría</label>
+                <select id="exp-subcategoria" value={expSubcategoria} onChange={(e) => setExpSubcategoria(e.target.value)}
+                  className="w-full px-3 py-2 rounded-lg bg-slate-900 border border-slate-700 text-white text-sm outline-none focus:border-indigo-500">
+                  <option value="">Todas las subcategorías</option>
+                  {subcategoriasExport.map(c => <option key={c} value={c}>{c}</option>)}
+                </select>
+              </div>
+            </div>
+
+            <p className="text-xs text-slate-400">
+              Se exportarán <strong className="text-white">{ticketsAExportar.length}</strong> {ticketsAExportar.length === 1 ? 'ticket' : 'tickets'}
+              {' '}(se respetan también los filtros de campaña y estatus de arriba). La fecha es la de creación del ticket.
+            </p>
+
+            <div className="flex justify-between items-center pt-3 border-t border-slate-700">
+              <button type="button" onClick={() => { setExpDesde(''); setExpHasta(''); setExpCategoria(''); setExpSubcategoria(''); }}
+                className="text-xs text-slate-400 hover:text-white cursor-pointer">Limpiar filtros</button>
+              <div className="flex gap-2">
+                <button type="button" onClick={() => setExportAbierto(false)} className="px-4 py-2 rounded-lg text-sm font-medium text-slate-200 bg-slate-700 hover:bg-slate-600 cursor-pointer">Cancelar</button>
+                <button type="button" onClick={exportarExcel} disabled={ticketsAExportar.length === 0}
+                  className="px-4 py-2 rounded-lg text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 cursor-pointer">Exportar</button>
+              </div>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
     </div>
   );
 }

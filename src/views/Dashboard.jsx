@@ -3,7 +3,7 @@ import { nombrePresentable, perteneceAGrupo } from '../utils/texto';
 import { EstadoVacio, Esqueleto } from '../components/Estados';
 import EtiquetaEstatus from '../components/EtiquetaEstatus';
 import { Plus, CheckCircle2, AlertOctagon, Clock } from 'lucide-react';
-import { calcularSLA, esTicketCerrado } from '../utils/sla';
+import { calcularSLA, esTicketCerrado, META_SLA, semaforoCumplimiento, ESTILOS_SEMAFORO } from '../utils/sla';
 import useContarHasta from '../hooks/useContarHasta';
 import { ticketsPorDia, cumplimientoSlaSemanal } from '../utils/metricas';
 import AvisoHistorial from '../components/AvisoHistorial';
@@ -231,6 +231,7 @@ function Dashboard({ historial, user, tickets = [], categorias = [], onIrASolici
   const cerradosTotal = estadosSla.filter(e => e.nivel === 'cerrado').length;
   const baseCumplimiento = cerradosTotal + slaVencidos;
   const porcentajeSla = baseCumplimiento > 0 ? Math.round((cerradosEnSla / baseCumplimiento) * 100) : null;
+  const estiloSla = ESTILOS_SEMAFORO[semaforoCumplimiento(porcentajeSla)];
 
   const encuestasPorTecnico = (estadisticasEncuestas || []).reduce((acc, curr) => {
     if (!curr.tecnico) return acc;
@@ -315,12 +316,13 @@ function Dashboard({ historial, user, tickets = [], categorias = [], onIrASolici
 
         <div className="bg-slate-800 rounded-2xl shadow-lg p-5 border border-slate-700 flex flex-col justify-between">
           <h3 className="text-xs font-medium text-slate-400 mb-4 text-center">Cumplimiento de SLA</h3>
-          <div className="flex justify-center items-center mb-4 px-2"><span className="text-4xl sm:text-5xl font-semibold text-white">{porcentajeSla === null ? '—' : <Numero valor={porcentajeSla} sufijo="%" />}</span></div>
+          <div className="flex justify-center items-center mb-4 px-2"><span className={`text-4xl sm:text-5xl font-semibold ${estiloSla.texto}`}>{porcentajeSla === null ? '—' : <Numero valor={porcentajeSla} sufijo="%" />}</span></div>
           <div className="-mt-2 mb-2">
-            <Suspense fallback={<div className="h-9" />}><Sparkline datos={tendenciaSla} clave="cumplimiento" color="var(--color-emerald-400, #34d399)" /></Suspense>
+            <Suspense fallback={<div className="h-9" />}><Sparkline datos={tendenciaSla} clave="cumplimiento" color={estiloSla.color} /></Suspense>
             <p className="text-[11px] text-slate-500 text-center mt-0.5">por semana · últimas 6</p>
           </div>
-          <div className="w-full bg-slate-700 rounded-full h-2"><div className="bg-indigo-600 h-2 rounded-full" style={{ width: `${porcentajeSla ?? 0}%` }}></div></div>
+          <div className="w-full bg-slate-700 rounded-full h-2"><div className={`${estiloSla.barra} h-2 rounded-full`} style={{ width: `${porcentajeSla ?? 0}%` }}></div></div>
+          <p className="text-[11px] text-slate-400 text-center mt-2">Meta {META_SLA}% · {estiloSla.leyenda}</p>
         </div>
       </div>
 

@@ -37,6 +37,8 @@ function SolicitudesView({
   const [grupo, setGrupo] = useState(inicial.grupo || '');
   const [vista, setVista] = useState('lista');
   const [filtroEstatus, setFiltroEstatus] = useState(inicial.filtro || 'activos');
+  // Dentro de «Mis Tickets» y «Mis Grupos»: ver los abiertos/en proceso, los cerrados o todos
+  const [subEstado, setSubEstado] = useState('activos');
   const [, setTick] = useState(0);
   const [mostrarFiltros, setMostrarFiltros] = useState(false);
   const [filtrosCol, setFiltrosCol] = useState({});
@@ -81,6 +83,17 @@ function SolicitudesView({
   const misGrupos = listaDeGrupos(user?.gruposAsignados);
   const esDeMisGrupos = (t) => misGrupos.some(g => perteneceAGrupo(t, g));
   const conteoMisGrupos = ticketsBase.filter(t => !(t.estatus || '').toLowerCase().includes('cerrado') && esDeMisGrupos(t)).length;
+
+  const estaCerrado = (t) => (t.estatus || '').toLowerCase().includes('cerrado');
+  const pasaSubEstado = (t) => (estaCerrado(t) ? subEstado !== 'activos' : subEstado !== 'cerrados');
+  // Cuántos hay en cada opción del subfiltro, según la pestaña elegida (mis tickets o mis grupos)
+  const pertenecePestana = (t) => (filtroEstatus === 'mios' ? esMiTicket(t) : esDeMisGrupos(t));
+  const enPestana = ticketsBase.filter(pertenecePestana);
+  const conteoSub = {
+    activos: enPestana.filter(t => !estaCerrado(t)).length,
+    cerrados: enPestana.filter(estaCerrado).length,
+    todos: enPestana.length
+  };
 
   const hayFiltrosCol = Object.values(filtrosCol).some(Boolean);
   const cambiarFiltroCol = (clave, valor) => setFiltrosCol(prev => ({ ...prev, [clave]: valor }));
@@ -133,8 +146,8 @@ function SolicitudesView({
     if (filtroEstatus === 'activos' && esCerrado) return false;
     if (filtroEstatus === 'cerrados' && !esCerrado) return false;
     if (filtroEstatus === 'sin_asignar' && (esCerrado || !estaSinAsignar(t))) return false;
-    if (filtroEstatus === 'mios' && (esCerrado || !esMiTicket(t))) return false;
-    if (filtroEstatus === 'mis_grupos' && (esCerrado || !esDeMisGrupos(t))) return false;
+    if (filtroEstatus === 'mios' && (!esMiTicket(t) || !pasaSubEstado(t))) return false;
+    if (filtroEstatus === 'mis_grupos' && (!esDeMisGrupos(t) || !pasaSubEstado(t))) return false;
     // 'todos' no excluye nada: útil cuando se llega desde una gráfica
     if (filtroEstatus === 'vencidos' && nivelSLA(t) !== 'vencido') return false;
     if (filtroEstatus === 'por_vencer' && nivelSLA(t) !== 'riesgo') return false;
@@ -320,6 +333,7 @@ function SolicitudesView({
 
                 <button 
                   onClick={() => setFiltroEstatus('mios')}
+                  title="Tickets asignados a mí (aparece mi nombre como técnico)"
                   className={`px-3.5 py-2 rounded-lg font-bold text-xs transition-colors cursor-pointer flex items-center gap-2 ${filtroEstatus === 'mios' ? 'bg-indigo-600 text-white shadow-md' : 'bg-slate-900/60 text-slate-400 hover:text-white border border-slate-700'}`}
                 >
                   <span>Mis Tickets</span>
@@ -405,6 +419,29 @@ function SolicitudesView({
             )}
           </div>
         </div>
+
+        {vista === 'lista' && (filtroEstatus === 'mios' || filtroEstatus === 'mis_grupos') && (
+          <div className="flex flex-wrap items-center gap-2 text-xs text-slate-400">
+            <span>{filtroEstatus === 'mios' ? 'Mis tickets (asignados a mí):' : 'Mis grupos:'}</span>
+            <div className="inline-flex rounded-lg border border-slate-700 bg-slate-900 p-0.5" role="group" aria-label="Estado de los tickets">
+              {[
+                { clave: 'activos', texto: 'Abiertos / En proceso' },
+                { clave: 'cerrados', texto: 'Cerrados' },
+                { clave: 'todos', texto: 'Todos' }
+              ].map(o => (
+                <button
+                  key={o.clave}
+                  onClick={() => setSubEstado(o.clave)}
+                  aria-pressed={subEstado === o.clave}
+                  className={`px-3 py-1.5 rounded-md text-xs font-medium flex items-center gap-1.5 transition-colors cursor-pointer ${subEstado === o.clave ? 'bg-slate-700 text-white' : 'text-slate-400 hover:text-slate-100'}`}
+                >
+                  {o.texto}
+                  <span className="tabular-nums text-slate-300">{conteoSub[o.clave]}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
 
         <div className={`${vista === 'tablero' ? 'hidden' : 'flex'} justify-between items-center text-xs text-slate-400 pt-1`}>
           <span>

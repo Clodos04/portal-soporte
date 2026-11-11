@@ -1,6 +1,6 @@
 import React from 'react';
 import {
-  Home, Ticket, BookOpen, Inbox, LayoutDashboard, Users, UserCog, FolderTree, Megaphone, BarChart3, Search, X
+  Home, Ticket, BookOpen, Inbox, Users, UserCog, FolderTree, Megaphone, BarChart3, Search, X
 } from 'lucide-react';
 import logoContactus from '../assets/logo.png';
 
@@ -81,8 +81,7 @@ function Menu({ currentView, setCurrentView, user, abierto, onCerrar, onAbrirBus
 
           {esAdmin && (
             <Seccion titulo="Administración">
-              <Enlace vista="admin-supervisor-panel" onIr={ir} icono={LayoutDashboard} activo={currentView === 'admin-supervisor-panel' || currentView === 'centinela-detalles'}>Panel de supervisor</Enlace>
-              <Enlace vista="admin-reportes" onIr={ir} icono={BarChart3} activo={currentView === 'admin-reportes'}>Reportes</Enlace>
+              <Enlace vista="admin-reportes" onIr={ir} icono={BarChart3} activo={currentView === 'admin-reportes' || currentView === 'centinela-detalles'}>Reportes</Enlace>
               <Enlace vista="admin-usuarios" onIr={ir} icono={UserCog} activo={currentView === 'admin-usuarios'}>Usuarios</Enlace>
               <Enlace vista="admin-grupos" onIr={ir} icono={Users} activo={currentView === 'admin-grupos'}>Grupos</Enlace>
               <Enlace vista="admin-categorias" onIr={ir} icono={FolderTree} activo={currentView === 'admin-categorias' || currentView === 'admin-subcategorias'}>Categorías</Enlace>
