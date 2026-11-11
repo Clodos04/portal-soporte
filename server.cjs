@@ -47,6 +47,9 @@ const COOKIE_OPTS = {
 const ORIGENES_PERMITIDOS = (process.env.CORS_ORIGIN || '').split(',').map(s => s.trim()).filter(Boolean);
 
 const app = express();
+// El portal corre detrás de Traefik (Easypanel): sin esto todos los usuarios comparten la IP del proxy
+// y los límites de intentos (login, clave de SLA) bloquearían a todos a la vez.
+app.set('trust proxy', 1);
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
