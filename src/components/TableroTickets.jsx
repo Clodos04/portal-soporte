@@ -20,7 +20,7 @@ function textoSla(sla) {
   return null;
 }
 
-function TableroTickets({ tickets, categorias, puedeMover, onAbrir, onMover, foliosNuevos }) {
+function TableroTickets({ tickets, categorias, puedeMover, onAbrir, onMover, foliosNuevos, mostrarSla = true }) {
   const [arrastrando, setArrastrando] = useState(null);
   const [columnaSobre, setColumnaSobre] = useState(null);
 
@@ -69,7 +69,7 @@ function TableroTickets({ tickets, categorias, puedeMover, onAbrir, onMover, fol
                 <p className="text-xs text-slate-500 text-center py-6">{puedeMover ? 'Suelta una tarjeta aquí' : 'Sin tickets'}</p>
               )}
               {visibles.map(t => {
-                const sla = textoSla(calcularSLA(t, categorias));
+                const sla = mostrarSla ? textoSla(calcularSLA(t, categorias)) : null; // los clientes no ven el SLA
                 return (
                   <article
                     key={t.folio}

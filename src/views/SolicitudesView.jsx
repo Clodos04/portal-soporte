@@ -464,6 +464,7 @@ function SolicitudesView({
             onAbrir={onEditarTicket}
             onMover={onCambiarEstatus}
             foliosNuevos={foliosNuevos}
+            mostrarSla={!esCliente}
           />
         )}
 
@@ -510,7 +511,7 @@ function SolicitudesView({
                 <th className="px-4 py-3">Folio</th>
                 <th className="px-4 py-3">{esCliente ? 'Ver' : 'Gestionar'}</th>
                 <th className="px-4 py-3">Estatus</th>
-                <th className="px-4 py-3">SLA / Tiempo</th>
+                {!esCliente && <th className="px-4 py-3">SLA / Tiempo</th>}
                 {activeColumns.map(colKey => (
                   <th key={colKey} className="px-4 py-3">{columnLabels[colKey] || colKey}</th>
                 ))}
@@ -533,7 +534,7 @@ function SolicitudesView({
                       <option value="Cerrado">Cerrado</option>
                     </select>
                   </th>
-                  <th className="px-2 py-2" />
+                  {!esCliente && <th className="px-2 py-2" />}
                   {activeColumns.map(colKey => (
                     <th key={colKey} className="px-2 py-2">
                       <input value={filtrosCol[colKey] || ''} onChange={(e) => cambiarFiltroCol(colKey, e.target.value)}
@@ -552,7 +553,7 @@ function SolicitudesView({
             <tbody className="divide-y divide-slate-700">
               {ticketsFiltrados.length === 0 ? (
                 <tr>
-                  <td colSpan={activeColumns.length + 5 + (esAdmin ? 1 : 0)}>
+                  <td colSpan={activeColumns.length + (esCliente ? 4 : 5) + (esAdmin ? 1 : 0)}>
                     <EstadoVacio
                       icono={Inbox}
                       titulo="No hay solicitudes en esta vista"
@@ -606,12 +607,14 @@ function SolicitudesView({
                         <EtiquetaEstatus estatus={ticket.estatus} />
                       </td>
 
+                      {!esCliente && (
                       <td className="px-4 py-3 whitespace-nowrap">
                         <span className={`px-2.5 py-1 rounded-md text-xs font-semibold inline-flex items-center gap-1.5 border ${infoSLA.color}`}>
                           <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${infoSLA.punto}`} />
                           <span>{infoSLA.texto}</span>
                         </span>
                       </td>
+                      )}
 
                       {activeColumns.map(colKey => (
                         <td key={colKey} className="px-4 py-3 text-slate-300 max-w-xs truncate">

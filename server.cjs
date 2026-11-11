@@ -16,6 +16,7 @@ const { Server } = require('socket.io');
 // Importamos las respuestas automáticas y lógica de Centinela / Chat
 const {
   obtenerMensajeCentinela,
+  armarResolucionCentinela,
   obtenerFlujoPreguntas,
   evaluarSiguienteRespuestaChat
 } = require('./respuestasChat.cjs');
@@ -343,6 +344,7 @@ const rutasAdminEscritura = [
   { metodo: 'POST', ruta: /^\/(api\/)?tickets\/masivo\/?$/ },
   { metodo: 'POST', ruta: /^\/(api\/)?tickets\/[^/]+\/copiar\/?$/ },
   { metodo: 'DELETE', ruta: /^\/(api\/)?tickets\/[^/]+\/?$/ },
+  { metodo: 'PUT', ruta: /^\/(api\/)?tickets\/[^/]+\/?$/ },
   { metodo: 'POST', ruta: /^\/(api\/)?usuarios\/?$/ },
   { metodo: 'PUT', ruta: /^\/(api\/)?usuarios\/[^/]+\/?$/ },
   { metodo: 'DELETE', ruta: /^\/(api\/)?usuarios\/[^/]+\/?$/ },
@@ -400,7 +402,12 @@ app.get(['/api/me', '/me'], (req, res) => {
 
 // Tickets (CRUD)
 app.get(['/api/tickets', '/tickets'], (req, res) => {
-  const formatear = (results) => results.map(t => ({ ...t, notas: parseJsonSeguro(t.notas) }));
+  // Un cliente solo recibe los tickets que él creó; el administrador recibe todos
+  const esAdminSesion = req.sesion && req.sesion.nivel === 'ADMINISTRADOR';
+  const miNombre = String((req.sesion && req.sesion.nombre) || '').trim().toLowerCase();
+  const formatear = (results) => results
+    .filter(t => esAdminSesion || (miNombre && String(t.creador || '').trim().toLowerCase() === miNombre))
+    .map(t => ({ ...t, notas: parseJsonSeguro(t.notas) }));
 
   // Carga reciente: /api/tickets?reciente=90 devuelve TODOS los tickets activos más los cerrados en los últimos
   // N días (1–3650). La cabecera X-Total-Count trae el total de la tabla para avisar que hay historial sin cargar.
@@ -542,7 +549,7 @@ app.post(['/api/tickets', '/tickets'], (req, res) => {
         WHERE equipo = ? 
         AND subcategoria = ? 
         AND fecha LIKE ?
-        ORDER BY id ASC LIMIT 1
+        ORDER BY (tipo_solicitud = 'CENTINELA') DESC, id ASC LIMIT 1
       `;
 
       db.query(queryMesActual, [ticketData.equipo, ticketData.subcategoria, `${anioMesActual}%`], (err, results) => {
@@ -550,6 +557,7 @@ app.post(['/api/tickets', '/tickets'], (req, res) => {
         
         const esSubsecuente = results.length > 0;
         const folioAnterior = esSubsecuente ? results[0].folio : null;
+        const resolucionAnterior = esSubsecuente ? String(results[0].resolucion || '').trim() : '';
 
         for (let key in ticketData) {
           if (typeof ticketData[key] === 'object' && ticketData[key] !== null) {
@@ -563,13 +571,15 @@ app.post(['/api/tickets', '/tickets'], (req, res) => {
           if (err) return res.status(500).json({ error: err.message });
 
           const nuevoFolio = ticketData.folio;
-          const textoMensaje = obtenerMensajeCentinela(nuevoFolio, esSubsecuente, folioAnterior);
+          const textoMensaje = obtenerMensajeCentinela(nuevoFolio, esSubsecuente, folioAnterior, resolucionAnterior);
 
           if (esSubsecuente) {
             const horaMexActual = obtenerFechaMySQL();
-            db.query("UPDATE tickets SET estatus = 'Cerrado', colorEstatus = 'bg-red-600', updated_at = ?, fecha_cierre = ? WHERE folio = ?", [horaMexActual, horaMexActual, nuevoFolio], (errCierre) => {
+            // Se cierra con la solución que se dio en el primer folio de esa falla
+            const resolucionCierre = armarResolucionCentinela(folioAnterior, resolucionAnterior);
+            db.query("UPDATE tickets SET estatus = 'Cerrado', colorEstatus = 'bg-red-600', resolucion = ?, updated_at = ?, fecha_cierre = ? WHERE folio = ?", [resolucionCierre, horaMexActual, horaMexActual, nuevoFolio], (errCierre) => {
               // Si la columna fecha_cierre aún no existe (migración pendiente), se cierra igual sin ella
-              if (errCierre) db.query("UPDATE tickets SET estatus = 'Cerrado', colorEstatus = 'bg-red-600', updated_at = ? WHERE folio = ?", [horaMexActual, nuevoFolio]);
+              if (errCierre) db.query("UPDATE tickets SET estatus = 'Cerrado', colorEstatus = 'bg-red-600', resolucion = ?, updated_at = ? WHERE folio = ?", [resolucionCierre, horaMexActual, nuevoFolio]);
             });
             registrarAuditoria(nuevoFolio, 'Sistema', 'CIERRE_AUTOMATICO', [{ campo: 'estatus', anterior: 'Abierto', nuevo: 'Cerrado (reporte subsecuente del mes)' }]);
           }

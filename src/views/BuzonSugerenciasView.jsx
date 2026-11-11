@@ -200,7 +200,7 @@ function BuzonSugerenciasView({ user }) {
 
           {esAdmin && (
             <div className="flex gap-2">
-              {['TODOS', 'SUGERENCIA', 'ERROR', 'COMENTARIO'].map((f) => (
+              {['TODOS', 'SUGERENCIA', 'ERROR'].map((f) => (
                 <button
                   key={f}
                   onClick={() => setFiltroTipo(f)}
