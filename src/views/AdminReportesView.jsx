@@ -4,6 +4,7 @@ import { X } from 'lucide-react';
 import { useAvisos } from '../components/Avisos';
 import { exportarCSV } from '../utils/exportar';
 import AvisoHistorial from '../components/AvisoHistorial';
+import SupervisorPanel from './SupervisorPanel';
 import EscCierra from '../components/EscCierra';
 import { parsearFechaLocal } from '../utils/sla';
 import { claveFecha } from '../utils/metricas';
@@ -14,6 +15,8 @@ export default function AdminReportesView({ historial, tickets = [], campanas = 
   const [filtroCampana, setFiltroCampana] = useState('Todas');
   const [filtroEstatus, setFiltroEstatus] = useState('Todos');
   
+  const [pestana, setPestana] = useState('resumen'); // 'resumen' | 'satisfaccion'
+
   // Exportación a Excel con rango de fechas, categoría y subcategoría
   const [exportAbierto, setExportAbierto] = useState(false);
   const [expDesde, setExpDesde] = useState('');
@@ -183,6 +186,23 @@ export default function AdminReportesView({ historial, tickets = [], campanas = 
   return (
     <div className="space-y-6 animate-fade-in">
       <AvisoHistorial historial={historial} />
+      <div className="inline-flex rounded-lg border border-slate-700 bg-slate-900 p-0.5" role="group" aria-label="Sección de reportes">
+        {[{ clave: 'resumen', texto: 'Resumen' }, { clave: 'satisfaccion', texto: 'Satisfacción y encuestas' }].map(o => (
+          <button
+            key={o.clave}
+            onClick={() => setPestana(o.clave)}
+            aria-pressed={pestana === o.clave}
+            className={`px-4 py-2 rounded-md text-sm font-medium transition-colors cursor-pointer ${pestana === o.clave ? 'bg-slate-700 text-white' : 'text-slate-400 hover:text-slate-100'}`}
+          >
+            {o.texto}
+          </button>
+        ))}
+      </div>
+
+      {pestana === 'satisfaccion' ? (
+        <SupervisorPanel user={user} embebido />
+      ) : (
+      <>
       {/* ENCABEZADO Y FILTROS */}
       <div className="bg-slate-800 border border-slate-700 p-6 rounded-xl shadow-lg flex flex-col md:flex-row justify-between items-center gap-4">
         <div>
@@ -471,6 +491,9 @@ export default function AdminReportesView({ historial, tickets = [], campanas = 
           </div>
         )}
       </div>
+
+      </>
+      )}
 
       {exportAbierto && createPortal(
         <div className="fixed inset-0 bg-slate-950/80 flex justify-center items-center z-50 p-4" onClick={() => setExportAbierto(false)}>

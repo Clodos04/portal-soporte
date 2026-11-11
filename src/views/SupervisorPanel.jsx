@@ -6,7 +6,8 @@ import { EsqueletoPanel } from '../components/Estados';
 import EtiquetaEstatus from '../components/EtiquetaEstatus';
 import { useAvisos } from '../components/Avisos';
 
-function SupervisorPanel({ user, onVerDetallesCentinela }) {
+// embebido: se muestra como pestaña de Reportes (sin encabezado propio ni bloques que Reportes ya tiene)
+function SupervisorPanel({ user, onVerDetallesCentinela, embebido = false }) {
   const { avisar } = useAvisos();
   const [tickets, setTickets] = useState([]);
   const [encuestasData, setEncuestasData] = useState({ estadisticas: { promedio: 0, total: 0 }, historial: [] });
@@ -20,6 +21,7 @@ function SupervisorPanel({ user, onVerDetallesCentinela }) {
   const [busquedaFolio, setBusquedaFolio] = useState('');
 
   const [encuestaModal, setEncuestaModal] = useState(null);
+  const [soloConEncuesta, setSoloConEncuesta] = useState(embebido);
   const [feedbackTexto, setFeedbackTexto] = useState('');
   const [guardandoFeedback, setGuardandoFeedback] = useState(false);
 
@@ -166,6 +168,9 @@ function SupervisorPanel({ user, onVerDetallesCentinela }) {
     promedioCSAT = Number(encuestasData.estadisticas.promedio).toFixed(1);
   }
 
+  const tieneEncuesta = (t) => encuestasData.historial.some(e => e.ticket_id === t.id || e.folio === t.folio);
+  const filas = soloConEncuesta ? ticketsFiltrados.filter(tieneEncuesta) : ticketsFiltrados;
+
   if (loading) {
     return (
       <div className="max-w-7xl mx-auto"><EsqueletoPanel /></div>
@@ -174,6 +179,8 @@ function SupervisorPanel({ user, onVerDetallesCentinela }) {
 
   return (
     <div className="animate-fade-in max-w-7xl mx-auto space-y-6 text-slate-200 pb-12">
+      {!embebido && (
+      <>
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-slate-800 p-6 rounded-2xl border border-slate-700 shadow-xl">
         <div>
           <h1 className="text-2xl font-semibold text-white flex items-center gap-3 tracking-tight">
@@ -246,6 +253,9 @@ function SupervisorPanel({ user, onVerDetallesCentinela }) {
         )}
       </div>
 
+      </>
+      )}
+
       <div className="bg-slate-800 p-5 rounded-xl border border-slate-700 grid grid-cols-1 md:grid-cols-3 gap-4 shadow-lg">
         <div>
           <label className="block text-xs font-medium text-slate-300 mb-1">Filtrar por Campaña:</label>
@@ -287,7 +297,7 @@ function SupervisorPanel({ user, onVerDetallesCentinela }) {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className={`grid grid-cols-1 sm:grid-cols-2 gap-4 ${embebido ? '[&>*:nth-child(1)]:hidden [&>*:nth-child(3)]:hidden' : 'lg:grid-cols-4'}`}>
         <div className="bg-slate-800 border border-slate-700 rounded-xl p-5 shadow-lg flex flex-col justify-between">
           <span className="text-xs font-medium text-slate-400">Total Tickets Filtrados</span>
           <div className="flex items-baseline justify-between mt-3">
@@ -330,7 +340,13 @@ function SupervisorPanel({ user, onVerDetallesCentinela }) {
           <h2 className="text-lg font-semibold text-white tracking-tight">
             Auditoría de Tickets y Resultados de Encuestas
           </h2>
-          <span className="text-xs text-slate-400">Mostrando {ticketsFiltrados.length} registros</span>
+          <div className="flex items-center gap-4">
+            <label className="flex items-center gap-2 text-xs text-slate-300 cursor-pointer">
+              <input type="checkbox" checked={soloConEncuesta} onChange={(e) => setSoloConEncuesta(e.target.checked)} className="accent-indigo-500" />
+              Solo con encuesta respondida
+            </label>
+            <span className="text-xs text-slate-400">Mostrando {filas.length} registros</span>
+          </div>
         </div>
 
         <div className="overflow-x-auto border border-slate-700 rounded-lg">
@@ -347,14 +363,14 @@ function SupervisorPanel({ user, onVerDetallesCentinela }) {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-700">
-              {ticketsFiltrados.length === 0 ? (
+              {filas.length === 0 ? (
                 <tr>
                   <td colSpan="7" className="px-4 py-8 text-center text-slate-500 italic">
-                    No se encontraron tickets con los filtros seleccionados.
+                    No se encontraron tickets con los filtros seleccionados.{soloConEncuesta ? ' Quita «Solo con encuesta respondida» para ver también los tickets sin encuesta.' : ''}
                   </td>
                 </tr>
               ) : (
-                ticketsFiltrados.map((t) => {
+                filas.map((t) => {
                   const encuestaAsociada = encuestasData.historial.find(e => e.ticket_id === t.id || e.folio === t.folio);
                   const califTicket = encuestaAsociada ? (Number(encuestaAsociada.promedio) || Number(encuestaAsociada.calificacion) || 0).toFixed(1) : null;
 

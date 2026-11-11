@@ -12,7 +12,6 @@ const VISTA_A_RUTA = {
   'encuesta-ti': '/encuesta',
   buzon: '/buzon',
   'guia-tickets': '/guia',
-  'admin-supervisor-panel': '/admin/supervisor',
   'admin-reportes': '/admin/reportes',
   'admin-usuarios': '/admin/usuarios',
   'admin-grupos': '/admin/grupos',
@@ -22,6 +21,9 @@ const VISTA_A_RUTA = {
 };
 
 const RUTA_A_VISTA = Object.fromEntries(Object.entries(VISTA_A_RUTA).map(([vista, ruta]) => [ruta, vista]));
+
+// Enlaces guardados del antiguo "Panel de supervisor": ahora es la pestaña Satisfacción de Reportes
+RUTA_A_VISTA['/admin/supervisor'] = 'admin-reportes';
 
 export const esVistaAdmin = (vista) => vista.startsWith('admin-') || vista === 'centinela-detalles';
 

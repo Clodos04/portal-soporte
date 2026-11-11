@@ -14,7 +14,6 @@ import LiveChatView from './views/LiveChatView';
 import EncuestaView from './views/EncuestaView';
 import GuiaTicketsView from './views/GuiaTicketsView';
 import AdminReportesView from './views/AdminReportesView';
-import SupervisorPanel from './views/SupervisorPanel';
 import CentinelaDetallesView from './views/CentinelaDetallesView';
 import BuzonSugerenciasView from './views/BuzonSugerenciasView';
 
@@ -597,16 +596,12 @@ function App() {
             campanas={campanas} 
             estadisticasEncuestas={estadisticasEncuestas}
             user={user}
-            onIrACentinela={() => setCurrentView('admin-supervisor-panel')}
+            onIrACentinela={() => setCurrentView('centinela-detalles')}
           />
         )}
 
-        {currentView === 'admin-supervisor-panel' && (
-          <SupervisorPanel user={user} tickets={tickets} onVerDetallesCentinela={() => setCurrentView('centinela-detalles')} />
-        )}
-
         {currentView === 'centinela-detalles' && (
-          <CentinelaDetallesView tickets={tickets} onVolver={() => setCurrentView('admin-supervisor-panel')} onEditarTicket={(ticket) => { setTicketEnEdicion(ticket); setIsEditModalOpen(true); }} />
+          <CentinelaDetallesView tickets={tickets} onVolver={() => setCurrentView('admin-reportes')} onEditarTicket={(ticket) => { setTicketEnEdicion(ticket); setIsEditModalOpen(true); }} />
         )}
 
         {currentView === 'guia-tickets' && <GuiaTicketsView />}
