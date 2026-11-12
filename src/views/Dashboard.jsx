@@ -180,7 +180,7 @@ function Dashboard({ historial, user, tickets = [], categorias = [], onIrASolici
               <h2 className="text-lg font-bold text-white">¿Tienes un momento?</h2>
               <p className="text-xs text-slate-300 mt-1">Comparte tu opinión sobre la atención recibida en tu ticket cerrado <strong className="text-indigo-300">#{ultimoTicketCerradoPendiente.folio}</strong>.</p>
             </div>
-            <button onClick={onIrAEncuesta} className="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-500 text-white font-bold px-6 py-3 rounded-xl shadow-lg transition-colors text-sm cursor-pointer whitespace-nowrap">
+            <button onClick={() => onIrAEncuesta && onIrAEncuesta(ultimoTicketCerradoPendiente)} className="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-500 text-white font-bold px-6 py-3 rounded-xl shadow-lg transition-colors text-sm cursor-pointer whitespace-nowrap">
               Contestar Encuesta TI
             </button>
           </div>
