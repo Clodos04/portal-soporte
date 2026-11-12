@@ -249,7 +249,7 @@ const evaluarSiguienteRespuestaChat = (ticket, remitente, textoUsuario, mensajes
   if (textoLower.includes('ya quedo') || textoLower.includes('ya quedó') || textoLower.includes('ya funciono') || textoLower.includes('ya funcionó') || textoLower.includes('solucionado')) {
     return {
       textoRespuesta: `🎉 ¡Excelente! Qué gusto que ya haya quedado funcionando correctamente. Un técnico revisará el folio #${folio} para confirmar el cierre.`,
-      cerrarTicket: false
+      cerrarTicket: true
     };
   }
 
