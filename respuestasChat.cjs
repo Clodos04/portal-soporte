@@ -7,9 +7,22 @@ const armarMensajeConOpciones = (texto, listaOpciones = []) => {
 };
 
 // 1. GENERADOR DE MENSAJES PARA MODALIDAD CENTINELA DIRECTA
-const obtenerMensajeCentinela = (nuevoFolio, esSubsecuente, folioAnterior) => {
+// Texto de cierre de un reporte Centinela repetido: retoma la solución dada en el primer folio de esa falla.
+const armarResolucionCentinela = (folioAnterior, resolucionAnterior) => {
+  const solucion = String(resolucionAnterior || '').trim();
+  if (solucion) {
+    return `Falla ya atendida: se reportó antes en el folio #${folioAnterior}. Solución aplicada en ese folio: ${solucion} Ya se validó con esa solución. Se sigue registrando el reporte para el cumplimiento de Centinela.`;
+  }
+  return `Falla ya reportada en el folio #${folioAnterior}, que sigue en atención. Este reporte se registra para el cumplimiento de Centinela y el seguimiento continúa en ese folio.`;
+};
+
+const obtenerMensajeCentinela = (nuevoFolio, esSubsecuente, folioAnterior, resolucionAnterior = '') => {
   if (esSubsecuente) {
-    return `Gracias por crear tu centinela con el folio #${nuevoFolio}. Validamos que un técnico ya se acercó previamente a realizar pruebas (Folio origen: #${folioAnterior}). Te agradecemos que lo sigas reportando para que tu campaña llegue al 100% y se hagan los cambios solicitados.`;
+    const solucion = String(resolucionAnterior || '').trim();
+    const detalle = solucion
+      ? `Un técnico ya atendió esta falla (Folio origen: #${folioAnterior}). Solución aplicada: ${solucion} Ya se validó con esa solución.`
+      : `Un técnico ya se acercó previamente a realizar pruebas (Folio origen: #${folioAnterior}).`;
+    return `Gracias por crear tu centinela con el folio #${nuevoFolio}. ${detalle} Te agradecemos que lo sigas reportando para que tu campaña llegue al 100% y se hagan los cambios solicitados.`;
   }
   return `🛡️ Folio Centinela #${nuevoFolio} registrado con éxito para solicitud de cambio de periférico. Se te asignará un técnico en un tiempo máximo de 10 minutos para validar el componente.`;
 };
@@ -569,6 +582,7 @@ const evaluarSiguienteRespuestaChat = (ticket, remitente, textoUsuario, mensajes
 };
 
 module.exports = {
+  armarResolucionCentinela,
   obtenerMensajeCentinela,
   obtenerFlujoPreguntas,
   evaluarSiguienteRespuestaChat

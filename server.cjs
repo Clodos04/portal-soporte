@@ -16,6 +16,7 @@ const { Server } = require('socket.io');
 // Importamos las respuestas automáticas y lógica de Centinela / Chat
 const {
   obtenerMensajeCentinela,
+  armarResolucionCentinela,
   obtenerFlujoPreguntas,
   evaluarSiguienteRespuestaChat
 } = require('./respuestasChat.cjs');
@@ -343,6 +344,7 @@ const rutasAdminEscritura = [
   { metodo: 'POST', ruta: /^\/(api\/)?tickets\/masivo\/?$/ },
   { metodo: 'POST', ruta: /^\/(api\/)?tickets\/[^/]+\/copiar\/?$/ },
   { metodo: 'DELETE', ruta: /^\/(api\/)?tickets\/[^/]+\/?$/ },
+  { metodo: 'PUT', ruta: /^\/(api\/)?tickets\/[^/]+\/?$/ },
   { metodo: 'POST', ruta: /^\/(api\/)?usuarios\/?$/ },
   { metodo: 'PUT', ruta: /^\/(api\/)?usuarios\/[^/]+\/?$/ },
   { metodo: 'DELETE', ruta: /^\/(api\/)?usuarios\/[^/]+\/?$/ },
@@ -400,7 +402,12 @@ app.get(['/api/me', '/me'], (req, res) => {
 
 // Tickets (CRUD)
 app.get(['/api/tickets', '/tickets'], (req, res) => {
-  const formatear = (results) => results.map(t => ({ ...t, notas: parseJsonSeguro(t.notas) }));
+  // Un cliente solo recibe los tickets que él creó; el administrador recibe todos
+  const esAdminSesion = req.sesion && req.sesion.nivel === 'ADMINISTRADOR';
+  const miNombre = String((req.sesion && req.sesion.nombre) || '').trim().toLowerCase();
+  const formatear = (results) => results
+    .filter(t => esAdminSesion || (miNombre && String(t.creador || '').trim().toLowerCase() === miNombre))
+    .map(t => ({ ...t, notas: parseJsonSeguro(t.notas) }));
 
   // Carga reciente: /api/tickets?reciente=90 devuelve TODOS los tickets activos más los cerrados en los últimos
   // N días (1–3650). La cabecera X-Total-Count trae el total de la tabla para avisar que hay historial sin cargar.
@@ -510,6 +517,15 @@ app.post(['/api/tickets', '/tickets'], (req, res) => {
   const ticketData = { ...req.body };
   delete ticketData.archivos;
   delete ticketData.yaGuardadoEnBD;
+  // Un cliente siempre crea un ticket abierto, sin técnico y a su propio nombre; solo soporte decide eso
+  if (!(req.sesion && req.sesion.nivel === 'ADMINISTRADOR')) {
+    ticketData.estatus = 'Abierto';
+    ticketData.colorEstatus = 'bg-green-500';
+    ticketData.tecnico = 'Sin Asignar';
+    ticketData.resolucion = '';
+    delete ticketData.fecha_cierre;
+    if (req.sesion && req.sesion.nombre) ticketData.creador = req.sesion.nombre;
+  }
 
   const { fechaSolo, fechaHora, horaCorta, prefijoFolio } = obtenerFechaHoraMexico();
 
@@ -542,7 +558,7 @@ app.post(['/api/tickets', '/tickets'], (req, res) => {
         WHERE equipo = ? 
         AND subcategoria = ? 
         AND fecha LIKE ?
-        ORDER BY id ASC LIMIT 1
+        ORDER BY (tipo_solicitud = 'CENTINELA') DESC, id ASC LIMIT 1
       `;
 
       db.query(queryMesActual, [ticketData.equipo, ticketData.subcategoria, `${anioMesActual}%`], (err, results) => {
@@ -550,6 +566,7 @@ app.post(['/api/tickets', '/tickets'], (req, res) => {
         
         const esSubsecuente = results.length > 0;
         const folioAnterior = esSubsecuente ? results[0].folio : null;
+        const resolucionAnterior = esSubsecuente ? String(results[0].resolucion || '').trim() : '';
 
         for (let key in ticketData) {
           if (typeof ticketData[key] === 'object' && ticketData[key] !== null) {
@@ -563,13 +580,15 @@ app.post(['/api/tickets', '/tickets'], (req, res) => {
           if (err) return res.status(500).json({ error: err.message });
 
           const nuevoFolio = ticketData.folio;
-          const textoMensaje = obtenerMensajeCentinela(nuevoFolio, esSubsecuente, folioAnterior);
+          const textoMensaje = obtenerMensajeCentinela(nuevoFolio, esSubsecuente, folioAnterior, resolucionAnterior);
 
           if (esSubsecuente) {
             const horaMexActual = obtenerFechaMySQL();
-            db.query("UPDATE tickets SET estatus = 'Cerrado', colorEstatus = 'bg-red-600', updated_at = ?, fecha_cierre = ? WHERE folio = ?", [horaMexActual, horaMexActual, nuevoFolio], (errCierre) => {
+            // Se cierra con la solución que se dio en el primer folio de esa falla
+            const resolucionCierre = armarResolucionCentinela(folioAnterior, resolucionAnterior);
+            db.query("UPDATE tickets SET estatus = 'Cerrado', colorEstatus = 'bg-red-600', resolucion = ?, updated_at = ?, fecha_cierre = ? WHERE folio = ?", [resolucionCierre, horaMexActual, horaMexActual, nuevoFolio], (errCierre) => {
               // Si la columna fecha_cierre aún no existe (migración pendiente), se cierra igual sin ella
-              if (errCierre) db.query("UPDATE tickets SET estatus = 'Cerrado', colorEstatus = 'bg-red-600', updated_at = ? WHERE folio = ?", [horaMexActual, nuevoFolio]);
+              if (errCierre) db.query("UPDATE tickets SET estatus = 'Cerrado', colorEstatus = 'bg-red-600', resolucion = ?, updated_at = ? WHERE folio = ?", [resolucionCierre, horaMexActual, nuevoFolio]);
             });
             registrarAuditoria(nuevoFolio, 'Sistema', 'CIERRE_AUTOMATICO', [{ campo: 'estatus', anterior: 'Abierto', nuevo: 'Cerrado (reporte subsecuente del mes)' }]);
           }
@@ -1210,20 +1229,36 @@ app.post(['/api/encuestas', '/encuestas'], (req, res) => {
     }
   }
   data.fecha_respuesta = obtenerFechaMySQL();
-  const guardarEnBD = (datosFinales) => {
-    db.query('INSERT INTO encuestas SET ?', filtrarColumnas('encuestas', datosFinales), (err, result) => {
-      if (err) return res.status(500).json({ error: err.message });
-      res.json({ message: 'Encuesta guardada con éxito', id: result.insertId });
+
+  // Validaciones: la solicitud debe existir y estar cerrada, solo quien la creó puede calificarla
+  // (o un administrador), y cada solicitud se califica una sola vez.
+  const esAdminSesion = req.sesion && req.sesion.nivel === 'ADMINISTRADOR';
+  const calificacion = Number(data.calificacion);
+  if (!(calificacion >= 1 && calificacion <= 5)) return res.status(400).json({ error: 'Responde la calificación (de 1 a 5) antes de enviar.' });
+
+  db.query('SELECT id, folio, estatus, creador, categoria FROM tickets WHERE folio = ? OR id = ? LIMIT 1', [String(data.folio || ''), Number(req.body.ticket_id) || 0], (errT, filasT) => {
+    if (errT) return res.status(500).json({ error: errT.message });
+    if (filasT.length === 0) return res.status(404).json({ error: 'La solicitud de esta encuesta no existe.' });
+    const t = filasT[0];
+    if (!String(t.estatus || '').toLowerCase().includes('cerrado')) return res.status(409).json({ error: 'Solo se puede calificar una solicitud cerrada.' });
+    const miNombre = String((req.sesion && req.sesion.nombre) || '').trim().toLowerCase();
+    if (!esAdminSesion && String(t.creador || '').trim().toLowerCase() !== miNombre) return res.status(403).json({ error: 'Solo quien creó la solicitud puede calificarla.' });
+
+    db.query('SELECT id FROM encuestas WHERE folio = ? OR ticket_id = ? LIMIT 1', [t.folio, t.id], (errE, filasE) => {
+      if (errE) return res.status(500).json({ error: errE.message });
+      if (filasE.length > 0) return res.status(409).json({ error: 'Esta solicitud ya fue calificada.' });
+
+      // Estos datos los decide el servidor, no la pantalla
+      data.ticket_id = t.id;
+      data.folio = t.folio;
+      data.cliente_username = (req.sesion && req.sesion.username) || data.cliente_username;
+      data.categoria = t.categoria || data.categoria;
+      db.query('INSERT INTO encuestas SET ?', filtrarColumnas('encuestas', data), (err, result) => {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json({ message: 'Encuesta guardada con éxito', id: result.insertId });
+      });
     });
-  };
-  if (!data.ticket_id && data.folio) {
-    db.query('SELECT id FROM tickets WHERE folio = ?', [data.folio], (err, results) => {
-      if (!err && results.length > 0) data.ticket_id = results[0].id;
-      guardarEnBD(data);
-    });
-  } else {
-    guardarEnBD(data);
-  }
+  });
 });
 
 // Feedback del supervisor sobre una encuesta (seguimiento de lo que dijo el cliente). Tabla aparte: no se modifica 'encuestas'.
@@ -1248,7 +1283,10 @@ app.get(['/api/encuestas/reporte', '/encuestas/reporte'], (req, res) => {
         if (!porEncuesta.has(f.encuesta_id)) porEncuesta.set(f.encuesta_id, []);
         porEncuesta.get(f.encuesta_id).push(f);
       });
-      const encuestasFormateadas = results.map(e => ({ ...e, respuestas: parseJsonSeguro(e.respuestas), feedback_supervisor: porEncuesta.get(e.id) || [] }));
+      const esAdminSesion = req.sesion && req.sesion.nivel === 'ADMINISTRADOR';
+      const miUsuario = String((req.sesion && req.sesion.username) || '').toLowerCase();
+      const visibles = esAdminSesion ? results : results.filter(e => String(e.cliente_username || '').toLowerCase() === miUsuario);
+      const encuestasFormateadas = visibles.map(e => ({ ...e, respuestas: parseJsonSeguro(e.respuestas), feedback_supervisor: esAdminSesion ? (porEncuesta.get(e.id) || []) : [] }));
       let suma = 0;
       encuestasFormateadas.forEach(r => suma += (Number(r.calificacion) || 0));
       res.json({ estadisticas: { promedio: encuestasFormateadas.length > 0 ? (suma / encuestasFormateadas.length).toFixed(1) : 0, total: encuestasFormateadas.length }, historial: encuestasFormateadas });
