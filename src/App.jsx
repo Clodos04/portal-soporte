@@ -487,7 +487,7 @@ function App() {
               setCurrentView('live-chat');
             }}
             onIrANuevaSolicitud={() => setCurrentView('nueva-solicitud')} 
-            onIrAEncuesta={() => { setTicketParaEncuesta(null); setCurrentView('encuesta-ti'); }}
+            onIrAEncuesta={(ticket) => { setTicketParaEncuesta(ticket && ticket.folio ? ticket : null); setCurrentView('encuesta-ti'); }}
             onIrABuzon={() => setCurrentView('buzon')}
           />
         )}
