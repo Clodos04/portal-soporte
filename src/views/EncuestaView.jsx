@@ -8,6 +8,8 @@ function EncuestaView({ tickets, user, ticketEspecifico, onRegresar, onGuardarEn
   const [p5, setP5] = useState('');
   const [comentarios, setComentarios] = useState('');
   const [enviado, setEnviado] = useState(false);
+  const [enviando, setEnviando] = useState(false);
+  const [errorEnvio, setErrorEnvio] = useState('');
 
   // Si nos pasan un ticket específico desde la tabla, lo usamos. Si no, tomamos el último del cliente.
   const ticketsCliente = user?.role === 'client' 
@@ -22,23 +24,36 @@ function EncuestaView({ tickets, user, ticketEspecifico, onRegresar, onGuardarEn
     ? ticketActivo.tecnico.toUpperCase() 
     : 'SOPORTE GENERAL';
 
-  const handleGuardar = (e) => {
+  const handleGuardar = async (e) => {
     e.preventDefault();
-    const suma = Number(p1 || 5) + Number(p2 || 5) + Number(p3 || 5) + Number(p4 || 5);
-    const promedioVal = Number((suma / 4).toFixed(1));
+    if (enviando) return;
+    // Todas las preguntas son obligatorias: lo que no se contesta no se cuenta como un 5
+    const respondidas = [p1, p2, p3, p4].map(Number);
+    if (respondidas.some(n => !(n >= 1 && n <= 5)) || !p5) {
+      setErrorEnvio('Responde todas las preguntas para poder enviar la encuesta.');
+      return;
+    }
+    const promedioVal = Number((respondidas.reduce((a, b) => a + b, 0) / respondidas.length).toFixed(1));
+    setErrorEnvio('');
+    setEnviando(true);
 
-    onGuardarEncuesta({
+    const resultado = await onGuardarEncuesta({
       ticket_id: ticketActivo ? ticketActivo.id : null,
       folio: ticketActivo ? ticketActivo.folio : 'S/F',
       cliente_username: user?.username || 'cliente',
       tecnico: tecnicoNombre,
       categoria: ticketActivo ? ticketActivo.categoria : 'General',
-      calificacion: Number(p1 || 5), 
+      calificacion: Number(p1), 
       promedio: promedioVal,
       comentarios: comentarios, // <--- Enviado independiente para la columna MySQL
       respuestas: { p1, p2, p3, p4, p5 }
     });
 
+    setEnviando(false);
+    if (resultado && resultado.ok === false) {
+      setErrorEnvio(resultado.error || 'No se pudo guardar la encuesta.');
+      return;
+    }
     setEnviado(true);
   };
 
@@ -117,9 +132,13 @@ function EncuestaView({ tickets, user, ticketEspecifico, onRegresar, onGuardarEn
             <textarea rows="3" value={comentarios} onChange={(e) => setComentarios(e.target.value)} placeholder="Escribe tus sugerencias…" className="w-full px-4 py-3 rounded-lg bg-slate-900 border border-slate-700 text-white placeholder-slate-500 outline-none resize-none text-sm"></textarea>
           </div>
 
+          {errorEnvio && (
+            <p role="alert" className="text-sm text-red-300 bg-red-500/10 border border-red-500/30 rounded-lg px-4 py-3">{errorEnvio}</p>
+          )}
+
           <div className="flex justify-between items-center pt-6 border-t border-slate-700">
             <button type="button" onClick={onRegresar} className="bg-blue-600 hover:bg-blue-500 text-white font-bold px-6 py-2.5 rounded-lg shadow transition-colors text-sm">Regresar</button>
-            <button type="submit" className="bg-indigo-600 hover:bg-indigo-500 text-white font-bold px-8 py-2.5 rounded-lg shadow-lg transition-colors text-sm">Guardar</button>
+            <button type="submit" disabled={enviando} className="bg-indigo-600 hover:bg-indigo-500 disabled:opacity-60 text-white font-bold px-8 py-2.5 rounded-lg shadow-lg transition-colors text-sm cursor-pointer">{enviando ? 'Guardando…' : 'Guardar'}</button>
           </div>
         </form>
       )}

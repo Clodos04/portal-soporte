@@ -323,16 +323,21 @@ function App() {
     setTicketEnEdicion(null);
   };
 
-  const handleGuardarEncuesta = (nuevaEncuesta) => {
-    fetch('/api/encuestas', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(nuevaEncuesta)
-    })
-    .then(res => res.json())
-    .then(() => {
+  // Devuelve { ok: true } o { ok: false, error } para que la pantalla de la encuesta muestre el resultado real
+  const handleGuardarEncuesta = async (nuevaEncuesta) => {
+    try {
+      const res = await fetch('/api/encuestas', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(nuevaEncuesta)
+      });
+      const datos = await res.json().catch(() => ({}));
+      if (!res.ok) return { ok: false, error: datos.error || 'No se pudo guardar la encuesta.' };
       setEstadisticasEncuestas(prev => [...prev, nuevaEncuesta]);
-    });
+      return { ok: true };
+    } catch (error) {
+      return { ok: false, error: 'No se pudo conectar con el servidor. Intenta de nuevo.' };
+    }
   };
 
   const handleLogin = async (username, password) => {
