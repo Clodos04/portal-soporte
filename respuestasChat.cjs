@@ -245,11 +245,22 @@ const evaluarSiguienteRespuestaChat = (ticket, remitente, textoUsuario, mensajes
     return null;
   }
 
-  // Si en cualquier momento el usuario escribe que ya se solucionó
+  // --------------------------------------------------------------------------
+  // EVALUACIÓN GLOBAL FIN DE FLUJO (Botones de Cierre)
+  // --------------------------------------------------------------------------
+  // Si en cualquier momento el usuario hace clic en "Ya quedó solucionado" o escribe algo similar
   if (textoLower.includes('ya quedo') || textoLower.includes('ya quedó') || textoLower.includes('ya funciono') || textoLower.includes('ya funcionó') || textoLower.includes('solucionado')) {
     return {
-      textoRespuesta: `🎉 ¡Excelente! Qué gusto que ya haya quedado funcionando correctamente. Un técnico revisará el folio #${folio} para confirmar el cierre.`,
+      textoRespuesta: `🎉 ¡Excelente! Qué gusto que ya haya quedado funcionando correctamente. Este folio #${folio} se cerrará automáticamente en este momento. ¡Que tengas un excelente turno!`,
       cerrarTicket: true
+    };
+  }
+
+  // Si el usuario hace clic en "Aún falla, quedo en espera"
+  if (textoLower.includes('aún falla') || textoLower.includes('aun falla') || textoLower.includes('espera del técnico') || textoLower.includes('espera de tecnico')) {
+    return {
+      textoRespuesta: `Entendido. Mantendremos el folio #${folio} abierto y en breve un técnico se acercará a tu posición para brindarte el soporte necesario.`,
+      cerrarTicket: false
     };
   }
 
@@ -258,6 +269,16 @@ const evaluarSiguienteRespuestaChat = (ticket, remitente, textoUsuario, mensajes
   // Desplegamos las 3 sub-opciones sutiles correspondientes
   // ==========================================================================
   if (mensajesDelSistema === 1) {
+
+    // --- TOUCHPOINT: FOLIO DE SOPORTE (Historial) ---
+    if (cat.includes('TOUCHPOINT') && sub.includes('FOLIO DE SOPORTE')) {
+      if (textoLower.includes('hola') || textoLower.includes('falla') || textoLower.includes('volvio') || textoLower.includes('volvió')) {
+        return {
+          textoRespuesta: `¡Hola! Registramos tu mensaje. Como nos indicas que la falla en Touchpoint persiste o requieres apoyo, en un momento un técnico se acercará a tu posición para revisarlo.`,
+          cerrarTicket: false
+        };
+      }
+    }
 
     // --- TOUCHPOINT: FALLA DE AUDIO ---
     if (cat.includes('TOUCHPOINT') && sub.includes('AUDIO')) {
@@ -546,20 +567,26 @@ const evaluarSiguienteRespuestaChat = (ticket, remitente, textoUsuario, mensajes
       };
     }
 
-    // Si era DISCO, RAM o FORMATEO directo (que ya mostró las 3 sub-opciones desde el Paso 1), cerramos con confirmación:
+    // Si era DISCO, RAM o FORMATEO directo (que ya mostró las 3 sub-opciones desde el Paso 1), cerramos con opciones Sí/No
     if (esDispositivo && (sub.includes('RENDIMIENTO') || sub.includes('CPU')) && elem) {
       const notaCentinela = textoLower.includes('advertencia sobre la unidad')
         ? `\n*(Nota: Recuerda que si la unidad requiere reemplazo definitivo o cambio a SSD por daño físico, se gestiona mediante Reporte Centinela).*`
         : '';
       return {
-        textoRespuesta: `✅ ¡Muchas gracias por confirmar! Nuestro técnico de TI ya cuenta con el detalle exacto y se acercará a la posición ${nodo} (${campana}) para realizar el mantenimiento correspondiente.${notaCentinela}`,
+        textoRespuesta: armarMensajeConOpciones(
+          `✅ ¡Muchas gracias por confirmar! Nuestro técnico de TI ya cuenta con el detalle exacto. ¿El problema ya se solucionó o sigues requiriendo la visita del técnico en tu posición ${nodo}?${notaCentinela}`,
+          [
+            `✅ ¡Ya quedó solucionado, muchas gracias!`,
+            `⏳ Aún falla, quedo en espera del técnico`
+          ]
+        ),
         cerrarTicket: false
       };
     }
   }
 
   // ==========================================================================
-  // PASO 2 -> PASO 3 (CIERRE): El usuario eligió la sub-opción de 2do nivel
+  // PASO 2 -> PASO 3 (CIERRE FINAL DEL ÁRBOL): Despliega opciones Sí/No
   // ==========================================================================
   if (mensajesDelSistema === 2) {
     const requiereRecordatorioCentinela =
@@ -573,7 +600,13 @@ const evaluarSiguienteRespuestaChat = (ticket, remitente, textoUsuario, mensajes
       : '';
 
     return {
-      textoRespuesta: `✅ ¡Perfecto, muchas gracias por la información! Con este detalle nuestro técnico de TI ya sabe exactamente qué herramientas llevar y se acercará a revisar tu posición (${nodo} - ${campana}) en breve.${notaCentinela}`,
+      textoRespuesta: armarMensajeConOpciones(
+        `✅ ¡Perfecto, muchas gracias por la información! Con este detalle nuestro técnico de TI ya sabe exactamente qué herramientas llevar. ¿El problema ya se solucionó tras estas revisiones o sigues requiriendo al técnico en tu lugar?${notaCentinela}`,
+        [
+          `✅ ¡Ya quedó solucionado, muchas gracias!`,
+          `⏳ Aún falla, quedo en espera del técnico`
+        ]
+      ),
       cerrarTicket: false
     };
   }
