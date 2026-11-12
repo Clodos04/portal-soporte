@@ -876,6 +876,9 @@ app.delete(['/api/tickets/:folio', '/tickets/:folio'], async (req, res) => {
     const adjuntos = await consulta('SELECT nombre_archivo FROM ticket_adjuntos WHERE folio = ?', [req.params.folio]);
     await consulta('DELETE FROM ticket_adjuntos WHERE folio = ?', [req.params.folio]);
     adjuntos.forEach(a => fs.promises.unlink(path.join(UPLOADS_DIR, path.basename(a.nombre_archivo))).catch(() => {}));
+    // El chat y el feedback de encuesta también se borran: si el folio se reutiliza, el ticket nuevo no hereda mensajes viejos
+    await consulta('DELETE FROM mensajes_chat WHERE folio = ?', [req.params.folio]);
+    await consulta('DELETE FROM encuesta_feedback WHERE folio = ?', [req.params.folio]).catch(() => {});
     await consulta('DELETE FROM tickets WHERE folio = ?', [req.params.folio]);
     io.emit('ticketActualizado', { folio: req.params.folio });
     res.json({ message: 'Ticket eliminado' });
