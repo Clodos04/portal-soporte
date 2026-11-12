@@ -111,13 +111,27 @@ function LiveChatView({ folio, user, onFinalizarChat, onAbrirModalEdicion, ticke
     enviarTextoAlChat(nuevoMensaje);
   };
 
-  const ultimoMsg = mensajes.length > 0 ? mensajes[mensajes.length - 1] : null;
-  const opcionesActivas = (ultimoMsg && ultimoMsg.remitente === 'Sistema')
-    ? extraerTextoYOpciones(ultimoMsg.texto).opciones
-    : [];
-
   const esSoporte = user?.role === 'support';
   const sinAsignar = !ticket?.tecnico || ticket?.tecnico === 'Sin Asignar';
+
+  // ==============================================================================
+  // NUEVA LÓGICA DE OPCIONES: Solo desaparecen si el usuario interactúa
+  // ==============================================================================
+  const ultimoMensajeSistema = [...mensajes].reverse().find(m => m.remitente === 'Sistema');
+  const opcionesExtraidas = ultimoMensajeSistema ? extraerTextoYOpciones(ultimoMensajeSistema.texto).opciones : [];
+
+  let opcionesActivas = [];
+  if (opcionesExtraidas.length > 0) {
+    const indiceUltimoSistema = mensajes.lastIndexOf(ultimoMensajeSistema);
+    const mensajesDespuesDelSistema = mensajes.slice(indiceUltimoSistema + 1);
+    
+    // Verificamos si el CLIENTE (o sea, el creador que no es de soporte) ya habló después del bot
+    const elClienteYaContesto = mensajesDespuesDelSistema.some(m => m.remitente !== 'Sistema' && m.remitente !== nombreTecnico);
+    
+    if (!elClienteYaContesto) {
+      opcionesActivas = opcionesExtraidas;
+    }
+  }
 
   return (
     <div className="animate-fade-in max-w-4xl mx-auto bg-slate-900 rounded-3xl shadow-2xl border border-slate-700 text-slate-200 overflow-hidden flex flex-col h-[78vh]">
