@@ -12,6 +12,37 @@ const PREDETERMINADAS = [
   'Quedó resuelto. Si vuelve a ocurrir, escríbenos por este mismo chat.'
 ];
 
+// Plantillas sugeridas según el tipo de solicitud. Hoy: Touchpoint, con las de cada subcategoría.
+const sinAcentos = (t) => String(t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase();
+const TOUCHPOINT_GENERAL = [
+  'Cierra Touchpoint por completo, ábrelo de nuevo en Edge o Chrome (en una ventana nueva) e inicia sesión otra vez. ¿Me confirmas si ya carga?',
+  'Borra la caché del navegador (Ctrl + Shift + Supr) y vuelve a entrar a Touchpoint. ¿Qué te muestra ahora?'
+];
+const TOUCHPOINT_POR_SUBCATEGORIA = [
+  { clave: 'AUDIO', textos: [
+    'Revisa en Windows que la diadema sea el dispositivo de audio predeterminado, tanto de entrada como de salida, y que no esté en silencio.',
+    'Desconecta la diadema, espera 5 segundos y conéctala en otro puerto USB. ¿Touchpoint ya la detecta?',
+    'Cuando el navegador pida permiso para usar el micrófono, elige «Permitir». ¿Te apareció el aviso?'
+  ] },
+  { clave: 'UNICA', textos: [
+    'Verifica que tu sesión de Touchpoint no esté abierta en otro equipo. Si lo está, ciérrala y vuelve a entrar.',
+    'Reinicia el equipo y entra de nuevo a Touchpoint. Si vuelve a sacarte de la sesión, avísame por aquí.'
+  ] },
+  { clave: 'MASIVA', textos: [
+    'Ya estamos revisando la conexión de toda la isla. Te aviso por este chat en cuanto quede restablecida.',
+    'Mientras lo resolvemos, confirma con tu supervisor cuántas posiciones siguen sin servicio.'
+  ] },
+  { clave: 'FOLIO DE SOPORTE', textos: [
+    'Dejamos este folio como antecedente de la falla. Si vuelve a presentarse hoy, avísame por aquí y nos acercamos.'
+  ] }
+];
+const plantillasSugeridas = (ticket) => {
+  if (!sinAcentos(ticket && ticket.categoria).includes('TOUCHPOINT')) return [];
+  const sub = sinAcentos(ticket && ticket.subcategoria);
+  const propias = TOUCHPOINT_POR_SUBCATEGORIA.find(g => sub.includes(g.clave));
+  return [...(propias ? propias.textos : []), ...TOUCHPOINT_GENERAL];
+};
+
 const leer = () => {
   try {
     const guardadas = JSON.parse(localStorage.getItem(CLAVE) || 'null');
@@ -19,7 +50,8 @@ const leer = () => {
   } catch { return PREDETERMINADAS; }
 };
 
-export default function RespuestasRapidas({ onElegir }) {
+export default function RespuestasRapidas({ onElegir, ticket }) {
+  const sugeridas = plantillasSugeridas(ticket);
   const [abierto, setAbierto] = useState(false);
   const [lista, setLista] = useState(leer);
   const [nueva, setNueva] = useState('');
@@ -68,7 +100,27 @@ export default function RespuestasRapidas({ onElegir }) {
             <button type="button" onClick={() => setAbierto(false)} aria-label="Cerrar" className="text-slate-400 hover:text-slate-100 cursor-pointer"><X size={15} strokeWidth={1.75} /></button>
           </div>
 
-          <ul className="max-h-56 overflow-y-auto">
+          <div className="max-h-72 overflow-y-auto">
+          {sugeridas.length > 0 && (
+            <>
+              <p className="px-4 pt-2.5 pb-1 text-[11px] font-medium text-indigo-300">Sugeridas para Touchpoint</p>
+              <ul className="border-b border-slate-700">
+                {sugeridas.map((texto) => (
+                  <li key={texto} className="border-b border-slate-700/60 last:border-0">
+                    <button
+                      type="button"
+                      onClick={() => { onElegir(texto); setAbierto(false); }}
+                      className="w-full text-left px-4 py-2.5 text-sm text-slate-200 hover:bg-slate-700/60 transition-colors cursor-pointer"
+                    >
+                      {texto}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+              <p className="px-4 pt-2.5 pb-1 text-[11px] font-medium text-slate-400">Mis respuestas</p>
+            </>
+          )}
+          <ul>
             {lista.map((texto) => (
               <li key={texto} className="group flex items-start gap-2 border-b border-slate-700/60 last:border-0">
                 <button
@@ -90,6 +142,7 @@ export default function RespuestasRapidas({ onElegir }) {
             ))}
             {lista.length === 0 && <li className="px-4 py-6 text-center text-sm text-slate-500">No hay respuestas guardadas.</li>}
           </ul>
+          </div>
 
           <form onSubmit={agregar} className="flex gap-2 p-3 border-t border-slate-700 bg-slate-900/40">
             <input
