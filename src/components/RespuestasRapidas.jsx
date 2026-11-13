@@ -15,25 +15,25 @@ const PREDETERMINADAS = [
 // Plantillas sugeridas según el tipo de solicitud. Hoy: Touchpoint, con las de cada subcategoría.
 const sinAcentos = (t) => String(t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase();
 const TOUCHPOINT_GENERAL = [
-  'Cierra Touchpoint por completo, ábrelo de nuevo en Edge o Chrome (en una ventana nueva) e inicia sesión otra vez. ¿Me confirmas si ya carga?',
-  'Borra la caché del navegador (Ctrl + Shift + Supr) y vuelve a entrar a Touchpoint. ¿Qué te muestra ahora?'
+  'Hola, ya estoy con tu caso. Para descartar algo del navegador: 1) cierra Touchpoint por completo, 2) ábrelo de nuevo en una ventana nueva de Edge o Chrome, 3) inicia sesión otra vez. Cuando termines, dime si ya carga o qué mensaje te muestra.',
+  'Vamos a limpiar la caché del navegador: 1) presiona Ctrl + Shift + Supr, 2) elige «Todo el tiempo» y marca imágenes y archivos en caché, 3) pulsa Borrar datos y vuelve a entrar a Touchpoint. Avísame qué ves ahora.'
 ];
 const TOUCHPOINT_POR_SUBCATEGORIA = [
   { clave: 'AUDIO', textos: [
-    'Revisa en Windows que la diadema sea el dispositivo de audio predeterminado, tanto de entrada como de salida, y que no esté en silencio.',
-    'Desconecta la diadema, espera 5 segundos y conéctala en otro puerto USB. ¿Touchpoint ya la detecta?',
-    'Cuando el navegador pida permiso para usar el micrófono, elige «Permitir». ¿Te apareció el aviso?'
+    'Revisemos el audio paso a paso: 1) en Windows abre Configuración > Sonido, 2) en Entrada y en Salida elige tu diadema como dispositivo predeterminado, 3) confirma que no esté en silencio ni con el volumen al mínimo. Dime si se escucha y si el micrófono muestra movimiento al hablar.',
+    'Vamos a reconectar la diadema: 1) desconéctala, 2) espera 5 segundos, 3) conéctala en otro puerto USB del CPU, 4) cierra y vuelve a abrir Touchpoint. ¿Ya la reconoce?',
+    'Cuando Touchpoint abra, el navegador debe pedir permiso para usar el micrófono: elige «Permitir». Si ya lo habías bloqueado, haz clic en el candado junto a la dirección, activa el micrófono y recarga la página. ¿Te funcionó?'
   ] },
   { clave: 'UNICA', textos: [
-    'Verifica que tu sesión de Touchpoint no esté abierta en otro equipo. Si lo está, ciérrala y vuelve a entrar.',
-    'Reinicia el equipo y entra de nuevo a Touchpoint. Si vuelve a sacarte de la sesión, avísame por aquí.'
+    'Para revisar que no se esté cerrando por una sesión duplicada: 1) confirma que tu usuario de Touchpoint no esté abierto en otro equipo y ciérralo allí, 2) cierra sesión aquí, 3) vuelve a entrar. Dime si te vuelve a sacar y a qué hora ocurrió.',
+    'Vamos a reiniciar el equipo para limpiar la sesión: guarda lo que tengas abierto, reinicia, entra de nuevo a Touchpoint y avísame por aquí. Si vuelve a sacarte, cuéntame qué hacías en ese momento para ubicar la causa.'
   ] },
   { clave: 'MASIVA', textos: [
-    'Ya estamos revisando la conexión de toda la isla. Te aviso por este chat en cuanto quede restablecida.',
-    'Mientras lo resolvemos, confirma con tu supervisor cuántas posiciones siguen sin servicio.'
+    'Ya estamos revisando la conexión de toda la isla con prioridad alta. No reinicies ni apagues los equipos hasta que te lo indiquemos; te aviso por este chat en cuanto quede restablecida.',
+    'Para acotar el alcance, confirma con tu supervisor: 1) cuántas posiciones siguen sin servicio, 2) si es toda la isla o solo un bloque, 3) a qué hora empezó. Con eso priorizamos la revisión.'
   ] },
   { clave: 'FOLIO DE SOPORTE', textos: [
-    'Dejamos este folio como antecedente de la falla. Si vuelve a presentarse hoy, avísame por aquí y nos acercamos.'
+    'Dejamos este folio como antecedente de la falla en tu posición; ese historial nos ayuda a detectar si el mismo equipo falla seguido. Si vuelve a presentarse hoy, avísame por aquí con el mensaje que veas y nos acercamos de inmediato.'
   ] }
 ];
 const plantillasSugeridas = (ticket) => {
