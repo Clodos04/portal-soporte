@@ -81,7 +81,14 @@ const obtenerFlujoPreguntas = (ticket, folioAnteriorMes = null) => {
 
     if (sub.includes('FOLIO DE SOPORTE')) {
       return [
-        `✅ Folio #${folio} registrado exitosamente para ${nodo} (${campana}) como antecedente e historial de que hubo una falla (ya solucionada al abrir Touchpoint en otro navegador o reiniciar el equipo). Si vuelve a presentarse hoy, escríbenos por aquí para acercarnos.`
+        armarMensajeConOpciones(
+          `✅ Folio #${folio} registrado exitosamente para ${nodo} (${campana}) como antecedente e historial de que hubo una falla (ya solucionada al abrir Touchpoint en otro navegador o reiniciar el equipo).
+Confírmanos cómo sigue la posición:`,
+          [
+            `🔁 La falla volvió a presentarse y necesito que se acerquen`,
+            `📝 Ya quedó resuelta, solo quiero dejar el registro`
+          ]
+        )
       ];
     }
   }
@@ -243,6 +250,24 @@ const evaluarSiguienteRespuestaChat = (ticket, remitente, textoUsuario, mensajes
       };
     }
     return null;
+  }
+
+  // --------------------------------------------------------------------------
+  // TOUCHPOINT: FOLIO DE SOPORTE (antecedente). Si la falla volvió se atiende; si no, el folio queda como registro.
+  // --------------------------------------------------------------------------
+  if (cat.includes('TOUCHPOINT') && sub.includes('FOLIO DE SOPORTE') && mensajesDelSistema === 1) {
+    if (textoLower.includes('volvi') || textoLower.includes('se acerquen')) {
+      return {
+        textoRespuesta: `🙌 Entendido. Registramos que la falla volvió a presentarse en ${nodo} (${campana}). Un técnico se acercará a tu posición en breve; si algo cambia mientras tanto, escríbenos por aquí.`,
+        cerrarTicket: false
+      };
+    }
+    if (textoLower.includes('registro') || textoLower.includes('resuelta')) {
+      return {
+        textoRespuesta: `✅ ¡Gracias por confirmarlo! Dejamos el folio #${folio} como antecedente de la falla en ${nodo}. Si vuelve a presentarse, crea un nuevo reporte o escríbenos por aquí.`,
+        cerrarTicket: true
+      };
+    }
   }
 
   // Si en cualquier momento el usuario escribe que ya se solucionó
