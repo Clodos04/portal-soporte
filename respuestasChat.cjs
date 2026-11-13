@@ -273,7 +273,15 @@ const evaluarSiguienteRespuestaChat = (ticket, remitente, textoUsuario, mensajes
   // Si en cualquier momento el usuario escribe que ya se solucionó
   if (textoLower.includes('ya quedo') || textoLower.includes('ya quedó') || textoLower.includes('ya funciono') || textoLower.includes('ya funcionó') || textoLower.includes('solucionado')) {
     return {
-      textoRespuesta: `🎉 ¡Excelente! Qué gusto que ya haya quedado funcionando correctamente. Un técnico revisará el folio #${folio} para confirmar el cierre.`,
+      textoRespuesta: `🎉 ¡Excelente! Qué gusto que ya haya quedado funcionando correctamente. Este folio #${folio} se cerrará automáticamente en este momento. ¡Que tengas un excelente turno!`,
+      cerrarTicket: true
+    };
+  }
+
+  // Si el usuario hace clic en "Aún falla, quedo en espera"
+  if (textoLower.includes('aún falla') || textoLower.includes('aun falla') || textoLower.includes('espera del técnico') || textoLower.includes('espera de tecnico')) {
+    return {
+      textoRespuesta: `Entendido. Mantendremos el folio #${folio} abierto y en breve un técnico se acercará a tu posición para brindarte el soporte necesario.`,
       cerrarTicket: false
     };
   }
@@ -283,6 +291,16 @@ const evaluarSiguienteRespuestaChat = (ticket, remitente, textoUsuario, mensajes
   // Desplegamos las 3 sub-opciones sutiles correspondientes
   // ==========================================================================
   if (mensajesDelSistema === 1) {
+
+    // --- TOUCHPOINT: FOLIO DE SOPORTE (Historial) ---
+    if (cat.includes('TOUCHPOINT') && sub.includes('FOLIO DE SOPORTE')) {
+      if (textoLower.includes('hola') || textoLower.includes('falla') || textoLower.includes('volvio') || textoLower.includes('volvió')) {
+        return {
+          textoRespuesta: `¡Hola! Registramos tu mensaje. Como nos indicas que la falla en Touchpoint persiste o requieres apoyo, en un momento un técnico se acercará a tu posición para revisarlo.`,
+          cerrarTicket: false
+        };
+      }
+    }
 
     // --- TOUCHPOINT: FALLA DE AUDIO ---
     if (cat.includes('TOUCHPOINT') && sub.includes('AUDIO')) {
@@ -571,20 +589,26 @@ const evaluarSiguienteRespuestaChat = (ticket, remitente, textoUsuario, mensajes
       };
     }
 
-    // Si era DISCO, RAM o FORMATEO directo (que ya mostró las 3 sub-opciones desde el Paso 1), cerramos con confirmación:
+    // Si era DISCO, RAM o FORMATEO directo (que ya mostró las 3 sub-opciones desde el Paso 1), cerramos con opciones Sí/No
     if (esDispositivo && (sub.includes('RENDIMIENTO') || sub.includes('CPU')) && elem) {
       const notaCentinela = textoLower.includes('advertencia sobre la unidad')
         ? `\n*(Nota: Recuerda que si la unidad requiere reemplazo definitivo o cambio a SSD por daño físico, se gestiona mediante Reporte Centinela).*`
         : '';
       return {
-        textoRespuesta: `✅ ¡Muchas gracias por confirmar! Nuestro técnico de TI ya cuenta con el detalle exacto y se acercará a la posición ${nodo} (${campana}) para realizar el mantenimiento correspondiente.${notaCentinela}`,
+        textoRespuesta: armarMensajeConOpciones(
+          `✅ ¡Muchas gracias por confirmar! Nuestro técnico de TI ya cuenta con el detalle exacto. ¿El problema ya se solucionó o sigues requiriendo la visita del técnico en tu posición ${nodo}?${notaCentinela}`,
+          [
+            `✅ ¡Ya quedó solucionado, muchas gracias!`,
+            `⏳ Aún falla, quedo en espera del técnico`
+          ]
+        ),
         cerrarTicket: false
       };
     }
   }
 
   // ==========================================================================
-  // PASO 2 -> PASO 3 (CIERRE): El usuario eligió la sub-opción de 2do nivel
+  // PASO 2 -> PASO 3 (CIERRE FINAL DEL ÁRBOL): Da un Tip Técnico y Opciones Sí/No
   // ==========================================================================
   if (mensajesDelSistema === 2) {
     // TOUCHPOINT: además de avisar que el técnico va en camino, se dan pasos concretos para intentar mientras llega
@@ -611,18 +635,37 @@ const evaluarSiguienteRespuestaChat = (ticket, remitente, textoUsuario, mensajes
       }
     }
 
-    const requiereRecordatorioCentinela =
-      textoLower.includes('reemplazo por stock') ||
-      textoLower.includes('borrosos o desgastados') ||
-      textoLower.includes('cerca de la base del mouse') ||
-      textoLower.includes('advertencia sobre la unidad');
+    let consejoTecnico = "Nuestro técnico de TI ya cuenta con el detalle exacto de la falla.";
 
-    const notaCentinela = requiereRecordatorioCentinela
-      ? `\n\n🛡️ *Nota importante: Te recordamos que cuando un periférico presenta daño físico definitivo o desgaste total y requiere reemplazo por stock, el trámite debe registrarse en el apartado de Reporte Centinela.*`
-      : '';
+    // ----- TIPS TÉCNICOS SEGÚN LA RESPUESTA ANTERIOR -----
+    
+    // TOUCHPOINT: AUDIO
+    if (textoLower.includes('volumen se percibe muy bajo') || textoLower.includes('estática constante')) {
+      consejoTecnico = "Como primer paso, por favor desconecta tu diadema del puerto USB frontal y conéctala en uno de los puertos USB de la parte trasera del CPU (directo a la placa base).";
+    } else if (textoLower.includes('botón \'mute\'') || textoLower.includes('no escuchan nada') || textoLower.includes('un solo lado')) {
+      consejoTecnico = "Por favor verifica que el volumen en la barra de tareas de Windows esté al 100%, y asegúrate de que el plug de la diadema (si es desprendible) esté bien conectado al control de volumen del cable.";
+    } 
+    // TOUCHPOINT: DESCONEXIÓN Y RED
+    else if (textoLower.includes('saca al agente') || textoLower.includes('se queda cargando') || textoLower.includes('foquito de red') || textoLower.includes('notificación de \'red no identificada\'')) {
+      consejoTecnico = "Antes de que el técnico llegue, por favor intenta presionar CTRL + SHIFT + R en tu navegador para forzar una recarga limpia, o asegúrate de que el cable de red gris/azul detrás de tu CPU esté bien conectado hasta escuchar un 'clic'.";
+    }
+    // DISPOSITIVOS: TECLADO Y MOUSE
+    else if (textoLower.includes('pegajosas') || textoLower.includes('brinca') || textoLower.includes('doble clic') || textoLower.includes('apaga') || textoLower.includes('falso contacto')) {
+      consejoTecnico = "Si el equipo lo permite, prueba desconectando el dispositivo y conectándolo en otro puerto USB libre para descartar una falla del puerto actual.";
+    }
+    // NOTAS CENTINELA O DAÑO FÍSICO
+    else if (textoLower.includes('reemplazo por stock') || textoLower.includes('borrosos o desgastados') || textoLower.includes('cerca de la base del mouse') || textoLower.includes('advertencia sobre la unidad') || textoLower.includes('líquidos sobre el teclado')) {
+      consejoTecnico = "Registramos la necesidad física del componente en la posición.\n\n🛡️ *Nota importante: Te recordamos que cuando un periférico presenta daño físico definitivo o desgaste total y requiere reemplazo, el trámite final para inventario debe registrarse en el apartado de Reporte Centinela.*";
+    }
 
     return {
-      textoRespuesta: `✅ ¡Perfecto, muchas gracias por la información! Con este detalle nuestro técnico de TI ya sabe exactamente qué herramientas llevar y se acercará a revisar tu posición (${nodo} - ${campana}) en breve.${notaCentinela}`,
+      textoRespuesta: armarMensajeConOpciones(
+        `✅ ¡Anotado, muchas gracias por la información!\n\n💡 **Tip de Soporte:** ${consejoTecnico}\n\n¿Lograste solucionar el problema con este paso o sigues requiriendo que el técnico se acerque a tu posición?`,
+        [
+          `✅ ¡Ya quedó solucionado, muchas gracias!`,
+          `⏳ Aún falla, quedo en espera del técnico`
+        ]
+      ),
       cerrarTicket: false
     };
   }
