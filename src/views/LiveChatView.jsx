@@ -253,7 +253,7 @@ function LiveChatView({ folio, user, onFinalizarChat, onAbrirModalEdicion, ticke
 
       {/* Barra de Escritura */}
       <form onSubmit={enviarMensaje} className="p-4 bg-slate-800 border-t border-slate-700 flex gap-3 shrink-0">
-        {esSoporte && <RespuestasRapidas onElegir={(texto) => setNuevoMensaje(texto)} />}
+        {esSoporte && <RespuestasRapidas ticket={ticket} onElegir={(texto) => setNuevoMensaje(texto)} />}
         <input aria-label="Escribe un mensaje" 
           type="text"
           placeholder="O escribe algún comentario adicional aquí…"

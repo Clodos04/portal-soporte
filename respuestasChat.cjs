@@ -81,7 +81,14 @@ const obtenerFlujoPreguntas = (ticket, folioAnteriorMes = null) => {
 
     if (sub.includes('FOLIO DE SOPORTE')) {
       return [
-        `✅ Folio #${folio} registrado exitosamente para ${nodo} (${campana}) como antecedente e historial de que hubo una falla (ya solucionada al abrir Touchpoint en otro navegador o reiniciar el equipo). Si vuelve a presentarse hoy, escríbenos por aquí para acercarnos.`
+        armarMensajeConOpciones(
+          `✅ Folio #${folio} registrado exitosamente para ${nodo} (${campana}) como antecedente e historial de que hubo una falla (ya solucionada al abrir Touchpoint en otro navegador o reiniciar el equipo).
+Confírmanos cómo sigue la posición:`,
+          [
+            `🔁 La falla volvió a presentarse y necesito que se acerquen`,
+            `📝 Ya quedó resuelta, solo quiero dejar el registro`
+          ]
+        )
       ];
     }
   }
@@ -246,9 +253,24 @@ const evaluarSiguienteRespuestaChat = (ticket, remitente, textoUsuario, mensajes
   }
 
   // --------------------------------------------------------------------------
-  // EVALUACIÓN GLOBAL FIN DE FLUJO (Botones de Cierre)
+  // TOUCHPOINT: FOLIO DE SOPORTE (antecedente). Si la falla volvió se atiende; si no, el folio queda como registro.
   // --------------------------------------------------------------------------
-  // Si en cualquier momento el usuario hace clic en "Ya quedó solucionado" o escribe algo similar
+  if (cat.includes('TOUCHPOINT') && sub.includes('FOLIO DE SOPORTE') && mensajesDelSistema === 1) {
+    if (textoLower.includes('volvi') || textoLower.includes('se acerquen')) {
+      return {
+        textoRespuesta: `🙌 Entendido. Registramos que la falla volvió a presentarse en ${nodo} (${campana}) y avisamos a un técnico para que se acerque a tu posición. Mientras llega, vuelve a cerrar Touchpoint por completo y ábrelo en una ventana nueva de Edge o Chrome; si el problema continúa, escríbenos por aquí qué mensaje o comportamiento ves para adelantarle el diagnóstico.`,
+        cerrarTicket: false
+      };
+    }
+    if (textoLower.includes('registro') || textoLower.includes('resuelta')) {
+      return {
+        textoRespuesta: `✅ ¡Gracias por confirmarlo! Dejamos el folio #${folio} cerrado como antecedente de la falla en ${nodo} (${campana}); ese historial nos ayuda a detectar si el mismo equipo falla seguido. Si vuelve a presentarse, crea un nuevo reporte desde el asistente guiado y lo atendemos de inmediato.`,
+        cerrarTicket: true
+      };
+    }
+  }
+
+  // Si en cualquier momento el usuario escribe que ya se solucionó
   if (textoLower.includes('ya quedo') || textoLower.includes('ya quedó') || textoLower.includes('ya funciono') || textoLower.includes('ya funcionó') || textoLower.includes('solucionado')) {
     return {
       textoRespuesta: `🎉 ¡Excelente! Qué gusto que ya haya quedado funcionando correctamente. Este folio #${folio} se cerrará automáticamente en este momento. ¡Que tengas un excelente turno!`,
@@ -589,6 +611,30 @@ const evaluarSiguienteRespuestaChat = (ticket, remitente, textoUsuario, mensajes
   // PASO 2 -> PASO 3 (CIERRE FINAL DEL ÁRBOL): Da un Tip Técnico y Opciones Sí/No
   // ==========================================================================
   if (mensajesDelSistema === 2) {
+    // TOUCHPOINT: además de avisar que el técnico va en camino, se dan pasos concretos para intentar mientras llega
+    if (cat.includes('TOUCHPOINT')) {
+      const quien = `${nodo} (${campana})`;
+      const cierre = `Si con esto ya quedó, escríbenos «ya quedó» y un técnico confirmará el cierre del folio #${folio}. Si sigue igual, no te preocupes: tu reporte ya está registrado y un técnico se acercará a revisar la posición.`;
+      if (sub.includes('AUDIO')) {
+        return {
+          textoRespuesta: `✅ ¡Gracias, con este detalle ya sabemos qué revisar en ${quien}! Mientras el técnico llega, puedes intentar esto:\n1) En Windows, abre Configuración > Sonido y confirma que tu diadema sea el dispositivo de entrada y de salida predeterminado, y que no esté en silencio.\n2) Desconecta la diadema, espera 5 segundos y conéctala en otro puerto USB del CPU.\n3) Cierra Touchpoint por completo y ábrelo de nuevo en una ventana nueva de Edge o Chrome; si el navegador pide permiso para el micrófono, elige «Permitir».\n\n${cierre}`,
+          cerrarTicket: false
+        };
+      }
+      if (sub.includes('ÚNICA') || sub.includes('UNICA')) {
+        return {
+          textoRespuesta: `✅ ¡Gracias, ya tenemos lo necesario para revisar ${quien}! Mientras el técnico llega, puedes intentar esto:\n1) Verifica que tu sesión de Touchpoint no esté abierta en otro equipo; si lo está, ciérrala allí.\n2) Cierra sesión, borra la caché del navegador (Ctrl + Shift + Supr) y vuelve a entrar.\n3) Revisa que el cable de red esté firme en el CPU y en la pared, y que otras páginas abran con normalidad.\n\n${cierre}`,
+          cerrarTicket: false
+        };
+      }
+      if (sub.includes('MASIVA')) {
+        return {
+          textoRespuesta: `🚨 ¡Gracias! Dejamos registrada la alerta de ${quien} con prioridad alta y avisamos al equipo técnico. Mientras tanto:\n1) Confirma con tu supervisor cuántas posiciones siguen sin servicio.\n2) No reinicies ni apagues los equipos hasta que te lo indiquemos, para poder revisar el estado actual.\n3) Mantén abierto este chat: te escribiremos aquí en cuanto haya avance.`,
+          cerrarTicket: false
+        };
+      }
+    }
+
     let consejoTecnico = "Nuestro técnico de TI ya cuenta con el detalle exacto de la falla.";
 
     // ----- TIPS TÉCNICOS SEGÚN LA RESPUESTA ANTERIOR -----
