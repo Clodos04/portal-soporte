@@ -26,7 +26,7 @@ const obtenerMensajeCentinela = (nuevoFolio, esSubsecuente, folioAnterior, resol
       : `Un técnico ya se acercó previamente a realizar pruebas (Folio origen: #${folioAnterior}).`;
     return `Gracias por crear tu centinela con el folio #${nuevoFolio}. ${detalle} Te agradecemos que lo sigas reportando para que tu campaña llegue al 100% y se hagan los cambios solicitados.`;
   }
-  return `🛡️ Folio Centinela #${nuevoFolio} registrado con éxito para solicitud de cambio de periférico. Se te asignará un técnico en un tiempo máximo de 10 minutos para validar el componente.`;
+  return `🛡️ Folio Centinela #${nuevoFolio} registrado con éxito para solicitud de cambio de periférico. Un técnico tomará tu reporte en breve para validar el componente.`;
 };
 
 // 2. MENSAJE INICIAL CON LAS 3 OPCIONES PRINCIPALES AL CREAR EL TICKET
@@ -209,7 +209,7 @@ Confírmanos cómo sigue la posición:`,
   }
 
   return [
-    `Folio #${folio} registrado con éxito para ${nodo} (${campana}). Se te asignará un técnico en un tiempo máximo de 10 minutos.`
+    `Folio #${folio} registrado con éxito para ${nodo} (${campana}). Un técnico tomará tu solicitud en breve; puedes seguir el avance en este chat.`
   ];
 };
 
