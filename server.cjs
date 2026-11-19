@@ -18,7 +18,10 @@ const {
   obtenerMensajeCentinela,
   armarResolucionCentinela,
   obtenerFlujoPreguntas,
-  evaluarSiguienteRespuestaChat
+  evaluarSiguienteRespuestaChat,
+  CONSEJOS_BASE,
+  consejoParaTicket,
+  sinAcentos
 } = require('./respuestasChat.cjs');
 
 // ============================================================================
@@ -357,7 +360,7 @@ const rutasAdminEscritura = [
 ];
 app.use((req, res, next) => {
   const esApi = req.path.startsWith('/api/') || req.path.startsWith('/CTI/api/') ||
-    /^\/(tickets|usuarios|grupos|categorias|subcategorias|elementos|campanas|centinela|chat|encuestas|kpis|buzon)(\/|$)/.test(req.path);
+    /^\/(tickets|usuarios|grupos|categorias|subcategorias|elementos|campanas|centinela|chat|encuestas|kpis|buzon|asistente)(\/|$)/.test(req.path);
   if (!esApi || req.path === '/api/login' || req.path === '/login' || req.path === '/api/logout' || req.path === '/logout' || req.path === '/api/me' || req.path === '/me' || req.path === '/api/health') return next();
   const requiereAdmin = rutasAdminEscritura.some(r => r.metodo === req.method && r.ruta.test(req.path));
   return (requiereAdmin ? requireAdmin : requireAuth)(req, res, next);
@@ -475,7 +478,7 @@ const continuarInsercionTicket = (ticketData, res, actor = 'Sistema') => {
   const esDispositivo = catUpper.includes('DISPOSITIVO') || catUpper.includes('HARDWARE');
 
   const guardarTicketYPrimerMensaje = (folioPrevio = null) => {
-    const flujo = obtenerFlujoPreguntas(ticketData, folioPrevio);
+    const flujo = obtenerFlujoPreguntas(ticketData, folioPrevio, { consejos: consejosCache });
     const primerMensaje = flujo[0];
 
     for (let key in ticketData) {
@@ -490,6 +493,7 @@ const continuarInsercionTicket = (ticketData, res, actor = 'Sistema') => {
       if (err) return res.status(500).json({ error: err.message });
       db.query('INSERT INTO mensajes_chat (folio, remitente, texto, hora) VALUES (?, ?, ?, ?)', [ticketData.folio, 'Sistema', primerMensaje, horaCorta], () => {
         io.emit('ticketActualizado', { folio: ticketData.folio });
+        alCrearTicketAsistente(ticketData);
         registrarAuditoria(ticketData.folio, actor, 'CREADO', [{ campo: 'asunto', anterior: null, nuevo: ticketData.asunto || ticketData.subcategoria || '' }]);
         res.json({ message: 'Ticket creado exitosamente', id: result.insertId, folio: ticketData.folio, fecha: fechaSolo, folioPrevio });
       });
@@ -961,9 +965,10 @@ app.post(['/api/chat', '/chat'], (req, res) => {
         db.query(queryPrevio, [ticket.equipo, ticket.subcategoria, `${anioMesActual}%`, ticket.id], (errPrev, resPrev) => {
           const folioAnteriorMes = (!errPrev && resPrev && resPrev.length > 0) ? resPrev[0].folio : null;
 
-          const evaluacion = evaluarSiguienteRespuestaChat(ticket, remitente, texto, mensajesDelSistema, folioAnteriorMes);
+          const evaluacion = evaluarSiguienteRespuestaChat(ticket, remitente, texto, mensajesDelSistema, folioAnteriorMes, { consejos: consejosCache });
 
           if (evaluacion && evaluacion.textoRespuesta) {
+            registrarUsoConsejo(folio, ticket, evaluacion);
             if (evaluacion.cerrarTicket) {
               const horaMexActual = obtenerFechaMySQL();
               db.query("UPDATE tickets SET estatus = 'Cerrado', colorEstatus = 'bg-red-600', updated_at = ?, fecha_cierre = ? WHERE folio = ?", [horaMexActual, horaMexActual, folio], (errCierre) => {
@@ -1317,6 +1322,267 @@ app.get(['/api/kpis/tiempos', '/kpis/tiempos'], (req, res) => {
     if (err) return res.status(500).json({ error: err.message });
     res.json(results.map(t => ({ id: t.id, folio: t.folio, minutos_resolucion: Math.round(((t.estatus === 'Cerrado' ? new Date(t.fecha_cierre || t.updated_at) : new Date()) - new Date(t.created_at)) / (1000 * 60)) || 5 })));
   });
+});
+
+// ============================================================================
+// MÓDULO: ASISTENTE DEL CHAT (consejos editables con imagen, métricas e incidentes masivos)
+// ============================================================================
+let consejosCache = null; // null = aún no cargado: el chat usa los consejos de fábrica
+const parseLista = (v) => { const x = parseJsonSeguro(v); return Array.isArray(x) ? x : []; };
+const filaAConsejo = (f) => ({
+  id: f.id, clave: f.clave, g: f.grupo, a: f.ambito, si: parseLista(f.frases), libres: parseLista(f.libres),
+  tip: f.texto, imagen: !!f.imagen, elem: !!f.solo_elemento, activo: !!f.activo
+});
+const cargarConsejos = () => new Promise((resolve) => {
+  db.query('SELECT * FROM chat_consejos ORDER BY orden, id', (err, filas) => {
+    if (err) console.error('Error al cargar consejos del chat:', err.message);
+    else consejosCache = filas.map(filaAConsejo).filter(c => c.activo);
+    resolve();
+  });
+});
+
+db.query(`
+  CREATE TABLE IF NOT EXISTS chat_consejos (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    clave VARCHAR(60) NOT NULL,
+    grupo VARCHAR(100) DEFAULT '',
+    ambito VARCHAR(100) DEFAULT '',
+    frases TEXT,
+    libres TEXT,
+    texto TEXT NOT NULL,
+    imagen VARCHAR(80) NULL,
+    solo_elemento TINYINT(1) DEFAULT 0,
+    activo TINYINT(1) DEFAULT 1,
+    orden INT DEFAULT 0,
+    actualizado_por VARCHAR(150) DEFAULT '',
+    updated_at DATETIME NULL,
+    UNIQUE KEY uq_consejo_clave (clave)
+  )
+`, (errTabla) => {
+  if (errTabla) return console.error('Error al crear/verificar tabla chat_consejos:', errTabla.message);
+  // Siembra los consejos de fábrica (sin pisar los que el administrador ya editó)
+  const filas = CONSEJOS_BASE.map((c, i) => [c.clave, c.g || '', c.a || '', JSON.stringify(c.si || []), JSON.stringify(c.libres || []), c.tip, c.elem ? 1 : 0, 1, i]);
+  db.query('INSERT IGNORE INTO chat_consejos (clave, grupo, ambito, frases, libres, texto, solo_elemento, activo, orden) VALUES ?', [filas], (errSemilla) => {
+    if (errSemilla) console.error('Error al sembrar consejos del chat:', errSemilla.message);
+    cargarConsejos();
+  });
+});
+
+db.query(`
+  CREATE TABLE IF NOT EXISTS chat_consejo_uso (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    folio VARCHAR(20) NOT NULL,
+    consejo_id INT NULL,
+    clave VARCHAR(60) DEFAULT '',
+    categoria VARCHAR(100) DEFAULT '',
+    subcategoria VARCHAR(100) DEFAULT '',
+    resultado VARCHAR(12) NULL,
+    fecha DATETIME,
+    fecha_resultado DATETIME NULL,
+    UNIQUE KEY uq_uso_folio (folio),
+    INDEX idx_uso_fecha (fecha)
+  )
+`, (err) => { if (err) console.error('Error al crear/verificar tabla chat_consejo_uso:', err.message); });
+
+const haceMinutos = (min) => new Date(Date.now() - min * 60000).toLocaleString('sv-SE', { timeZone: 'America/Mexico_City' });
+
+// Qué consejo se le mostró al cliente y cómo terminó (resuelto con el consejo o escalado al técnico)
+const registrarUsoConsejo = (folio, ticket, evaluacion) => {
+  if (!evaluacion) return;
+  if (evaluacion.consejoId || evaluacion.consejoClave) {
+    db.query(
+      'INSERT INTO chat_consejo_uso (folio, consejo_id, clave, categoria, subcategoria, fecha) VALUES (?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE consejo_id = VALUES(consejo_id), clave = VALUES(clave), resultado = NULL, fecha_resultado = NULL',
+      [String(folio), evaluacion.consejoId || null, evaluacion.consejoClave || '', ticket.categoria || '', ticket.subcategoria || '', obtenerFechaMySQL()],
+      (e) => { if (e) console.error('No se pudo registrar el uso del consejo:', e.message); }
+    );
+  }
+  if (evaluacion.evento === 'resuelto' || evaluacion.evento === 'escalado') {
+    db.query('UPDATE chat_consejo_uso SET resultado = ?, fecha_resultado = ? WHERE folio = ?',
+      [evaluacion.evento.toUpperCase(), obtenerFechaMySQL(), String(folio)],
+      (e) => { if (e) console.error('No se pudo registrar el resultado del consejo:', e.message); });
+  }
+};
+
+// Posible incidente masivo: varios tickets abiertos de la misma campaña y categoría en pocos minutos
+const INCIDENTE_MINUTOS = parseInt(process.env.INCIDENTE_MINUTOS, 10) || 15;
+const INCIDENTE_MINIMO = parseInt(process.env.INCIDENTE_MINIMO, 10) || 3;
+const consultarIncidentes = async () => {
+  const filas = await consulta(
+    `SELECT campana, categoria, COUNT(*) AS total, GROUP_CONCAT(folio ORDER BY id) AS folios, MIN(created_at) AS primero
+       FROM tickets
+      WHERE created_at >= ? AND COALESCE(tipo_solicitud, '') <> 'CENTINELA' AND LOWER(estatus) NOT LIKE '%cerrado%'
+      GROUP BY campana, categoria HAVING COUNT(*) >= ?`,
+    [haceMinutos(INCIDENTE_MINUTOS), INCIDENTE_MINIMO]
+  );
+  return filas.map(f => ({ campana: f.campana, categoria: f.categoria, total: Number(f.total), folios: String(f.folios || '').split(','), primero: f.primero }));
+};
+
+// Se llama al crear un ticket: guarda el consejo inicial (si lo hubo) y avisa si ya parece un incidente masivo
+const alCrearTicketAsistente = (ticketData) => {
+  try {
+    const consejo = consejoParaTicket(ticketData, consejosCache || undefined);
+    if (consejo) registrarUsoConsejo(ticketData.folio, ticketData, { consejoId: consejo.id || null, consejoClave: consejo.clave });
+    consultarIncidentes().then(grupos => {
+      const g = grupos.find(x => x.campana === ticketData.campana && x.categoria === ticketData.categoria);
+      if (g) io.emit('incidenteMasivo', g);
+    }).catch(() => {});
+  } catch (e) { console.error('Error en el asistente al crear ticket:', e.message); }
+};
+
+app.get(['/api/asistente/incidentes'], requireAdmin, async (req, res) => {
+  try { res.json(await consultarIncidentes()); }
+  catch (e) { res.status(500).json({ error: 'No se pudieron consultar los incidentes.' }); }
+});
+
+app.get(['/api/asistente/metricas'], requireAdmin, async (req, res) => {
+  try {
+    const dias = Math.max(0, Math.min(365, parseInt(req.query.dias, 10) || 30));
+    const desde = dias ? haceMinutos(dias * 1440) : '2000-01-01 00:00:00';
+    const num = (f) => ({ ...f, total: Number(f.total), resueltos: Number(f.resueltos || 0), escalados: Number(f.escalados || 0) });
+    const [resumen] = await consulta(
+      `SELECT COUNT(*) AS total, SUM(resultado = 'RESUELTO') AS resueltos, SUM(resultado = 'ESCALADO') AS escalados FROM chat_consejo_uso WHERE fecha >= ?`, [desde]);
+    const porSubcategoria = await consulta(
+      `SELECT categoria, subcategoria, COUNT(*) AS total, SUM(resultado = 'RESUELTO') AS resueltos, SUM(resultado = 'ESCALADO') AS escalados
+         FROM chat_consejo_uso WHERE fecha >= ? GROUP BY categoria, subcategoria ORDER BY total DESC`, [desde]);
+    const porConsejo = await consulta(
+      `SELECT u.clave, c.id AS consejo_id, c.grupo, c.texto, COUNT(*) AS total, SUM(u.resultado = 'RESUELTO') AS resueltos, SUM(u.resultado = 'ESCALADO') AS escalados
+         FROM chat_consejo_uso u LEFT JOIN chat_consejos c ON c.clave = u.clave WHERE u.fecha >= ?
+        GROUP BY u.clave, c.id, c.grupo, c.texto ORDER BY total DESC LIMIT 60`, [desde]);
+    res.json({ dias, resumen: num(resumen || { total: 0 }), porSubcategoria: porSubcategoria.map(num), porConsejo: porConsejo.map(num) });
+  } catch (e) {
+    console.error('Error en métricas del asistente:', e.message);
+    res.status(500).json({ error: 'No se pudieron calcular las métricas.' });
+  }
+});
+
+const listaFrases = (v) => (Array.isArray(v) ? v : String(v || '').split(','))
+  .map(x => sinAcentos(x)).filter(Boolean).slice(0, 30).map(x => x.slice(0, 120));
+const ambitoValido = (v) => String(v || '').toLowerCase().replace(/[^a-z ]/g, '').replace(/\s+/g, ' ').trim().slice(0, 100);
+const filaAdminConsejo = (f) => ({
+  id: f.id, clave: f.clave, grupo: f.grupo, ambito: f.ambito, frases: parseLista(f.frases), libres: parseLista(f.libres),
+  texto: f.texto, imagen: !!f.imagen, soloElemento: !!f.solo_elemento, activo: !!f.activo, base: String(f.clave).startsWith('base-'),
+  actualizadoPor: f.actualizado_por || '', actualizado: f.updated_at
+});
+
+app.get(['/api/asistente/consejos'], requireAdmin, (req, res) => {
+  db.query('SELECT * FROM chat_consejos ORDER BY grupo, orden, id', (err, filas) => {
+    if (err) return res.status(500).json({ error: 'No se pudieron cargar los consejos.' });
+    res.json(filas.map(filaAdminConsejo));
+  });
+});
+
+app.post(['/api/asistente/consejos'], requireAdmin, (req, res) => {
+  const texto = String(req.body.texto || '').trim().slice(0, 2000);
+  const frases = listaFrases(req.body.frases);
+  const libres = listaFrases(req.body.libres);
+  if (!texto) return res.status(400).json({ error: 'Escribe el texto del consejo.' });
+  if (frases.length === 0 && libres.length === 0) return res.status(400).json({ error: 'Indica al menos una frase que active el consejo.' });
+  db.query(
+    'INSERT INTO chat_consejos (clave, grupo, ambito, frases, libres, texto, solo_elemento, activo, orden, actualizado_por, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, 1, 999, ?, ?)',
+    [`custom-${Date.now().toString(36)}`, String(req.body.grupo || 'Personalizados').trim().slice(0, 100), ambitoValido(req.body.ambito), JSON.stringify(frases), JSON.stringify(libres), texto, req.body.soloElemento ? 1 : 0, nombreActor(req), obtenerFechaMySQL()],
+    (err, r) => {
+      if (err) return res.status(500).json({ error: 'No se pudo crear el consejo.' });
+      cargarConsejos();
+      res.json({ id: r.insertId });
+    }
+  );
+});
+
+app.put(['/api/asistente/consejos/:id'], requireAdmin, (req, res) => {
+  const texto = String(req.body.texto || '').trim().slice(0, 2000);
+  if (!texto) return res.status(400).json({ error: 'El consejo no puede quedar vacío.' });
+  const frases = listaFrases(req.body.frases);
+  const libres = listaFrases(req.body.libres);
+  db.query(
+    'UPDATE chat_consejos SET texto = ?, frases = ?, libres = ?, ambito = ?, grupo = ?, activo = ?, actualizado_por = ?, updated_at = ? WHERE id = ?',
+    [texto, JSON.stringify(frases), JSON.stringify(libres), ambitoValido(req.body.ambito), String(req.body.grupo || '').trim().slice(0, 100), req.body.activo === false ? 0 : 1, nombreActor(req), obtenerFechaMySQL(), req.params.id],
+    (err, r) => {
+      if (err) return res.status(500).json({ error: 'No se pudo guardar el consejo.' });
+      if (!r.affectedRows) return res.status(404).json({ error: 'Consejo no encontrado.' });
+      cargarConsejos();
+      res.json({ ok: true });
+    }
+  );
+});
+
+const borrarArchivoConsejo = (nombre) => { if (nombre) fs.promises.unlink(path.join(UPLOADS_DIR, nombre)).catch(() => {}); };
+
+app.delete(['/api/asistente/consejos/:id'], requireAdmin, (req, res) => {
+  db.query('SELECT clave, imagen FROM chat_consejos WHERE id = ? LIMIT 1', [req.params.id], (err, filas) => {
+    if (err || filas.length === 0) return res.status(404).json({ error: 'Consejo no encontrado.' });
+    if (String(filas[0].clave).startsWith('base-')) return res.status(400).json({ error: 'Los consejos de fábrica no se eliminan; desactívalos si no quieres usarlos.' });
+    db.query('DELETE FROM chat_consejos WHERE id = ?', [req.params.id], (errD) => {
+      if (errD) return res.status(500).json({ error: 'No se pudo eliminar.' });
+      borrarArchivoConsejo(filas[0].imagen);
+      cargarConsejos();
+      res.json({ ok: true });
+    });
+  });
+});
+
+// Imagen del consejo (una por consejo): png, jpg, gif o webp de hasta 2 MB
+const IMAGENES_CONSEJO = { '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.gif': 'image/gif', '.webp': 'image/webp' };
+const IMAGEN_CONSEJO_MAX = 2 * 1024 * 1024;
+const rawImagenConsejo = express.raw({ type: () => true, limit: IMAGEN_CONSEJO_MAX });
+const firmaImagenValida = (b, ext) => {
+  if (ext === '.png') return b.slice(0, 4).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47]));
+  if (ext === '.jpg' || ext === '.jpeg') return b[0] === 0xff && b[1] === 0xd8;
+  if (ext === '.gif') return b.slice(0, 3).toString() === 'GIF';
+  if (ext === '.webp') return b.slice(0, 4).toString() === 'RIFF' && b.slice(8, 12).toString() === 'WEBP';
+  return false;
+};
+
+app.post(['/api/asistente/consejos/:id/imagen'], requireAdmin, (req, res, next) => {
+  rawImagenConsejo(req, res, (err) => {
+    if (err) return res.status(err.status === 413 ? 413 : 400).json({ error: err.status === 413 ? 'La imagen supera 2 MB.' : 'No se pudo leer la imagen.' });
+    next();
+  });
+}, async (req, res) => {
+  try {
+    const buffer = req.body;
+    if (!Buffer.isBuffer(buffer) || buffer.length === 0) return res.status(400).json({ error: 'El archivo está vacío.' });
+    let nombre = '';
+    try { nombre = decodeURIComponent(String(req.headers['x-nombre-archivo'] || '')); } catch (e) { /* nombre inválido */ }
+    const ext = path.extname(path.basename(nombre)).toLowerCase();
+    if (!IMAGENES_CONSEJO[ext] || !firmaImagenValida(buffer, ext)) return res.status(400).json({ error: 'Usa una imagen PNG, JPG, GIF o WEBP.' });
+    const filas = await consulta('SELECT imagen FROM chat_consejos WHERE id = ? LIMIT 1', [req.params.id]);
+    if (filas.length === 0) return res.status(404).json({ error: 'Consejo no encontrado.' });
+    const archivo = `consejo-${crypto.randomBytes(12).toString('hex')}${ext}`;
+    await fs.promises.writeFile(path.join(UPLOADS_DIR, archivo), buffer);
+    await consulta('UPDATE chat_consejos SET imagen = ?, actualizado_por = ?, updated_at = ? WHERE id = ?', [archivo, nombreActor(req), obtenerFechaMySQL(), req.params.id]);
+    borrarArchivoConsejo(filas[0].imagen);
+    await cargarConsejos();
+    res.json({ ok: true });
+  } catch (e) {
+    console.error('Error al guardar imagen de consejo:', e.message);
+    res.status(500).json({ error: 'No se pudo guardar la imagen.' });
+  }
+});
+
+app.delete(['/api/asistente/consejos/:id/imagen'], requireAdmin, async (req, res) => {
+  try {
+    const filas = await consulta('SELECT imagen FROM chat_consejos WHERE id = ? LIMIT 1', [req.params.id]);
+    if (filas.length === 0) return res.status(404).json({ error: 'Consejo no encontrado.' });
+    await consulta('UPDATE chat_consejos SET imagen = NULL WHERE id = ?', [req.params.id]);
+    borrarArchivoConsejo(filas[0].imagen);
+    await cargarConsejos();
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: 'No se pudo quitar la imagen.' }); }
+});
+
+// La imagen la ve cualquier usuario con sesión (la muestra el chat al cliente)
+app.get(['/api/asistente/consejos/:id/imagen'], async (req, res) => {
+  try {
+    const filas = await consulta('SELECT imagen FROM chat_consejos WHERE id = ? LIMIT 1', [req.params.id]);
+    const archivo = filas[0] && filas[0].imagen;
+    if (!archivo || path.basename(archivo) !== archivo) return res.status(404).end();
+    const ruta = path.join(UPLOADS_DIR, archivo);
+    if (!fs.existsSync(ruta)) return res.status(404).end();
+    res.setHeader('Content-Type', IMAGENES_CONSEJO[path.extname(archivo).toLowerCase()] || 'application/octet-stream');
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('Cache-Control', 'private, max-age=300');
+    fs.createReadStream(ruta).on('error', () => res.end()).pipe(res);
+  } catch (e) { res.status(500).end(); }
 });
 
 // ============================================================================
