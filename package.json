@@ -8,7 +8,8 @@
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "start": "node server.cjs"
+    "start": "node server.cjs",
+    "test:asistente": "node pruebas/asistente.cjs"
   },
   "dependencies": {
     "@fontsource-variable/inter": "^5.3.0",

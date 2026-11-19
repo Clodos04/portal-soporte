@@ -63,7 +63,7 @@ function Resultados({ onCrearDesdeTexto }) {
 
   if (error) return <p className="text-sm text-red-400">{error}</p>;
   if (!datos) return <p className="text-sm text-slate-400">Cargando resultados…</p>;
-  const { resumen, porSubcategoria, porConsejo } = datos;
+  const { resumen, porSubcategoria, porConsejo, fueraHorario = 0 } = datos;
   const sinRespuesta = Math.max(0, resumen.total - resumen.resueltos - resumen.escalados);
   const exportar = () => {
     descargarCsv(`asistente-${dias || 'todo'}-dias.csv`, [
@@ -98,6 +98,12 @@ function Resultados({ onCrearDesdeTexto }) {
           <button onClick={exportar} className="ml-auto inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm border bg-slate-800 border-slate-700 text-slate-300 hover:text-white cursor-pointer"><Download size={14} /> Exportar CSV</button>
         )}
       </div>
+
+      {fueraHorario > 0 && (
+        <p className="text-sm text-slate-300 bg-slate-800 border border-slate-700 rounded-xl px-4 py-3">
+          🌙 <strong className="text-white tabular-nums">{fueraHorario}</strong> {fueraHorario === 1 ? 'solicitud se cerró sola' : 'solicitudes se cerraron solas'} por crearse fuera del horario de atención en este periodo.
+        </p>
+      )}
 
       <SinCoincidencia dias={dias} onCrear={onCrearDesdeTexto} />
 
@@ -533,6 +539,78 @@ function Simulador() {
   );
 }
 
+// ---------------------------------------------------------------- Ajustes
+const HORAS = Array.from({ length: 24 }, (_, h) => h);
+const etiquetaHora = (h) => `${h % 12 === 0 ? 12 : h % 12}:00 ${h < 12 ? 'a. m.' : 'p. m.'}`;
+
+function Ajustes() {
+  const { avisar } = useAvisos();
+  const [cfg, setCfg] = useState(null);
+  const [original, setOriginal] = useState(null);
+  const [guardando, setGuardando] = useState(false);
+
+  useEffect(() => {
+    fetch('/api/asistente/config').then(r => r.json()).then(d => { setCfg(d); setOriginal(d); }).catch(() => avisar('No se pudieron cargar los ajustes.', 'error'));
+  }, [avisar]);
+
+  if (!cfg) return <p className="text-sm text-slate-400">Cargando ajustes…</p>;
+  const cambiado = JSON.stringify(cfg) !== JSON.stringify(original);
+
+  const guardar = async (e) => {
+    e.preventDefault();
+    setGuardando(true);
+    try {
+      const res = await fetch('/api/asistente/config', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(cfg) });
+      const d = await res.json().catch(() => ({}));
+      if (!res.ok) return avisar(d.error || 'No se pudo guardar.', 'error');
+      avisar('Ajustes guardados. Se aplican a los tickets nuevos.', 'exito');
+      setOriginal(cfg);
+    } finally { setGuardando(false); }
+  };
+
+  return (
+    <form onSubmit={guardar} className="space-y-5">
+      <section className="bg-slate-800 border border-slate-700 rounded-2xl p-5 space-y-4">
+        <div>
+          <h2 className="text-sm font-semibold text-white">Horario de atención</h2>
+          <p className="text-xs text-slate-400 mt-1">Las solicitudes que un cliente crea fuera de este horario se cierran solas y se le avisa que debe volver a levantarlas. Soporte y los reportes Centinela no se ven afectados. Hora de México.</p>
+        </div>
+        <label className="inline-flex items-center gap-2 text-sm text-slate-200 cursor-pointer">
+          <input type="checkbox" checked={cfg.fueraActivo} onChange={e => setCfg({ ...cfg, fueraActivo: e.target.checked })} className="h-4 w-4 accent-emerald-500" />
+          Cerrar automáticamente lo que se cree fuera de horario
+        </label>
+        <div className="grid sm:grid-cols-2 gap-3 max-w-lg">
+          <label className="block text-xs text-slate-400">Empieza el horario sin atención
+            <select className={`${campo} mt-1`} value={cfg.fueraDesde} disabled={!cfg.fueraActivo} onChange={e => setCfg({ ...cfg, fueraDesde: Number(e.target.value) })}>
+              {HORAS.map(h => <option key={h} value={h}>{etiquetaHora(h)}</option>)}
+            </select>
+          </label>
+          <label className="block text-xs text-slate-400">Se vuelve a atender a las
+            <select className={`${campo} mt-1`} value={cfg.fueraHasta} disabled={!cfg.fueraActivo} onChange={e => setCfg({ ...cfg, fueraHasta: Number(e.target.value) })}>
+              {HORAS.map(h => <option key={h} value={h}>{etiquetaHora(h)}</option>)}
+            </select>
+          </label>
+        </div>
+        {cfg.fueraActivo && cfg.fueraDesde === cfg.fueraHasta && <p className="text-xs text-amber-300">Con la misma hora en ambos campos no se cierra nada.</p>}
+      </section>
+
+      <section className="bg-slate-800 border border-slate-700 rounded-2xl p-5 space-y-3">
+        <div>
+          <h2 className="text-sm font-semibold text-white">Aviso de espera</h2>
+          <p className="text-xs text-slate-400 mt-1">Cuando hay al menos esta cantidad de solicitudes abiertas sin técnico, el primer mensaje del chat avisa que la atención puede tardar más.</p>
+        </div>
+        <label className="block text-xs text-slate-400 max-w-48">Solicitudes sin técnico
+          <input type="number" min="1" max="500" className={`${campo} mt-1`} value={cfg.umbralEspera} onChange={e => setCfg({ ...cfg, umbralEspera: Number(e.target.value) })} />
+        </label>
+      </section>
+
+      <div className="flex justify-end">
+        <button type="submit" disabled={!cambiado || guardando} className="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 text-white text-sm font-medium inline-flex items-center gap-2 cursor-pointer"><Save size={14} /> {guardando ? 'Guardando…' : 'Guardar ajustes'}</button>
+      </div>
+    </form>
+  );
+}
+
 // ---------------------------------------------------------------- Vista
 function AdminAsistenteView() {
   const [pestana, setPestana] = useState('resultados');
@@ -545,7 +623,7 @@ function AdminAsistenteView() {
         <p className="text-slate-400 text-sm mt-1">Mide qué consejos resuelven los problemas sin visita del técnico y edita los textos que ve el agente, con imagen opcional.</p>
       </div>
       <div className="flex gap-2" role="tablist">
-        {[['resultados', 'Resultados'], ['consejos', 'Consejos'], ['simulador', 'Simulador']].map(([id, t]) => (
+        {[['resultados', 'Resultados'], ['consejos', 'Consejos'], ['simulador', 'Simulador'], ['ajustes', 'Ajustes']].map(([id, t]) => (
           <button key={id} role="tab" aria-selected={pestana === id} onClick={() => setPestana(id)}
             className={`px-4 py-2 rounded-lg text-sm border cursor-pointer transition-colors ${pestana === id ? 'bg-slate-700 border-slate-500 text-white' : 'bg-slate-800 border-slate-700 text-slate-400 hover:text-slate-200'}`}>{t}</button>
         ))}
@@ -553,6 +631,7 @@ function AdminAsistenteView() {
       {pestana === 'resultados' && <Resultados onCrearDesdeTexto={crearDesdeTexto} />}
       {pestana === 'consejos' && <Consejos key={prefill} prefill={prefill} onPrefillUsado={() => setPrefill('')} />}
       {pestana === 'simulador' && <Simulador />}
+      {pestana === 'ajustes' && <Ajustes />}
     </div>
   );
 }

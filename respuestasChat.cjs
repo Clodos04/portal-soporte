@@ -8,10 +8,21 @@ const horaDeEnv = (nombre, porDefecto) => {
   const n = parseInt(process.env[nombre], 10);
   return Number.isInteger(n) && n >= 0 && n <= 23 ? n : porDefecto;
 };
-const ventanaFueraDeHorario = () => ({ desde: horaDeEnv('FUERA_HORARIO_DESDE', 22), hasta: horaDeEnv('FUERA_HORARIO_HASTA', 6) });
+// Ajustes guardados desde el panel (tienen prioridad sobre las variables de entorno)
+let configAsistente = {};
+const aplicarConfigAsistente = (c) => { configAsistente = { ...(c || {}) }; };
+const horaDeConfig = (valor, nombreEnv, porDefecto) => {
+  const n = parseInt(valor, 10);
+  return Number.isInteger(n) && n >= 0 && n <= 23 ? n : horaDeEnv(nombreEnv, porDefecto);
+};
+const ventanaFueraDeHorario = () => ({
+  desde: horaDeConfig(configAsistente.fueraDesde, 'FUERA_HORARIO_DESDE', 22),
+  hasta: horaDeConfig(configAsistente.fueraHasta, 'FUERA_HORARIO_HASTA', 6),
+  activo: configAsistente.fueraActivo !== false
+});
 const estaFueraDeHorario = (hora, ventana = ventanaFueraDeHorario()) => {
   const { desde, hasta } = ventana;
-  if (desde === hasta) return false;
+  if (ventana.activo === false || desde === hasta) return false;
   return desde > hasta ? (hora >= desde || hora < hasta) : (hora >= desde && hora < hasta);
 };
 const etiquetaHora = (h) => `${h % 12 === 0 ? 12 : h % 12}:00 ${h < 12 ? 'a. m.' : 'p. m.'}`;
@@ -23,13 +34,24 @@ const resolucionFueraDeHorario = (ventana = ventanaFueraDeHorario()) =>
   `Cerrado automáticamente: solicitud creada fuera del horario de atención (${etiquetaHora(ventana.desde)} a ${etiquetaHora(ventana.hasta)}). Debe volver a levantarse en horario de atención.`;
 
 // Si hay muchas solicitudes sin técnico, se avisa que la atención puede tardar (se inserta antes de los botones)
-const UMBRAL_ESPERA = parseInt(process.env.ESPERA_ALTA_TICKETS, 10) > 0 ? parseInt(process.env.ESPERA_ALTA_TICKETS, 10) : 8;
-const agregarAvisoEspera = (texto, abiertos, umbral = UMBRAL_ESPERA) => {
-  if (!texto || !(abiertos >= umbral)) return texto;
-  const aviso = '\n⏱️ Hay varias solicitudes en cola, así que la atención puede tardar un poco más de lo normal.';
-  const i = texto.indexOf('\n[[OPCIONES:');
-  return i === -1 ? texto + aviso : texto.slice(0, i) + aviso + texto.slice(i);
+const umbralEspera = () => {
+  const c = parseInt(configAsistente.umbralEspera, 10);
+  if (c > 0) return c;
+  const e = parseInt(process.env.ESPERA_ALTA_TICKETS, 10);
+  return e > 0 ? e : 8;
 };
+// Agrega una nota al mensaje inicial, antes de los botones
+const agregarNota = (texto, nota) => {
+  if (!texto || !nota) return texto;
+  const i = texto.indexOf('\n[[OPCIONES:');
+  return i === -1 ? texto + '\n' + nota : texto.slice(0, i) + '\n' + nota + texto.slice(i);
+};
+const agregarAvisoEspera = (texto, abiertos, umbral = umbralEspera()) => {
+  if (!texto || !(abiertos >= umbral)) return texto;
+  return agregarNota(texto, '⏱️ Hay varias solicitudes en cola, así que la atención puede tardar un poco más de lo normal.');
+};
+const avisoFolioDuplicado = (folioAbierto) =>
+  `ℹ️ Ya tienes el folio #${folioAbierto} abierto para este mismo equipo y falla. No hace falta repetir el reporte: un técnico lo atenderá por ese folio.`;
 
 const armarMensajeConOpciones = (texto, listaOpciones = []) => {
   if (!listaOpciones || listaOpciones.length === 0) return texto;
@@ -970,6 +992,10 @@ const evaluarSiguienteRespuestaChat = (...args) => {
 
 module.exports = {
   estaFueraDeHorario,
+  aplicarConfigAsistente,
+  umbralEspera,
+  agregarNota,
+  avisoFolioDuplicado,
   ventanaFueraDeHorario,
   mensajeFueraDeHorario,
   resolucionFueraDeHorario,
