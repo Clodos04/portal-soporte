@@ -217,7 +217,7 @@ Confírmanos cómo sigue la posición:`,
             [
               `🌐 El equipo se congela por completo al abrir pestañas del navegador o herramientas de trabajo simultáneas`,
               `🔄 La PC se reinicia de la nada o arroja pantallas de error repentinas ('Pantalla Azul')`,
-              `📊 Al abrir el Administrador de Tareas el uso de la memoria se mantiene al 100% permanente`
+              `📊 La PC se siente lenta todo el tiempo, aunque cierre programas y pestañas`
             ]
           )
         ];
@@ -309,12 +309,12 @@ const CONSEJOS_ESPECIFICOS = [
   { g: 'Mouse', a: 'mouse', si: ['izquierdo se siente flojo', 'sonido de clic'], tip: 'Evita presionar con fuerza el botón. Cuando el mecanismo ya está desgastado, el cambio se gestiona con el técnico.' + NOTA_CENTINELA },
   { g: 'Mouse', a: 'mouse', si: ['luz roja optica', 'totalmente apagada'], tip: 'Conecta el mouse en un puerto USB de la parte trasera del CPU. Si sigue sin encender la luz roja, el técnico lo cambiará o lo probará con otro.' },
   // ----- RENDIMIENTO CPU: DISCO -----
-  { g: 'Rendimiento CPU · Disco', a: 'cpu', si: ['poco espacio disponible'], tip: 'Vacía la Papelera de reciclaje y cierra los programas que no uses. No borres carpetas del sistema ni archivos de trabajo que no reconozcas; el técnico liberará espacio de forma segura.' },
+  { g: 'Rendimiento CPU · Disco', a: 'cpu', si: ['poco espacio disponible'], tip: 'No necesitas liberar espacio tú: el técnico lo hace desde su lado de forma segura. Mientras tanto, guarda tu trabajo, cierra las pestañas y programas que no uses y no descargues archivos nuevos.' },
   { g: 'Rendimiento CPU · Disco', a: 'cpu', si: ['tardan varios minutos', 'se queda pasmada'], tip: 'Si no estás en llamada, usa Inicio > Reiniciar (no Apagar) para limpiar procesos. Si al volver sigue lenta, avísanos.' },
   // ----- RENDIMIENTO CPU: RAM Y FORMATEO -----
   { g: 'Rendimiento CPU · RAM y formateo', a: 'cpu', si: ['se congela por completo al abrir pestanas'], tip: 'Cierra las pestañas y programas que no necesites; deja abiertas solo Touchpoint y tus herramientas de trabajo.' },
   { g: 'Rendimiento CPU · RAM y formateo', a: 'cpu', si: ['se reinicia de la nada', 'pantalla azul'], tip: 'Si vuelve a aparecer una pantalla azul, anota el código de error que muestra (por ejemplo, el texto en mayúsculas). Ayuda mucho al técnico.' },
-  { g: 'Rendimiento CPU · RAM y formateo', a: 'cpu', si: ['administrador de tareas', 'se mantiene al 100'], tip: 'Cierra las pestañas y programas que no uses y no abras nada nuevo. Si sigue lenta, avísanos y anota si pasa solo con alguna aplicación en particular.' },
+  { g: 'Rendimiento CPU · RAM y formateo', a: 'cpu', si: ['lenta todo el tiempo', 'aunque cierre programas'], tip: 'Cierra las pestañas y programas que no uses y no abras nada nuevo. Si sigue lenta, avísanos y anota si pasa solo con alguna aplicación en particular.' },
   { g: 'Rendimiento CPU · RAM y formateo', a: 'cpu', si: ['respaldar manuales', 'plantillas'], tip: 'Mientras llega el técnico, avísanos por aquí qué archivos necesitas conservar y dónde están guardados, para que no se pierdan al dar mantenimiento.' },
   { g: 'Rendimiento CPU · RAM y formateo', a: 'cpu', si: ['conflictos de software'], tip: 'No instales ni desinstales programas por tu cuenta. El técnico revisará qué software provoca el conflicto.' },
   { g: 'Rendimiento CPU · RAM y formateo', a: 'cpu', si: ['posicion se encuentre desocupada'], tip: 'Perfecto. Cuando llegue el técnico, confirma con tu supervisor que la posición puede quedar fuera de operación el tiempo necesario.' },
@@ -792,7 +792,7 @@ const evaluarInterno = (ticket, remitente, textoUsuario, mensajesDelSistema, fol
             [
               `🌐 El equipo se congela por completo al abrir pestañas del navegador o herramientas de trabajo simultáneas`,
               `🔄 La PC se reinicia de la nada o arroja pantallas de error repentinas ('Pantalla Azul')`,
-              `📊 Al abrir el Administrador de Tareas el uso de la memoria se mantiene al 100% permanente`
+              `📊 La PC se siente lenta todo el tiempo, aunque cierre programas y pestañas`
             ]
           ),
           cerrarTicket: false
