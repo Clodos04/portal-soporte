@@ -270,12 +270,12 @@ Confírmanos cómo sigue la posición:`,
 const NOTA_CENTINELA = '\n\n🛡️ *Nota importante: cuando un periférico tiene daño físico definitivo, el cambio se gestiona mediante Reporte Centinela desde el Asistente Guiado.*';
 const CONSEJOS_ESPECIFICOS = [
   // ----- TOUCHPOINT: AUDIO -----
-  { g: 'Touchpoint · Audio', a: 'touchpoint audio', si: ['enciende sus luces', 'mover un poco el cable', 'navegador y el equipo por completo'], tip: 'Conecta la diadema en un puerto USB de la parte trasera del CPU, cierra Touchpoint y ábrelo de nuevo. Cuando el navegador pida permiso para usar el micrófono elige «Permitir»; si ya lo habías bloqueado, haz clic en el candado junto a la dirección, actívalo y recarga la página. Evita mover el cable durante una llamada.' },
+  { g: 'Touchpoint · Audio', a: 'touchpoint audio', si: ['enciende sus luces', 'mover un poco el cable', 'navegador y el equipo por completo'], tip: 'Conecta la diadema en un puerto USB de la parte trasera del CPU, cierra Touchpoint y ábrelo de nuevo. Si el navegador te pregunta por el micrófono, elige «Permitir». Si no aparece la pregunta o sigue sin sonar, avísanos por aquí: el técnico lo revisa. Evita mover el cable durante una llamada.' },
   // ----- TOUCHPOINT: SESIÓN ÚNICA -----
   { g: 'Touchpoint · Sesión única', a: 'touchpoint unica', si: ['aleatoria', 'entra una llamada'], tip: 'Cierra las pestañas y programas que no uses y confirma que tu usuario de Touchpoint no esté abierto en otro equipo. Si se vuelve a caer, anota la hora exacta: con ese dato el técnico ubica la causa mucho más rápido.' },
   { g: 'Touchpoint · Sesión única', a: 'touchpoint unica', si: ['se congela por unos segundos', 'pantalla de cierre'], tip: 'Presiona CTRL + SHIFT + R para una recarga limpia y revisa que el cable de red esté firme. Si vuelve a ocurrir, anota la hora exacta y si ya había una llamada en curso.' },
   { g: 'Touchpoint · Sesión única', a: 'touchpoint unica', si: ['unicamente le pasa a este agente', 'otra posicion de la isla'], tip: 'Como solo le ocurre a este agente, el técnico revisará su perfil y su navegador. Mientras llega, cierra sesión, borra la caché (CTRL + SHIFT + SUPR) y vuelve a entrar.' },
-  { g: 'Touchpoint · Sesión única', a: 'touchpoint unica', si: ['mensaje de error de conexion', 'certificado', 'sitio no disponible'], tip: 'Revisa que la fecha y la hora de Windows sean correctas (un reloj desajustado provoca errores de certificado), cierra el navegador por completo y ábrelo de nuevo. Anota el texto exacto del error.' },
+  { g: 'Touchpoint · Sesión única', a: 'touchpoint unica', si: ['mensaje de error de conexion', 'certificado', 'sitio no disponible'], tip: 'Cierra el navegador por completo y ábrelo de nuevo. Si el error vuelve, anota el texto exacto que aparece (o toma una captura) y compártelo aquí; el técnico revisa el equipo.' },
   { g: 'Touchpoint · Sesión única', a: 'touchpoint unica', si: ['otro navegador'], tip: 'Si falla igual en Edge y en Chrome, lo más probable es la red o el servicio y no el equipo; no reinstales nada. El técnico revisará la conexión de la posición.' },
   // ----- TOUCHPOINT: CAÍDA MASIVA -----
   { g: 'Touchpoint · Caída masiva', a: 'touchpoint masiva', si: ['misma linea', 'bloque de escritorios'], tip: 'No desconectes ni muevas cables. Anota qué posiciones del bloque están afectadas: si comparten el mismo switch o cable, el técnico lo ubica de inmediato.' },
@@ -288,12 +288,12 @@ const CONSEJOS_ESPECIFICOS = [
   { g: 'Touchpoint · Caída masiva', a: 'touchpoint masiva', si: ['mensajeria', 'herramientas complementarias'], tip: 'Si también fallan las herramientas complementarias, el problema es de conectividad y no de una sola aplicación. Mantén el chat abierto y avísanos si algo regresa.' },
   { g: 'Touchpoint · Caída masiva', a: 'touchpoint masiva', si: ['parpadeo o corte general', 'energia electrica'], tip: 'Un corte de energía puede apagar los switches de la zona. Revisa que no haya equipos de red apagados o con luces extrañas, sin tocar cables, y avísanos.' },
   // ----- DIADEMA -----
-  { g: 'Diadema', a: 'diadema', si: ['muy lejano o debil'], tip: 'Acerca el micrófono de la diadema a unos 2 dedos de tu boca y revisa en Windows (Configuración > Sonido > Entrada) que el nivel del micrófono esté alto y la diadema sea el dispositivo seleccionado.' },
+  { g: 'Diadema', a: 'diadema', si: ['muy lejano o debil'], tip: 'Acerca el micrófono de la diadema a unos 2 dedos de tu boca y revisa que el micrófono no esté volteado hacia arriba y que el botón de silencio del control no esté activado. Si se sigue oyendo muy bajo, avísanos: el técnico ajusta el nivel desde el equipo.' },
   { g: 'Diadema', a: 'diadema', si: ['se corta por completo', 'mueva ligeramente el cable', 'muevo ligeramente el cable'], tip: 'Deja de mover el cable: ese comportamiento indica un falso contacto. Conéctala en un puerto USB de la parte trasera del CPU para trabajar mientras llega el técnico.' + NOTA_CENTINELA },
   { g: 'Diadema', a: 'diadema', si: ['indicador de silencio', 'parpadeando o en rojo'], tip: 'Presiona una vez el botón de silencio del control y revisa que Touchpoint no tenga el micrófono silenciado (ícono del micrófono tachado). Si el foco sigue rojo, avísanos.' },
-  { g: 'Diadema', a: 'diadema', si: ['subir/bajar volumen', 'no ejecutan ninguna accion'], tip: 'Mientras llega el técnico, ajusta el volumen desde el ícono de bocina de la barra de tareas de Windows. Los botones del control no afectan la llamada si el audio se escucha bien.' },
+  { g: 'Diadema', a: 'diadema', si: ['subir/bajar volumen', 'no ejecutan ninguna accion'], tip: 'Mientras llega el técnico, sube o baja el volumen con la ruedita del control de la diadema o con el ícono de bocina junto al reloj. Los botones del control no afectan la llamada si el audio se escucha bien.' },
   { g: 'Diadema', a: 'diadema', si: ['control en linea', 'caliente'], tip: 'Si el control se siente caliente, desconéctalo y no lo uses. Avísanos por aquí para que el técnico lo revise.' },
-  { g: 'Diadema', a: 'diadema', si: ['windows no reconoce'], tip: 'Desconecta la diadema, espera 5 segundos y conéctala en un puerto USB trasero. Luego abre Configuración > Sonido y elige la diadema como dispositivo de entrada y de salida.' },
+  { g: 'Diadema', a: 'diadema', si: ['windows no reconoce'], tip: 'Desconecta la diadema, espera 5 segundos y conéctala en un puerto USB trasero. Si Windows sigue sin reconocerla, avísanos: el técnico la configura de forma remota o la prueba con otra diadema.' },
   { g: 'Diadema', a: 'diadema', si: ['otro puerto usb', 'sigue sin detectarla', 'sigue sin dar senal'], tip: 'No sigas probando puertos. El técnico revisará con otro dispositivo para descartar si la falla es del equipo o del periférico.' },
   // ----- TECLADO -----
   { g: 'Teclado', a: 'teclado', si: ['letra aparece repetida', 'aaaaaa'], tip: 'Desconecta y vuelve a conectar el teclado en otro puerto USB. Si sigue repitiendo teclas, deja de usarlo y avísanos: puede tener una tecla trabada.' },
@@ -314,7 +314,7 @@ const CONSEJOS_ESPECIFICOS = [
   // ----- RENDIMIENTO CPU: RAM Y FORMATEO -----
   { g: 'Rendimiento CPU · RAM y formateo', a: 'cpu', si: ['se congela por completo al abrir pestanas'], tip: 'Cierra las pestañas y programas que no necesites; deja abiertas solo Touchpoint y tus herramientas de trabajo.' },
   { g: 'Rendimiento CPU · RAM y formateo', a: 'cpu', si: ['se reinicia de la nada', 'pantalla azul'], tip: 'Si vuelve a aparecer una pantalla azul, anota el código de error que muestra (por ejemplo, el texto en mayúsculas). Ayuda mucho al técnico.' },
-  { g: 'Rendimiento CPU · RAM y formateo', a: 'cpu', si: ['administrador de tareas', 'se mantiene al 100'], tip: 'Presiona CTRL + SHIFT + ESC, abre la pestaña de Procesos, ordena por Memoria y anota qué aplicación consume más. Dinos cuál es.' },
+  { g: 'Rendimiento CPU · RAM y formateo', a: 'cpu', si: ['administrador de tareas', 'se mantiene al 100'], tip: 'Cierra las pestañas y programas que no uses y no abras nada nuevo. Si sigue lenta, avísanos y anota si pasa solo con alguna aplicación en particular.' },
   { g: 'Rendimiento CPU · RAM y formateo', a: 'cpu', si: ['respaldar manuales', 'plantillas'], tip: 'Mientras llega el técnico, avísanos por aquí qué archivos necesitas conservar y dónde están guardados, para que no se pierdan al dar mantenimiento.' },
   { g: 'Rendimiento CPU · RAM y formateo', a: 'cpu', si: ['conflictos de software'], tip: 'No instales ni desinstales programas por tu cuenta. El técnico revisará qué software provoca el conflicto.' },
   { g: 'Rendimiento CPU · RAM y formateo', a: 'cpu', si: ['posicion se encuentre desocupada'], tip: 'Perfecto. Cuando llegue el técnico, confirma con tu supervisor que la posición puede quedar fuera de operación el tiempo necesario.' },
@@ -542,7 +542,7 @@ const evaluarInterno = (ticket, remitente, textoUsuario, mensajesDelSistema, fol
       if (textoLower.includes('no escucho') || textoLower.includes('bocinas') || textoLower.includes('audifonos') || textoLower.includes('audifonos')) {
         return {
           textoRespuesta: armarMensajeConOpciones(
-            `Entendido. Para descartar un detalle rápido de configuración en Windows, indícanos qué notas en tus audífonos:`,
+            `Entendido. Para descartar un detalle rápido, indícanos qué notas en tus audífonos:`,
             [
               `🔉 Se escucha con muchísima estática, ruido o zumbido constante`,
               `🔕 Se escucha únicamente de un solo lado (oído izquierdo/derecho)`,
@@ -839,7 +839,7 @@ const evaluarInterno = (ticket, remitente, textoUsuario, mensajesDelSistema, fol
       const cierre = `Si con esto ya quedó, escríbenos «ya quedó» y un técnico confirmará el cierre del folio #${folio}. Si sigue igual, no te preocupes: tu reporte ya está registrado y un técnico se acercará a revisar la posición.`;
       if (sub.includes('AUDIO')) {
         return {
-          textoRespuesta: `✅ ¡Gracias, con este detalle ya sabemos qué revisar en ${quien}! Mientras el técnico llega, puedes intentar esto:\n1) En Windows, abre Configuración > Sonido y confirma que tu diadema sea el dispositivo de entrada y de salida predeterminado, y que no esté en silencio.\n2) Desconecta la diadema, espera 5 segundos y conéctala en otro puerto USB del CPU.\n3) Cierra Touchpoint por completo y ábrelo de nuevo en una ventana nueva de Edge o Chrome; si el navegador pide permiso para el micrófono, elige «Permitir».\n\n${cierre}`,
+          textoRespuesta: `✅ ¡Gracias, con este detalle ya sabemos qué revisar en ${quien}! Mientras el técnico llega, puedes intentar esto:\n1) Revisa que el botón de silencio del control de la diadema no esté activado y que la ruedita de volumen esté arriba.\n2) Desconecta la diadema, espera 5 segundos y conéctala en otro puerto USB del CPU.\n3) Cierra Touchpoint por completo y ábrelo de nuevo en una ventana nueva de Edge o Chrome; si el navegador pregunta por el micrófono, elige «Permitir».\n\n${cierre}`,
           cerrarTicket: false
         };
       }
@@ -865,7 +865,7 @@ const evaluarInterno = (ticket, remitente, textoUsuario, mensajesDelSistema, fol
     if (textoLower.includes('volumen se percibe muy bajo') || textoLower.includes('estatica constante')) {
       consejoTecnico = "Como primer paso, por favor desconecta tu diadema del puerto USB frontal y conéctala en uno de los puertos USB de la parte trasera del CPU (directo a la placa base).";
     } else if (textoLower.includes('boton \'mute\'') || textoLower.includes('no escuchan nada') || textoLower.includes('un solo lado')) {
-      consejoTecnico = "Por favor verifica que el volumen en la barra de tareas de Windows esté al 100%, y asegúrate de que el plug de la diadema (si es desprendible) esté bien conectado al control de volumen del cable.";
+      consejoTecnico = "Por favor verifica que la ruedita de volumen del control de la diadema esté arriba y que el botón de silencio no esté activado, y asegúrate de que el plug de la diadema (si es desprendible) esté bien conectado al control de volumen del cable.";
     } 
     // TOUCHPOINT: DESCONEXIÓN Y RED
     else if (textoLower.includes('saca al agente') || textoLower.includes('se queda cargando') || textoLower.includes('foquito de red') || textoLower.includes('notificacion de \'red no identificada\'')) {
