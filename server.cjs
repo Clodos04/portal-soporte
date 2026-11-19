@@ -507,7 +507,7 @@ const continuarInsercionTicket = (ticketData, res, actor = 'Sistema', opcionesCr
   const catUpper = (ticketData.categoria || '').toUpperCase();
   const esDispositivo = catUpper.includes('DISPOSITIVO') || catUpper.includes('HARDWARE');
 
-  // Fuera de horario (por defecto 22:00 a 06:00, hora de México) el ticket de un cliente nace cerrado
+  // Fuera de horario (por defecto 22:00 a 08:00, hora de México) el ticket de un cliente nace cerrado
   const ventana = ventanaFueraDeHorario();
   const fueraDeHorario = !opcionesCreacion.esAdmin && ticketData.tipo_solicitud !== 'CENTINELA' && estaFueraDeHorario(parseInt(horaCorta.slice(0, 2), 10), ventana);
 

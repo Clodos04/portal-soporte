@@ -17,7 +17,7 @@ const horaDeConfig = (valor, nombreEnv, porDefecto) => {
 };
 const ventanaFueraDeHorario = () => ({
   desde: horaDeConfig(configAsistente.fueraDesde, 'FUERA_HORARIO_DESDE', 22),
-  hasta: horaDeConfig(configAsistente.fueraHasta, 'FUERA_HORARIO_HASTA', 6),
+  hasta: horaDeConfig(configAsistente.fueraHasta, 'FUERA_HORARIO_HASTA', 8),
   activo: configAsistente.fueraActivo !== false
 });
 const estaFueraDeHorario = (hora, ventana = ventanaFueraDeHorario()) => {

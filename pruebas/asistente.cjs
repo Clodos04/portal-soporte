@@ -21,13 +21,13 @@ x = ev('no está solucionado', 3);
 ok(x && !x.cerrarTicket && !/Confirmas/.test(x.textoRespuesta), 'una negación no pregunta ni cierra');
 
 // fuera de horario
-process.env.FUERA_HORARIO_DESDE = '22'; process.env.FUERA_HORARIO_HASTA = '6';
-ok([22, 23, 0, 3, 5].every(h => r.estaFueraDeHorario(h)), 'de 22:00 a 05:59 es fuera de horario');
-ok([6, 12, 21].every(h => !r.estaFueraDeHorario(h)), 'de 06:00 a 21:59 sí se atiende');
+process.env.FUERA_HORARIO_DESDE = '22'; process.env.FUERA_HORARIO_HASTA = '8';
+ok([22, 23, 0, 3, 7].every(h => r.estaFueraDeHorario(h)), 'de 22:00 a 07:59 es fuera de horario');
+ok([8, 12, 21].every(h => !r.estaFueraDeHorario(h)), 'de 08:00 a 21:59 sí se atiende');
 ok(!r.estaFueraDeHorario(10, { desde: 8, hasta: 8 }), 'desde = hasta desactiva la regla');
 ok(r.estaFueraDeHorario(9, { desde: 8, hasta: 18 }) && !r.estaFueraDeHorario(19, { desde: 8, hasta: 18 }), 'ventana dentro del mismo día');
 const m = r.mensajeFueraDeHorario('X9');
-ok(/#X9/.test(m) && /10:00 p\. m\./.test(m) && /6:00 a\. m\./.test(m) && !/\.\./.test(m), 'mensaje fuera de horario claro y sin puntos dobles');
+ok(/#X9/.test(m) && /10:00 p\. m\./.test(m) && /8:00 a\. m\./.test(m) && !/\.\./.test(m), 'mensaje fuera de horario claro y sin puntos dobles');
 
 // aviso de espera
 ok(!/en cola/.test(r.agregarAvisoEspera('hola', 3)), 'sin aviso con poca espera');
