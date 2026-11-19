@@ -1,0 +1,17 @@
+- generic [ref=e4]:
+  - generic [ref=e5]:
+    - generic [ref=e6]:
+      - img "Contactus Contact Center" [ref=e7]
+      - heading "Inicia sesión en CTI" [level=1] [ref=e8]
+      - paragraph [ref=e9]: Clodos TI Assist · Soporte técnico y control de infraestructura
+    - generic [ref=e10]:
+      - generic [ref=e11]:
+        - generic [ref=e12]: Usuario
+        - textbox "Usuario" [active] [ref=e13]:
+          - /placeholder: tu.usuario
+      - generic [ref=e14]:
+        - generic [ref=e15]: Contraseña
+        - textbox "Contraseña" [ref=e16]:
+          - /placeholder: ••••••••
+      - button "Entrar" [disabled] [ref=e17]
+  - paragraph [ref=e18]: Área de Soporte Técnico · Contactus
