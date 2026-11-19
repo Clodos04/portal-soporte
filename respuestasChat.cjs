@@ -11,27 +11,58 @@ const horaDeEnv = (nombre, porDefecto) => {
 // Ajustes guardados desde el panel (tienen prioridad sobre las variables de entorno)
 let configAsistente = {};
 const aplicarConfigAsistente = (c) => { configAsistente = { ...(c || {}) }; };
+const obtenerConfigAsistente = () => ({ ...configAsistente });
 const horaDeConfig = (valor, nombreEnv, porDefecto) => {
   const n = parseInt(valor, 10);
   return Number.isInteger(n) && n >= 0 && n <= 23 ? n : horaDeEnv(nombreEnv, porDefecto);
 };
+const listaDe = (v) => String(v == null ? '' : v).split(',').map(x => x.trim()).filter(Boolean);
 const ventanaFueraDeHorario = () => ({
   desde: horaDeConfig(configAsistente.fueraDesde, 'FUERA_HORARIO_DESDE', 22),
   hasta: horaDeConfig(configAsistente.fueraHasta, 'FUERA_HORARIO_HASTA', 8),
-  activo: configAsistente.fueraActivo !== false
+  activo: configAsistente.fueraActivo !== false,
+  // días de la semana sin atención (0 = domingo … 6 = sábado) y fechas sueltas (AAAA-MM-DD)
+  diasCerrados: listaDe(configAsistente.diasCerrados).map(Number).filter(n => Number.isInteger(n) && n >= 0 && n <= 6),
+  festivos: listaDe(configAsistente.festivos).filter(f => /^\d{4}-\d{2}-\d{2}$/.test(f))
 });
-const estaFueraDeHorario = (hora, ventana = ventanaFueraDeHorario()) => {
+// dia = { dow, iso } del día en México; si no se manda, solo se revisa la hora
+const motivoSinAtencion = (hora, ventana = ventanaFueraDeHorario(), dia = null) => {
+  if (ventana.activo === false) return null;
+  if (dia) {
+    if ((ventana.festivos || []).includes(dia.iso)) return 'festivo';
+    if ((ventana.diasCerrados || []).includes(dia.dow)) return 'dia';
+  }
   const { desde, hasta } = ventana;
-  if (ventana.activo === false || desde === hasta) return false;
-  return desde > hasta ? (hora >= desde || hora < hasta) : (hora >= desde && hora < hasta);
+  if (desde === hasta) return null;
+  const fuera = desde > hasta ? (hora >= desde || hora < hasta) : (hora >= desde && hora < hasta);
+  return fuera ? 'hora' : null;
+};
+const estaFueraDeHorario = (hora, ventana = ventanaFueraDeHorario(), dia = null) => motivoSinAtencion(hora, ventana, dia) !== null;
+// Solicitudes que no se cierran aunque lleguen fuera de horario (palabras separadas por comas en Ajustes)
+const esUrgente = (ticket, cfg = configAsistente) => {
+  const claves = listaDe(cfg.urgentes).map(sinAcentos).filter(Boolean);
+  if (!claves.length || !ticket) return false;
+  const texto = sinAcentos(`${ticket.categoria || ''} ${ticket.subcategoria || ''} ${ticket.elemento || ''}`);
+  return claves.some(k => texto.includes(k));
 };
 const etiquetaHora = (h) => `${h % 12 === 0 ? 12 : h % 12}:00 ${h < 12 ? 'a. m.' : 'p. m.'}`;
-const mensajeFueraDeHorario = (folio, ventana = ventanaFueraDeHorario()) =>
-  `🌙 Folio #${folio} registrado fuera del horario de atención (de ${etiquetaHora(ventana.desde)} a ${etiquetaHora(ventana.hasta)}). ` +
-  `En este horario soporte no atiende solicitudes, por lo que este folio se cierra automáticamente y no será atendido.\n` +
-  `Si la falla continúa, vuelve a levantar tu solicitud a partir de las ${etiquetaHora(ventana.hasta)} Si no puedes trabajar, avisa a tu supervisor.`;
-const resolucionFueraDeHorario = (ventana = ventanaFueraDeHorario()) =>
-  `Cerrado automáticamente: solicitud creada fuera del horario de atención (${etiquetaHora(ventana.desde)} a ${etiquetaHora(ventana.hasta)}). Debe volver a levantarse en horario de atención.`;
+const mensajeFueraDeHorario = (folio, ventana = ventanaFueraDeHorario(), motivo = 'hora') => {
+  if (motivo === 'dia' || motivo === 'festivo') {
+    return `🌙 Folio #${folio} registrado en un día sin atención (${motivo === 'festivo' ? 'día festivo' : 'día de descanso'}). ` +
+      `Soporte no atiende solicitudes hoy, por lo que este folio se cierra automáticamente y no será atendido.\n` +
+      `Si la falla continúa, vuelve a levantar tu solicitud el siguiente día de atención a partir de las ${etiquetaHora(ventana.hasta)} Si no puedes trabajar, avisa a tu supervisor.`;
+  }
+  return `🌙 Folio #${folio} registrado fuera del horario de atención (de ${etiquetaHora(ventana.desde)} a ${etiquetaHora(ventana.hasta)}). ` +
+    `En este horario soporte no atiende solicitudes, por lo que este folio se cierra automáticamente y no será atendido.\n` +
+    `Si la falla continúa, vuelve a levantar tu solicitud a partir de las ${etiquetaHora(ventana.hasta)} Si no puedes trabajar, avisa a tu supervisor.`;
+};
+const mensajeUrgenteFueraDeHorario = (ventana = ventanaFueraDeHorario(), masivo = false) =>
+  `🚨 ${masivo ? 'Se detectaron varios reportes iguales y este folio se trata como urgente.' : 'Este reporte se considera urgente.'} ` +
+  `Aunque estás fuera del horario de atención, el folio se mantiene abierto y soporte lo revisará en cuanto inicie la atención (${etiquetaHora(ventana.hasta)}). Si no puedes trabajar, avisa a tu supervisor.`;
+const resolucionFueraDeHorario = (ventana = ventanaFueraDeHorario(), motivo = 'hora') =>
+  motivo === 'hora'
+    ? `Cerrado automáticamente: solicitud creada fuera del horario de atención (${etiquetaHora(ventana.desde)} a ${etiquetaHora(ventana.hasta)}). Debe volver a levantarse en horario de atención.`
+    : `Cerrado automáticamente: solicitud creada en un día sin atención (${motivo === 'festivo' ? 'festivo' : 'descanso'}). Debe volver a levantarse en horario de atención.`;
 
 // Si hay muchas solicitudes sin técnico, se avisa que la atención puede tardar (se inserta antes de los botones)
 const umbralEspera = () => {
@@ -423,13 +454,67 @@ const contextoDe = (cat, sub) => sinAcentos(`${cat} ${sub}`);
 const coincideAmbito = (ambito, ctx) => !ambito || String(ambito).split(' ').filter(Boolean).every(tok => new RegExp(`(^|[^a-z])${tok}`).test(ctx));
 
 // Busca el consejo que aplica. modo 'si': el texto contiene alguna frase del consejo; 'libre': el agente lo describió con sus palabras.
+// Formas distintas de decir lo mismo (se aplican al texto del agente antes de buscar)
+const SINONIMOS = [
+  [/\bno se oye(n)?\b/g, 'no se escucha'], [/\bno oigo\b/g, 'no escucho'], [/\bno me oyen\b/g, 'no me escuchan'],
+  [/\bsin sonido\b/g, 'no se escucha'], [/\bsin audio\b/g, 'no se escucha'], [/\bmudo\b/g, 'no se escucha'],
+  [/\bse traba\b/g, 'se congela'], [/\bse trabo\b/g, 'se congelo'], [/\bse pega\b/g, 'se congela'],
+  [/\bse queda pegad[oa]\b/g, 'se congela'], [/\bno prende\b/g, 'no enciende'], [/\bapagad[oa]\b/g, 'no enciende'],
+  [/\bse oye (cortado|entrecortado)\b/g, 'se escucha cortado'], [/\blento\b/g, 'lenta']
+];
+const distancia = (a, b, max) => {
+  if (Math.abs(a.length - b.length) > max) return max + 1;
+  let prev = Array.from({ length: b.length + 1 }, (_, j) => j);
+  for (let i = 1; i <= a.length; i++) {
+    const cur = [i];
+    let minFila = i;
+    for (let j = 1; j <= b.length; j++) {
+      cur[j] = Math.min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+      if (cur[j] < minFila) minFila = cur[j];
+    }
+    if (minFila > max) return max + 1;
+    prev = cur;
+  }
+  return prev[b.length];
+};
+// Una palabra «se parece» si es igual o tiene una o dos letras de diferencia (según su largo): tolera faltas de ortografía
+const palabraParecida = (pal, tok) => {
+  if (pal === tok) return true;
+  if (pal.length < 5) return false;
+  return distancia(pal, tok, pal.length >= 9 ? 2 : 1) <= (pal.length >= 9 ? 2 : 1);
+};
+const frasePareceEn = (frase, tokens) => {
+  const palabras = sinAcentos(frase).split(/[^a-z0-9ñ]+/).filter(Boolean);
+  // Solo frases de al menos 2 palabras o una palabra larga, para no confundir consejos
+  if (palabras.length === 0 || (palabras.length === 1 && palabras[0].length < 7)) return false;
+  return palabras.every(p => tokens.some(tok => palabraParecida(p, tok)));
+};
+// Las frases cortas (p. ej. «eco») solo cuentan como palabra completa, para que no coincidan dentro de «entrecorta»
+const contieneFrase = (t, f) => {
+  if (!f) return false;
+  if (f.length > 4) return t.includes(f);
+  let i = t.indexOf(f);
+  while (i !== -1) {
+    const antes = i === 0 ? ' ' : t[i - 1];
+    const despues = i + f.length >= t.length ? ' ' : t[i + f.length];
+    if (!/[a-z0-9]/.test(antes) && !/[a-z0-9]/.test(despues)) return true;
+    i = t.indexOf(f, i + 1);
+  }
+  return false;
+};
 const buscarConsejo = (lista, ctx, texto, modo = 'si', soloElemento = false) => {
-  const t = sinAcentos(texto);
+  let t = sinAcentos(texto);
   if (!t) return null;
   const campo = modo === 'libre' ? 'libres' : 'si';
-  return (lista || CONSEJOS_BASE).find(c =>
-    c.activo !== false && (!soloElemento || c.elem) && coincideAmbito(c.a, ctx) && (c[campo] || []).some(f => f && t.includes(f))
-  ) || null;
+  const candidatos = (lista || CONSEJOS_BASE).filter(c => c.activo !== false && (!soloElemento || c.elem) && coincideAmbito(c.a, ctx));
+  const exacto = candidatos.find(c => (c[campo] || []).some(f => contieneFrase(t, f)));
+  if (exacto || modo !== 'libre') return exacto || null;
+  // Segunda pasada solo para texto escrito a mano: sinónimos y faltas de ortografía
+  SINONIMOS.forEach(([re, por]) => { t = t.replace(re, por); });
+  const conSinonimos = candidatos.find(c => (c[campo] || []).some(f => contieneFrase(t, sinAcentos(f))));
+  if (conSinonimos) return conSinonimos;
+  const tokens = t.split(/[^a-z0-9ñ]+/).filter(Boolean);
+  return candidatos.find(c => (c[campo] || []).some(f => f && frasePareceEn(f, tokens))) || null;
 };
 
 // Consejo con el que se abre el chat cuando el ticket ya trae un síntoma (elemento) específico
@@ -992,6 +1077,10 @@ const evaluarSiguienteRespuestaChat = (...args) => {
 
 module.exports = {
   estaFueraDeHorario,
+  obtenerConfigAsistente,
+  motivoSinAtencion,
+  esUrgente,
+  mensajeUrgenteFueraDeHorario,
   aplicarConfigAsistente,
   umbralEspera,
   agregarNota,

@@ -25,6 +25,10 @@ const {
   resolucionFueraDeHorario,
   agregarAvisoEspera,
   umbralEspera: umbralEsperaActual,
+  obtenerConfigAsistente,
+  motivoSinAtencion,
+  esUrgente,
+  mensajeUrgenteFueraDeHorario,
   aplicarConfigAsistente,
   agregarNota,
   avisoFolioDuplicado,
@@ -214,6 +218,38 @@ setTimeout(() => {
     });
   }
 }, 5000);
+// Índices que aceleran las consultas más frecuentes (lista de tickets, cola sin técnico, folio duplicado y chat).
+// Se crean una sola vez y se omite cualquier columna que no exista; un fallo aquí nunca detiene el servidor.
+const INDICES_RECOMENDADOS = [
+  ['tickets', 'idx_tickets_created', ['created_at']],
+  ['tickets', 'idx_tickets_estatus', ['estatus']],
+  ['tickets', 'idx_tickets_creador_equipo', ['creador', 'equipo', 'subcategoria']],
+  ['tickets', 'idx_tickets_campana_cat', ['campana', 'categoria']],
+  ['mensajes_chat', 'idx_mensajes_folio', ['folio']]
+];
+const asegurarIndices = () => {
+  INDICES_RECOMENDADOS.forEach(([tabla, nombre, columnas]) => {
+    db.query('SELECT COLUMN_NAME AS c, DATA_TYPE AS t, CHARACTER_MAXIMUM_LENGTH AS l FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ?', [tabla], (err, cols) => {
+      if (err || !Array.isArray(cols) || !cols.length) return;
+      const porNombre = {};
+      cols.forEach(c => { porNombre[c.c] = c; });
+      if (!columnas.every(c => porNombre[c])) return;
+      db.query('SELECT COUNT(*) AS n FROM information_schema.STATISTICS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND INDEX_NAME = ?', [tabla, nombre], (e2, r2) => {
+        if (e2 || !r2 || !r2[0] || Number(r2[0].n) > 0) return;
+        // Los campos de texto largo necesitan un largo de prefijo
+        const lista = columnas.map(c => {
+          const info = porNombre[c];
+          return /text|blob/i.test(info.t) ? `\`${c}\`(60)` : (info.l && info.l > 100 ? `\`${c}\`(100)` : `\`${c}\``);
+        }).join(', ');
+        db.query(`CREATE INDEX ${nombre} ON ${tabla} (${lista})`, (e3) => {
+          if (e3) console.error(`No se pudo crear el índice ${nombre}:`, e3.message);
+          else console.log(`Índice ${nombre} creado en ${tabla}`);
+        });
+      });
+    });
+  });
+};
+setTimeout(asegurarIndices, 8000);
 const filtrarColumnas = (tabla, datos) => {
   const permitidas = columnasTabla[tabla];
   if (!permitidas) return datos;
@@ -290,6 +326,7 @@ const obtenerFechaHoraMexico = () => {
   const ss = String(ahora.getSeconds()).padStart(2, '0');
   return {
     fechaSolo: `${yyyy}-${mm}-${dd}`,
+    diaSemana: ahora.getDay(),
     fechaHora: `${yyyy}-${mm}-${dd} ${hh}:${min}:${ss}`,
     horaCorta: `${hh}:${min}`,
     prefijoFolio: `${dd}${mm}${String(yyyy).slice(-2)}`
@@ -502,25 +539,34 @@ app.get(['/api/tickets/contar-hoy', '/tickets/contar-hoy'], (req, res) => {
 });
 
 const continuarInsercionTicket = (ticketData, res, actor = 'Sistema', opcionesCreacion = {}) => {
-  const { fechaSolo, fechaHora, horaCorta } = obtenerFechaHoraMexico();
+  const { fechaSolo, fechaHora, horaCorta, diaSemana } = obtenerFechaHoraMexico();
   const anioMesActual = fechaSolo.slice(0, 7);
   const catUpper = (ticketData.categoria || '').toUpperCase();
   const esDispositivo = catUpper.includes('DISPOSITIVO') || catUpper.includes('HARDWARE');
 
   // Fuera de horario (por defecto 22:00 a 08:00, hora de México) el ticket de un cliente nace cerrado
   const ventana = ventanaFueraDeHorario();
-  const fueraDeHorario = !opcionesCreacion.esAdmin && ticketData.tipo_solicitud !== 'CENTINELA' && estaFueraDeHorario(parseInt(horaCorta.slice(0, 2), 10), ventana);
+  const aplicaHorario = !opcionesCreacion.esAdmin && ticketData.tipo_solicitud !== 'CENTINELA';
+  const motivoHorario = aplicaHorario ? motivoSinAtencion(parseInt(horaCorta.slice(0, 2), 10), ventana, { dow: diaSemana, iso: fechaSolo }) : null;
+  // Urgente: lo marcado en Ajustes o una falla masiva (varios reportes iguales en pocos minutos) no se cierra
+  const urgenteConfigurado = !!motivoHorario && esUrgente(ticketData);
 
   const guardarTicketYPrimerMensaje = (folioPrevio = null, entorno = {}) => {
     const abiertosSinTecnico = entorno.sinTecnico || 0;
+    const masivo = !!motivoHorario && !!entorno.masivo;
+    const urgente = urgenteConfigurado || masivo;
+    const fueraDeHorario = !!motivoHorario && !urgente;
     const flujo = obtenerFlujoPreguntas(ticketData, folioPrevio, { consejos: consejosCache });
-    const primerMensaje = fueraDeHorario
-      ? mensajeFueraDeHorario(ticketData.folio, ventana)
-      : agregarNota(agregarAvisoEspera(flujo[0], abiertosSinTecnico), entorno.duplicado ? avisoFolioDuplicado(entorno.duplicado) : '');
+    let primerMensaje;
+    if (fueraDeHorario) primerMensaje = mensajeFueraDeHorario(ticketData.folio, ventana, motivoHorario);
+    else {
+      primerMensaje = agregarNota(agregarAvisoEspera(flujo[0], abiertosSinTecnico), entorno.duplicado ? avisoFolioDuplicado(entorno.duplicado) : '');
+      if (urgente) primerMensaje = agregarNota(primerMensaje, mensajeUrgenteFueraDeHorario(ventana, masivo));
+    }
     if (fueraDeHorario) {
       ticketData.estatus = 'Cerrado';
       ticketData.colorEstatus = 'bg-red-600';
-      ticketData.resolucion = resolucionFueraDeHorario(ventana);
+      ticketData.resolucion = resolucionFueraDeHorario(ventana, motivoHorario);
       ticketData.fecha_cierre = fechaHora;
     }
 
@@ -538,6 +584,7 @@ const continuarInsercionTicket = (ticketData, res, actor = 'Sistema', opcionesCr
         io.emit('ticketActualizado', { folio: ticketData.folio });
         if (!fueraDeHorario) alCrearTicketAsistente(ticketData);
         else registrarAuditoria(ticketData.folio, 'Sistema', 'CIERRE_AUTOMATICO', [{ campo: 'estatus', anterior: 'Abierto', nuevo: 'Cerrado (fuera de horario)' }]);
+        if (urgente) registrarAuditoria(ticketData.folio, 'Sistema', 'URGENTE_FUERA_HORARIO', [{ campo: 'motivo', anterior: null, nuevo: masivo ? 'falla masiva' : 'categoría urgente' }]);
         registrarAuditoria(ticketData.folio, actor, 'CREADO', [{ campo: 'asunto', anterior: null, nuevo: ticketData.asunto || ticketData.subcategoria || '' }]);
         res.json({ message: 'Ticket creado exitosamente', id: result.insertId, folio: ticketData.folio, fecha: fechaSolo, folioPrevio, fueraDeHorario });
       });
@@ -569,15 +616,24 @@ const contarSinTecnico = (cb) => {
 };
 
 // Datos del entorno para el primer mensaje: cola de espera y si la misma persona ya tiene ese mismo reporte abierto
+// ¿Ya hay varios reportes iguales (misma campaña y categoría) en los últimos minutos, estén abiertos o cerrados por horario?
+const hayFallaMasiva = (ticketData, cb) => {
+  if (!ticketData.campana || !ticketData.categoria) return cb(false);
+  db.query("SELECT COUNT(*) AS n FROM tickets WHERE campana = ? AND categoria = ? AND created_at >= ? AND COALESCE(tipo_solicitud, '') <> 'CENTINELA'",
+    [ticketData.campana, ticketData.categoria, haceMinutos(INCIDENTE_MINUTOS)], (err, f) => {
+      cb(!err && f && f[0] ? Number(f[0].n) >= INCIDENTE_MINIMO - 1 : false);
+    });
+};
+
 const datosDeEntorno = (ticketData, cb) => {
-  contarSinTecnico((sinTecnico) => {
+  contarSinTecnico((sinTecnico) => hayFallaMasiva(ticketData, (masivo) => {
     const equipo = String(ticketData.equipo || '').trim();
-    if (!ticketData.creador || !equipo || equipo === 'Ninguno' || !ticketData.subcategoria) return cb({ sinTecnico, duplicado: null });
+    if (!ticketData.creador || !equipo || equipo === 'Ninguno' || !ticketData.subcategoria) return cb({ sinTecnico, duplicado: null, masivo });
     db.query("SELECT folio FROM tickets WHERE creador = ? AND equipo = ? AND subcategoria = ? AND LOWER(estatus) NOT LIKE '%cerrado%' AND folio <> ? ORDER BY id DESC LIMIT 1",
       [ticketData.creador, equipo, ticketData.subcategoria, String(ticketData.folio || '')], (err, filas) => {
-        cb({ sinTecnico, duplicado: !err && filas && filas[0] ? filas[0].folio : null });
+        cb({ sinTecnico, duplicado: !err && filas && filas[0] ? filas[0].folio : null, masivo });
       });
-  });
+  }));
 };
 
 app.post(['/api/tickets', '/tickets'], (req, res) => {
@@ -1587,9 +1643,9 @@ const registrarUsoConsejo = (folio, ticket, evaluacion) => {
 db.query(`
   CREATE TABLE IF NOT EXISTS chat_config (
     clave VARCHAR(40) PRIMARY KEY,
-    valor VARCHAR(100) NOT NULL
+    valor VARCHAR(1000) NOT NULL
   )
-`, (err) => { if (err) console.error('Error al crear/verificar tabla chat_config:', err.message); else cargarConfigAsistente(); });
+`, (err) => { if (err) console.error('Error al crear/verificar tabla chat_config:', err.message); else { db.query('ALTER TABLE chat_config MODIFY valor VARCHAR(1000) NOT NULL', () => cargarConfigAsistente()); } });
 
 function cargarConfigAsistente() {
   db.query('SELECT clave, valor FROM chat_config', (err, filas) => {
@@ -1598,7 +1654,8 @@ function cargarConfigAsistente() {
     filas.forEach(f => { c[f.clave] = f.valor; });
     aplicarConfigAsistente({
       fueraActivo: c.fueraActivo === undefined ? true : c.fueraActivo !== '0',
-      fueraDesde: c.fueraDesde, fueraHasta: c.fueraHasta, umbralEspera: c.umbralEspera
+      fueraDesde: c.fueraDesde, fueraHasta: c.fueraHasta, umbralEspera: c.umbralEspera,
+      diasCerrados: c.diasCerrados || '', festivos: c.festivos || '', urgentes: c.urgentes || ''
     });
   });
 }
@@ -1658,7 +1715,8 @@ app.get(['/api/asistente/incidentes'], requireAdmin, async (req, res) => {
 
 app.get(['/api/asistente/config'], requireAdmin, (req, res) => {
   const v = ventanaFueraDeHorario();
-  res.json({ fueraActivo: v.activo, fueraDesde: v.desde, fueraHasta: v.hasta, umbralEspera: umbralEsperaActual() });
+  res.json({ fueraActivo: v.activo, fueraDesde: v.desde, fueraHasta: v.hasta, umbralEspera: umbralEsperaActual(),
+    diasCerrados: v.diasCerrados, festivos: v.festivos, urgentes: String(obtenerConfigAsistente().urgentes || '') });
 });
 
 app.put(['/api/asistente/config'], requireAdmin, async (req, res) => {
@@ -1668,12 +1726,16 @@ app.put(['/api/asistente/config'], requireAdmin, async (req, res) => {
   const umbral = parseInt(b.umbralEspera, 10);
   if (desde === null || hasta === null) return res.status(400).json({ error: 'Las horas deben estar entre 0 y 23.' });
   if (!(umbral >= 1 && umbral <= 500)) return res.status(400).json({ error: 'El umbral de espera debe estar entre 1 y 500 solicitudes.' });
+  const dias = [...new Set((Array.isArray(b.diasCerrados) ? b.diasCerrados : []).map(Number).filter(n => Number.isInteger(n) && n >= 0 && n <= 6))].sort();
+  const festivos = [...new Set((Array.isArray(b.festivos) ? b.festivos : []).map(String).filter(f => /^\d{4}-\d{2}-\d{2}$/.test(f)))].sort().slice(0, 60);
+  const urgentes = String(b.urgentes || '').split(',').map(x => x.trim()).filter(Boolean).slice(0, 20).join(',').slice(0, 500);
   try {
-    const guardar = [['fueraActivo', b.fueraActivo === false ? '0' : '1'], ['fueraDesde', String(desde)], ['fueraHasta', String(hasta)], ['umbralEspera', String(umbral)]];
+    const guardar = [['fueraActivo', b.fueraActivo === false ? '0' : '1'], ['fueraDesde', String(desde)], ['fueraHasta', String(hasta)], ['umbralEspera', String(umbral)],
+      ['diasCerrados', dias.join(',')], ['festivos', festivos.join(',')], ['urgentes', urgentes]];
     for (const [k, val] of guardar) {
       await consulta('INSERT INTO chat_config (clave, valor) VALUES (?, ?) ON DUPLICATE KEY UPDATE valor = VALUES(valor)', [k, val]);
     }
-    aplicarConfigAsistente({ fueraActivo: b.fueraActivo !== false, fueraDesde: desde, fueraHasta: hasta, umbralEspera: umbral });
+    aplicarConfigAsistente({ fueraActivo: b.fueraActivo !== false, fueraDesde: desde, fueraHasta: hasta, umbralEspera: umbral, diasCerrados: dias.join(','), festivos: festivos.join(','), urgentes });
     registrarAuditoria('AJUSTES', nombreActor(req), 'CONFIG_ASISTENTE', [{ campo: 'horario', anterior: null, nuevo: `${b.fueraActivo === false ? 'sin cierre por horario' : `${desde}:00 a ${hasta}:00`}, espera ${umbral}` }]);
     res.json({ message: 'Ajustes guardados' });
   } catch (e) { res.status(500).json({ error: 'No se pudieron guardar los ajustes.' }); }
@@ -1745,10 +1807,30 @@ app.get(['/api/asistente/metricas'], requireAdmin, async (req, res) => {
     // Tickets que se cerraron solos por haberse creado fuera de horario
     let fueraHorario = 0;
     try {
-      const [fh] = await consulta("SELECT COUNT(*) AS n FROM tickets WHERE resolucion LIKE 'Cerrado automáticamente: solicitud creada fuera%' AND created_at >= ?", [desde]);
+      const [fh] = await consulta("SELECT COUNT(*) AS n FROM tickets WHERE resolucion LIKE 'Cerrado automáticamente: solicitud creada%' AND created_at >= ?", [desde]);
       fueraHorario = Number(fh && fh.n) || 0;
     } catch (e) { /* si falla, solo no se muestra el dato */ }
-    res.json({ dias, fueraHorario, resumen: num(resumen || { total: 0 }), porSubcategoria: porSubcategoria.map(num), porConsejo: porConsejo.map(num) });
+    // A qué hora del día se resuelve más solo (hora de México en que se mostró el consejo)
+    let porHora = [], reincidentes = [], cerradosHorario = [];
+    try {
+      porHora = (await consulta(
+        `SELECT HOUR(fecha) AS hora, COUNT(*) AS total, SUM(resultado = 'RESUELTO') AS resueltos, SUM(resultado = 'ESCALADO') AS escalados
+           FROM chat_consejo_uso WHERE fecha >= ? GROUP BY HOUR(fecha) ORDER BY hora`, [desde])).map(f => ({ ...num(f), hora: Number(f.hora) }));
+    } catch (e) { /* dato opcional */ }
+    try {
+      // Equipos que vuelven a reportar la misma falla: candidatos a cambio de equipo o a una causa de fondo
+      reincidentes = (await consulta(
+        `SELECT equipo, categoria, subcategoria, COUNT(*) AS veces, MAX(folio) AS ultimo
+           FROM tickets WHERE created_at >= ? AND equipo IS NOT NULL AND equipo NOT IN ('', 'Ninguno') AND COALESCE(tipo_solicitud, '') <> 'CENTINELA'
+            AND (resolucion IS NULL OR resolucion NOT LIKE 'Cerrado automáticamente: solicitud creada%')
+          GROUP BY equipo, categoria, subcategoria HAVING COUNT(*) >= 3 ORDER BY veces DESC LIMIT 10`, [desde])).map(f => ({ ...f, veces: Number(f.veces) }));
+    } catch (e) { /* dato opcional */ }
+    try {
+      cerradosHorario = await consulta(
+        `SELECT folio, creador, campana, equipo, categoria, subcategoria, created_at FROM tickets
+          WHERE resolucion LIKE 'Cerrado automáticamente: solicitud creada%' AND created_at >= ? ORDER BY id DESC LIMIT 25`, [desde]);
+    } catch (e) { /* dato opcional */ }
+    res.json({ dias, fueraHorario, porHora, reincidentes, cerradosHorario, resumen: num(resumen || { total: 0 }), porSubcategoria: porSubcategoria.map(num), porConsejo: porConsejo.map(num) });
   } catch (e) {
     console.error('Error en métricas del asistente:', e.message);
     res.status(500).json({ error: 'No se pudieron calcular las métricas.' });

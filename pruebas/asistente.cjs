@@ -61,5 +61,21 @@ r.aplicarConfigAsistente({});
 const d = r.agregarNota('hola' + String.fromCharCode(10) + '[[OPCIONES:a|b]]', r.avisoFolioDuplicado('0101261'));
 ok(/#0101261/.test(d) && d.endsWith('[[OPCIONES:a|b]]'), 'el aviso de folio duplicado va antes de los botones');
 
+// días sin atención, festivos y urgencias
+r.aplicarConfigAsistente({ fueraActivo: true, fueraDesde: 22, fueraHasta: 8, diasCerrados: '0', festivos: '2026-12-25', urgentes: 'telmex, caida' });
+const vent = r.ventanaFueraDeHorario();
+ok(r.motivoSinAtencion(12, vent, { dow: 0, iso: '2026-11-22' }) === 'dia', 'domingo cerrado todo el día');
+ok(r.motivoSinAtencion(12, vent, { dow: 5, iso: '2026-12-25' }) === 'festivo', 'festivo cerrado todo el día');
+ok(r.motivoSinAtencion(12, vent, { dow: 2, iso: '2026-11-24' }) === null && r.motivoSinAtencion(23, vent, { dow: 2, iso: '2026-11-24' }) === 'hora', 'día normal: solo cierra por hora');
+ok(r.esUrgente({ categoria: 'TELMEX', subcategoria: 'X' }) && r.esUrgente({ categoria: 'RED', subcategoria: 'Caída de internet' }) && !r.esUrgente({ categoria: 'TOUCHPOINT' }), 'detecta casos urgentes por palabra');
+ok(!/\.\./.test(r.mensajeFueraDeHorario('X', vent, 'dia')) && /festivo/.test(r.mensajeFueraDeHorario('X', vent, 'festivo')), 'mensajes de día sin atención claros');
+r.aplicarConfigAsistente({});
+// lectura tolerante a faltas de ortografía y sinónimos
+const tt = { ...t, categoria: 'DISPOSITIVOS', subcategoria: 'DIADEMA' };
+const lib = (txt) => r.evaluarSiguienteRespuestaChat(tt, 'A', txt, 1, null, {});
+ok(/volumen|USB|puerto/i.test((lib('el audio se entrecorta mucho') || {}).textoRespuesta || ''), 'texto libre normal sigue funcionando');
+ok((lib('mi diadema se entrecortta cuando hablo con el cliente') || {}).consejoClave === 'base-58', 'tolera una falta de ortografía (entrecortta) y no lo confunde con «eco»');
+ok((lib('hay eco en la llamada') || {}).consejoClave === 'base-59', '«eco» sigue funcionando como palabra completa');
+
 console.log(fallas ? fallas + ' FALLAS' : 'TODO OK');
 process.exit(fallas ? 1 : 0);

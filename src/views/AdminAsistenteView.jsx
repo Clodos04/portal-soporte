@@ -63,7 +63,7 @@ function Resultados({ onCrearDesdeTexto }) {
 
   if (error) return <p className="text-sm text-red-400">{error}</p>;
   if (!datos) return <p className="text-sm text-slate-400">Cargando resultados…</p>;
-  const { resumen, porSubcategoria, porConsejo, fueraHorario = 0 } = datos;
+  const { resumen, porSubcategoria, porConsejo, fueraHorario = 0, porHora = [], reincidentes = [], cerradosHorario = [] } = datos;
   const sinRespuesta = Math.max(0, resumen.total - resumen.resueltos - resumen.escalados);
   const exportar = () => {
     descargarCsv(`asistente-${dias || 'todo'}-dias.csv`, [
@@ -105,6 +105,24 @@ function Resultados({ onCrearDesdeTexto }) {
         </p>
       )}
 
+      {cerradosHorario.length > 0 && (
+        <details className="bg-slate-800 border border-slate-700 rounded-xl px-4 py-3">
+          <summary className="text-sm text-slate-200 cursor-pointer">Ver quién reportó fuera de horario ({cerradosHorario.length === 25 ? 'últimos 25' : cerradosHorario.length})</summary>
+          <p className="text-xs text-slate-400 mt-2">Estas personas tuvieron que volver a levantar su solicitud. Si alguna sigue sin atención, conviene escribirle.</p>
+          <ul className="divide-y divide-slate-700/60 mt-2">
+            {cerradosHorario.map(t => (
+              <li key={t.folio} className="py-2 text-sm text-slate-200 flex flex-wrap gap-x-4 gap-y-1">
+                <span className="tabular-nums text-slate-400">#{t.folio}</span>
+                <span>{t.creador || 'Sin nombre'}</span>
+                <span className="text-slate-400">{[t.campana, t.equipo].filter(Boolean).join(' · ')}</span>
+                <span className="text-slate-400">{[t.categoria, t.subcategoria].filter(Boolean).join(' · ')}</span>
+                <span className="text-slate-400 tabular-nums ml-auto">{String(t.created_at || '').replace('T', ' ').slice(0, 16)}</span>
+              </li>
+            ))}
+          </ul>
+        </details>
+      )}
+
       <SinCoincidencia dias={dias} onCrear={onCrearDesdeTexto} />
 
       {resumen.total === 0 ? (
@@ -139,6 +157,45 @@ function Resultados({ onCrearDesdeTexto }) {
             </div>
             <p className="text-xs text-slate-400 mt-3">Verde: se resolvió con el consejo. Ámbar: el agente pidió al técnico. El resto no confirmó.</p>
           </section>
+
+          {porHora.length > 0 && (
+            <section className="bg-slate-800 border border-slate-700 rounded-2xl p-5">
+              <h2 className="text-sm font-semibold text-white mb-1">Por hora del día</h2>
+              <p className="text-xs text-slate-400 mb-3">Cuándo se muestran más consejos y a qué horas se resuelven solos (hora de México).</p>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead><tr className="text-left text-xs text-slate-400"><th className="py-2 pr-3 font-medium">Hora</th><th className="py-2 pr-3 font-medium text-right">Casos</th><th className="py-2 pr-3 font-medium text-right">Resueltos</th><th className="py-2 font-medium">Resultado</th></tr></thead>
+                  <tbody>
+                    {porHora.map(h => (
+                      <tr key={h.hora} className="border-t border-slate-700/60">
+                        <td className="py-2 pr-3 text-slate-200 tabular-nums">{String(h.hora).padStart(2, '0')}:00</td>
+                        <td className="py-2 pr-3 text-right tabular-nums">{h.total}</td>
+                        <td className="py-2 pr-3 text-right tabular-nums text-emerald-400">{pct(h.resueltos, h.total)}%</td>
+                        <td className="py-2"><Barra r={h.resueltos} e={h.escalados} t={h.total} /></td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </section>
+          )}
+
+          {reincidentes.length > 0 && (
+            <section className="bg-slate-800 border border-slate-700 rounded-2xl p-5">
+              <h2 className="text-sm font-semibold text-white mb-1">Equipos que reinciden</h2>
+              <p className="text-xs text-slate-400 mb-3">Mismo equipo con la misma falla 3 o más veces en el periodo: probablemente necesita cambio de equipo o una revisión de fondo, no otro consejo.</p>
+              <ul className="divide-y divide-slate-700/60">
+                {reincidentes.map(r => (
+                  <li key={`${r.equipo}|${r.subcategoria}`} className="py-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
+                    <span className="font-medium text-slate-100">{r.equipo}</span>
+                    <span className="text-slate-300">{[r.categoria, r.subcategoria].filter(Boolean).join(' · ')}</span>
+                    <span className="text-xs text-slate-400">último folio #{r.ultimo}</span>
+                    <span className="ml-auto px-2 py-0.5 rounded-md bg-amber-500/15 text-amber-300 text-xs tabular-nums">{r.veces} veces</span>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
 
           <section className="bg-slate-800 border border-slate-700 rounded-2xl p-5">
             <h2 className="text-sm font-semibold text-white mb-1">Consejos que más se muestran</h2>
@@ -542,6 +599,36 @@ function Simulador() {
 // ---------------------------------------------------------------- Ajustes
 const HORAS = Array.from({ length: 24 }, (_, h) => h);
 const etiquetaHora = (h) => `${h % 12 === 0 ? 12 : h % 12}:00 ${h < 12 ? 'a. m.' : 'p. m.'}`;
+const DIAS = [[1, 'Lun'], [2, 'Mar'], [3, 'Mié'], [4, 'Jue'], [5, 'Vie'], [6, 'Sáb'], [0, 'Dom']];
+
+function FestivosEditor({ cfg, setCfg }) {
+  const [nueva, setNueva] = useState('');
+  const lista = cfg.festivos || [];
+  const agregar = () => {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(nueva) || lista.includes(nueva)) return;
+    setCfg({ ...cfg, festivos: [...lista, nueva].sort() });
+    setNueva('');
+  };
+  return (
+    <div className="space-y-2">
+      <p className="text-xs text-slate-400">Días festivos o de cierre (fechas sueltas)</p>
+      <div className="flex flex-wrap items-center gap-2">
+        <input type="date" aria-label="Fecha sin atención" className={`${campo} max-w-44`} value={nueva} disabled={!cfg.fueraActivo} onChange={e => setNueva(e.target.value)} />
+        <button type="button" onClick={agregar} disabled={!nueva || !cfg.fueraActivo} className="px-3 py-2 rounded-lg text-sm border bg-slate-900 border-slate-700 text-slate-200 hover:text-white disabled:opacity-40 cursor-pointer">Agregar fecha</button>
+      </div>
+      {lista.length > 0 && (
+        <ul className="flex flex-wrap gap-2">
+          {lista.map(f => (
+            <li key={f} className="inline-flex items-center gap-2 px-2.5 py-1 rounded-lg bg-slate-900 border border-slate-700 text-sm text-slate-200 tabular-nums">
+              {f}
+              <button type="button" aria-label={`Quitar ${f}`} onClick={() => setCfg({ ...cfg, festivos: lista.filter(x => x !== f) })} className="text-slate-400 hover:text-white cursor-pointer">×</button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
 
 function Ajustes() {
   const { avisar } = useAvisos();
@@ -550,7 +637,7 @@ function Ajustes() {
   const [guardando, setGuardando] = useState(false);
 
   useEffect(() => {
-    fetch('/api/asistente/config').then(r => r.json()).then(d => { setCfg(d); setOriginal(d); }).catch(() => avisar('No se pudieron cargar los ajustes.', 'error'));
+    fetch('/api/asistente/config').then(r => r.json()).then(d => { const c = { ...d, diasCerrados: d.diasCerrados || [], festivos: d.festivos || [], urgentes: d.urgentes || '' }; setCfg(c); setOriginal(c); }).catch(() => avisar('No se pudieron cargar los ajustes.', 'error'));
   }, [avisar]);
 
   if (!cfg) return <p className="text-sm text-slate-400">Cargando ajustes…</p>;
@@ -591,7 +678,33 @@ function Ajustes() {
             </select>
           </label>
         </div>
-        {cfg.fueraActivo && cfg.fueraDesde === cfg.fueraHasta && <p className="text-xs text-amber-300">Con la misma hora en ambos campos no se cierra nada.</p>}
+        {cfg.fueraActivo && cfg.fueraDesde === cfg.fueraHasta && <p className="text-xs text-amber-300">Con la misma hora en ambos campos no se cierra nada por hora.</p>}
+
+        <fieldset disabled={!cfg.fueraActivo} className="space-y-2">
+          <legend className="text-xs text-slate-400">Días en que no hay atención (se cierra todo el día)</legend>
+          <div className="flex flex-wrap gap-2">
+            {DIAS.map(([n, nombre]) => {
+              const marcado = (cfg.diasCerrados || []).includes(n);
+              return (
+                <button key={n} type="button" aria-pressed={marcado}
+                  onClick={() => setCfg({ ...cfg, diasCerrados: marcado ? cfg.diasCerrados.filter(x => x !== n) : [...(cfg.diasCerrados || []), n] })}
+                  className={`px-3 py-1.5 rounded-lg text-sm border cursor-pointer transition-colors ${marcado ? 'bg-rose-500/20 border-rose-400 text-rose-200' : 'bg-slate-900 border-slate-700 text-slate-300 hover:text-white'}`}>{nombre}</button>
+              );
+            })}
+          </div>
+        </fieldset>
+
+        <FestivosEditor cfg={cfg} setCfg={setCfg} />
+      </section>
+
+      <section className="bg-slate-800 border border-slate-700 rounded-2xl p-5 space-y-3">
+        <div>
+          <h2 className="text-sm font-semibold text-white">Casos urgentes</h2>
+          <p className="text-xs text-slate-400 mt-1">Estas solicitudes no se cierran aunque lleguen fuera de horario: quedan abiertas con un aviso para que soporte las vea al iniciar. También se mantienen abiertas cuando hay una falla masiva (varios reportes iguales de la misma campaña en pocos minutos).</p>
+        </div>
+        <label className="block text-xs text-slate-400">Palabras de la categoría, subcategoría o elemento, separadas por comas
+          <input type="text" className={`${campo} mt-1`} placeholder="ej. telmex, internet, caída" value={cfg.urgentes || ''} onChange={e => setCfg({ ...cfg, urgentes: e.target.value })} />
+        </label>
       </section>
 
       <section className="bg-slate-800 border border-slate-700 rounded-2xl p-5 space-y-3">
