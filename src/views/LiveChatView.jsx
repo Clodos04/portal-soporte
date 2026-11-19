@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Headset } from 'lucide-react';
+import { Headset, Repeat2 } from 'lucide-react';
 import RespuestasRapidas from '../components/RespuestasRapidas';
 import AdjuntosTicket from '../components/AdjuntosTicket';
 import { sinEmojis, nombrePresentable, nombreSiEstaEnMayusculas } from '../utils/texto';
+import { reportesPreviosDelEquipo, esEquipoReincidente, DIAS_REINCIDENCIA } from '../utils/reincidencia';
 
-function LiveChatView({ folio, user, onFinalizarChat, onAbrirModalEdicion, ticket, onTomarTicket, senalActualizacion = 0 }) {
+function LiveChatView({ folio, user, onFinalizarChat, onAbrirModalEdicion, ticket, onTomarTicket, senalActualizacion = 0, tickets = [] }) {
   const [mensajes, setMensajes] = useState([]);
   const [nuevoMensaje, setNuevoMensaje] = useState('');
   const [conectado, setConectado] = useState(false);
@@ -15,14 +16,22 @@ function LiveChatView({ folio, user, onFinalizarChat, onAbrirModalEdicion, ticke
   const chatEndRef = useRef(null);
 
   const extraerTextoYOpciones = (textoCrudo = '') => {
-    const regex = /\[\[OPCIONES:(.*?)\]\]/s;
-    const match = String(textoCrudo).match(regex);
-    if (!match) {
-      return { textoLimpio: textoCrudo, opciones: [] };
+    let texto = String(textoCrudo);
+    // Imagen de apoyo del consejo (solo rutas del propio portal)
+    let imagen = null;
+    const coincideImagen = texto.match(/\[\[IMAGEN:(\/api\/asistente\/consejos\/\d+\/imagen)\]\]/);
+    if (coincideImagen) {
+      imagen = coincideImagen[1];
+      texto = texto.replace(coincideImagen[0], '');
     }
-    const textoLimpio = String(textoCrudo).replace(regex, '').trim();
+    const regex = /\[\[OPCIONES:(.*?)\]\]/s;
+    const match = texto.match(regex);
+    if (!match) {
+      return { textoLimpio: imagen ? texto.trim() : texto, opciones: [], imagen };
+    }
+    const textoLimpio = texto.replace(regex, '').trim();
     const opciones = match[1].split('|').map(op => op.trim()).filter(Boolean);
-    return { textoLimpio, opciones };
+    return { textoLimpio, opciones, imagen };
   };
 
   const reproducirAlertaChat = (remitente, textoMensaje) => {
@@ -112,6 +121,7 @@ function LiveChatView({ folio, user, onFinalizarChat, onAbrirModalEdicion, ticke
   };
 
   const esSoporte = user?.role === 'support';
+  const previosEquipo = esSoporte && ticket ? reportesPreviosDelEquipo(ticket, tickets) : null;
   const sinAsignar = !ticket?.tecnico || ticket?.tecnico === 'Sin Asignar';
 
   // ==============================================================================
@@ -184,6 +194,16 @@ function LiveChatView({ folio, user, onFinalizarChat, onAbrirModalEdicion, ticke
         </div>
       </div>
 
+      {esSoporte && previosEquipo && esEquipoReincidente(previosEquipo) && (
+        <div className="flex items-start gap-3 px-5 py-3 bg-amber-500/10 border-b border-amber-500/30 text-sm text-amber-200" role="status">
+          <Repeat2 size={17} strokeWidth={1.75} className="mt-0.5 shrink-0 text-amber-400" />
+          <p>
+            <strong className="text-amber-100">Equipo reincidente:</strong> {ticket.equipo} ya tiene {previosEquipo.length + 1} reportes de {ticket.subcategoria} en {DIAS_REINCIDENCIA} días
+            (anteriores: {previosEquipo.slice(0, 5).map(t => `#${t.folio}`).join(', ')}). Valora reemplazar la pieza o revisar la posición en lugar de repetir la misma reparación.
+          </p>
+        </div>
+      )}
+
       <AdjuntosTicket folio={folio} esAdmin={esSoporte} senal={senalActualizacion} />
 
       {/* Cuerpo de Mensajes */}
@@ -191,7 +211,7 @@ function LiveChatView({ folio, user, onFinalizarChat, onAbrirModalEdicion, ticke
         {mensajes.map((m, idx) => {
           const esCliente = m.remitente === user?.name;
           const esSistema = m.remitente === 'Sistema';
-          const { textoLimpio } = extraerTextoYOpciones(m.texto);
+          const { textoLimpio, imagen } = extraerTextoYOpciones(m.texto);
 
           return (
             <div key={idx} className={`flex flex-col ${esCliente ? 'items-end' : 'items-start'}`}>
@@ -209,6 +229,11 @@ function LiveChatView({ folio, user, onFinalizarChat, onAbrirModalEdicion, ticke
                     : 'bg-slate-800 text-slate-200 border border-slate-700 rounded-tl-none'
               }`}>
                 {sinEmojis(textoLimpio)}
+                {imagen && (
+                  <a href={imagen} target="_blank" rel="noopener noreferrer" className="block mt-3">
+                    <img src={imagen} alt="Imagen de apoyo para este paso" loading="lazy" className="rounded-lg border border-slate-700 max-h-64 w-auto" />
+                  </a>
+                )}
               </div>
             </div>
           );

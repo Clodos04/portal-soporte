@@ -16,6 +16,8 @@ import GuiaTicketsView from './views/GuiaTicketsView';
 import AdminReportesView from './views/AdminReportesView';
 import CentinelaDetallesView from './views/CentinelaDetallesView';
 import BuzonSugerenciasView from './views/BuzonSugerenciasView';
+import AdminAsistenteView from './views/AdminAsistenteView';
+import AlertaIncidenteMasivo from './components/AlertaIncidenteMasivo';
 import ActividadesView from './views/ActividadesView';
 
 import AdminGruposView from './views/AdminGruposView';
@@ -472,6 +474,9 @@ function App() {
       />
 
       <main id="contenido" tabIndex={-1} className="p-4 sm:p-6 pb-10 max-w-7xl w-full mx-auto relative z-0 outline-none">
+        {user?.role === 'support' && currentView !== 'live-chat' && (
+          <AlertaIncidenteMasivo onVerTickets={() => setCurrentView('solicitudes')} />
+        )}
         <div key={currentView} className="animate-entrada">
         {currentView === 'inicio' && (
           <Dashboard 
@@ -558,6 +563,7 @@ function App() {
             folio={folioChatActivo} 
             user={user} 
             ticket={tickets.find(t => String(t.folio) === String(folioChatActivo))}
+            tickets={tickets}
             senalActualizacion={senalChat}
             onTomarTicket={handleTomarTicket}
             onFinalizarChat={() => setCurrentView('solicitudes')} 
@@ -570,6 +576,10 @@ function App() {
 
         {currentView === 'admin-grupos' && (
           <AdminGruposView grupos={grupos} onAgregarGrupo={handleAgregarGrupo} onEliminarGrupo={handleEliminarGrupo} />
+        )}
+
+        {currentView === 'admin-asistente' && user?.role === 'support' && (
+          <AdminAsistenteView />
         )}
 
         {currentView === 'admin-usuarios' && (

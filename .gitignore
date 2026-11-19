@@ -30,3 +30,5 @@ dist-ssr
 
 # Adjuntos de tickets subidos por los usuarios
 uploads/
+
+.playwright-cli/
