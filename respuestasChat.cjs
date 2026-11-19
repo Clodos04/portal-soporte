@@ -1,6 +1,8 @@
 // Archivo: respuestasChat.cjs
 
 // Helper para empaquetar texto + botones interactivos para LiveChatView.jsx
+const sinAcentos = (t) => String(t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+
 const armarMensajeConOpciones = (texto, listaOpciones = []) => {
   if (!listaOpciones || listaOpciones.length === 0) return texto;
   return `${texto}\n[[OPCIONES:${listaOpciones.join('|')}]]`;
@@ -212,6 +214,67 @@ Confírmanos cómo sigue la posición:`,
 };
 
 // ============================================================================
+// CONSEJOS CONCRETOS (paso 3): según el botón que eligió el cliente en el paso 2.
+// Cada consejo es algo que el agente puede intentar sin permisos especiales mientras llega el técnico.
+// ============================================================================
+const NOTA_CENTINELA = '\n\n🛡️ *Nota importante: cuando un periférico tiene daño físico definitivo, el cambio se gestiona mediante Reporte Centinela desde el Asistente Guiado.*';
+const CONSEJOS_ESPECIFICOS = [
+  // ----- TOUCHPOINT: AUDIO -----
+  { si: ['enciende sus luces', 'mover un poco el cable', 'navegador y el equipo por completo'], tip: 'Conecta la diadema en un puerto USB de la parte trasera del CPU, cierra Touchpoint y ábrelo de nuevo. Cuando el navegador pida permiso para usar el micrófono elige «Permitir»; si ya lo habías bloqueado, haz clic en el candado junto a la dirección, actívalo y recarga la página. Evita mover el cable durante una llamada.' },
+  // ----- TOUCHPOINT: SESIÓN ÚNICA -----
+  { si: ['aleatoria', 'entra una llamada'], tip: 'Cierra las pestañas y programas que no uses y confirma que tu usuario de Touchpoint no esté abierto en otro equipo. Si se vuelve a caer, anota la hora exacta: con ese dato el técnico ubica la causa mucho más rápido.' },
+  { si: ['se congela por unos segundos', 'pantalla de cierre'], tip: 'Presiona CTRL + SHIFT + R para una recarga limpia y revisa que el cable de red esté firme. Si vuelve a ocurrir, anota la hora exacta y si ya había una llamada en curso.' },
+  { si: ['unicamente le pasa a este agente', 'otra posicion de la isla'], tip: 'Como solo le ocurre a este agente, el técnico revisará su perfil y su navegador. Mientras llega, cierra sesión, borra la caché (CTRL + SHIFT + SUPR) y vuelve a entrar.' },
+  { si: ['mensaje de error de conexion', 'certificado', 'sitio no disponible'], tip: 'Revisa que la fecha y la hora de Windows sean correctas (un reloj desajustado provoca errores de certificado), cierra el navegador por completo y ábrelo de nuevo. Anota el texto exacto del error.' },
+  { si: ['otro navegador'], tip: 'Si falla igual en Edge y en Chrome, lo más probable es la red o el servicio y no el equipo; no reinstales nada. El técnico revisará la conexión de la posición.' },
+  // ----- TOUCHPOINT: CAÍDA MASIVA -----
+  { si: ['misma linea', 'bloque de escritorios'], tip: 'No desconectes ni muevas cables. Anota qué posiciones del bloque están afectadas: si comparten el mismo switch o cable, el técnico lo ubica de inmediato.' },
+  { si: ['diferentes lugares', 'misma campana'], tip: 'Pide a tu supervisor la lista de agentes afectados y la hora en que empezó. Si están dispersos, la causa suele estar en el servicio y no en el cableado.' },
+  { si: ['limpiar o mover', 'escritorios se cayeron'], tip: 'Revisa sin jalar que los cables de red de esas posiciones estén firmes en el CPU y en la pared, y avísanos qué posiciones recuperaron conexión.' },
+  { si: ['expulsion de sesion', 'simultanea'], tip: 'Mantén el chat abierto y no reinicies los equipos: así el técnico revisa el estado actual. Anota la hora exacta en que todos perdieron sesión.' },
+  { si: ['siguen con energia', 'ningun navegador abre'], tip: 'No reinicies los equipos todavía. Confirma con tu supervisor si hay otras campañas afectadas y dinos la hora en que empezó la falla.' },
+  { si: ['otras campanas vecinas', 'operan con normalidad'], tip: 'Gracias, ese dato ayuda a acotar el alcance a tu campaña. Mantén el chat abierto y avísanos si más posiciones se ven afectadas.' },
+  { si: ['ninguna pagina web'], tip: 'Revisa que los cables de red estén firmes y avísanos si el foquito de red del CPU está apagado. No reinicies todos los equipos a la vez.' },
+  { si: ['mensajeria', 'herramientas complementarias'], tip: 'Si también fallan las herramientas complementarias, el problema es de conectividad y no de una sola aplicación. Mantén el chat abierto y avísanos si algo regresa.' },
+  { si: ['parpadeo o corte general', 'energia electrica'], tip: 'Un corte de energía puede apagar los switches de la zona. Revisa que no haya equipos de red apagados o con luces extrañas, sin tocar cables, y avísanos.' },
+  // ----- DIADEMA -----
+  { si: ['muy lejano o debil'], tip: 'Acerca el micrófono de la diadema a unos 2 dedos de tu boca y revisa en Windows (Configuración > Sonido > Entrada) que el nivel del micrófono esté alto y la diadema sea el dispositivo seleccionado.' },
+  { si: ['se corta por completo', 'mueva ligeramente el cable', 'muevo ligeramente el cable'], tip: 'Deja de mover el cable: ese comportamiento indica un falso contacto. Conéctala en un puerto USB de la parte trasera del CPU para trabajar mientras llega el técnico.' + NOTA_CENTINELA },
+  { si: ['indicador de silencio', 'parpadeando o en rojo'], tip: 'Presiona una vez el botón de silencio del control y revisa que Touchpoint no tenga el micrófono silenciado (ícono del micrófono tachado). Si el foco sigue rojo, avísanos.' },
+  { si: ['subir/bajar volumen', 'no ejecutan ninguna accion'], tip: 'Mientras llega el técnico, ajusta el volumen desde el ícono de bocina de la barra de tareas de Windows. Los botones del control no afectan la llamada si el audio se escucha bien.' },
+  { si: ['control en linea', 'caliente'], tip: 'Si el control se siente caliente, desconéctalo y no lo uses. Avísanos por aquí para que el técnico lo revise.' },
+  { si: ['windows no reconoce'], tip: 'Desconecta la diadema, espera 5 segundos y conéctala en un puerto USB trasero. Luego abre Configuración > Sonido y elige la diadema como dispositivo de entrada y de salida.' },
+  { si: ['otro puerto usb', 'sigue sin detectarla', 'sigue sin dar senal'], tip: 'No sigas probando puertos. El técnico revisará con otro dispositivo para descartar si la falla es del equipo o del periférico.' },
+  // ----- TECLADO -----
+  { si: ['letra aparece repetida', 'aaaaaa'], tip: 'Desconecta y vuelve a conectar el teclado en otro puerto USB. Si sigue repitiendo teclas, deja de usarlo y avísanos: puede tener una tecla trabada.' },
+  { si: ['comandos extranos', 'ventanas secundarias'], tip: 'Presiona una por una las teclas Windows, Ctrl, Alt y Shift: a veces una queda atorada y activa comandos sin querer. Si sigue pasando, avísanos.' },
+  { si: ['incidente de liquidos', 'liquidos'], tip: '⚠️ Desconecta el teclado de inmediato, no lo agites ni lo sigas usando. Avísanos por aquí y el técnico lo revisará para evitar daños en el equipo.' },
+  { si: ['barra espaciadora', 'enter se inclinan'], tip: 'No fuerces la tecla ni la quites. Si la barra o el ENTER quedan flojos, se gestionará su cambio con el técnico.' + NOTA_CENTINELA },
+  { si: ['ninguna tecla funciona'], tip: 'Desconecta el teclado y conéctalo en un puerto USB de la parte trasera del CPU. Si sigue sin responder en ningún programa, avísanos: el técnico lo reemplazará o lo probará con otro.' },
+  // ----- MOUSE -----
+  { si: ['cursor se congela', 'errática', 'erratica'], tip: 'Limpia con un paño seco la parte de abajo del mouse (el sensor óptico) y úsalo sobre una superficie lisa y mate, como una alfombrilla limpia.' },
+  { si: ['salta hacia las esquinas'], tip: 'Ese salto suele deberse a una superficie con brillo o reflejo. Prueba el mouse sobre una alfombrilla o una hoja blanca mate.' },
+  { si: ['pesado', 'raspa'], tip: 'Limpia la alfombrilla y la base del mouse con un paño seco. Si sigue raspando, el técnico revisará el mouse.' },
+  { si: ['ruedita', 'scroll'], tip: 'Recarga la página (F5) y prueba la ruedita en otra aplicación. Si solo falla en una, es de esa aplicación y no del mouse.' },
+  { si: ['izquierdo se siente flojo', 'sonido de clic'], tip: 'Evita presionar con fuerza el botón. Cuando el mecanismo ya está desgastado, el cambio se gestiona con el técnico.' + NOTA_CENTINELA },
+  { si: ['luz roja optica', 'totalmente apagada'], tip: 'Conecta el mouse en un puerto USB de la parte trasera del CPU. Si sigue sin encender la luz roja, el técnico lo cambiará o lo probará con otro.' },
+  // ----- RENDIMIENTO CPU: DISCO -----
+  { si: ['poco espacio disponible'], tip: 'Vacía la Papelera de reciclaje y cierra los programas que no uses. No borres carpetas del sistema ni archivos de trabajo que no reconozcas; el técnico liberará espacio de forma segura.' },
+  { si: ['tardan varios minutos', 'se queda pasmada'], tip: 'Si no estás en llamada, usa Inicio > Reiniciar (no Apagar) para limpiar procesos. Si al volver sigue lenta, avísanos.' },
+  // ----- RENDIMIENTO CPU: RAM Y FORMATEO -----
+  { si: ['se congela por completo al abrir pestanas'], tip: 'Cierra las pestañas y programas que no necesites; deja abiertas solo Touchpoint y tus herramientas de trabajo.' },
+  { si: ['se reinicia de la nada', 'pantalla azul'], tip: 'Si vuelve a aparecer una pantalla azul, anota el código de error que muestra (por ejemplo, el texto en mayúsculas). Ayuda mucho al técnico.' },
+  { si: ['administrador de tareas', 'se mantiene al 100'], tip: 'Presiona CTRL + SHIFT + ESC, abre la pestaña de Procesos, ordena por Memoria y anota qué aplicación consume más. Dinos cuál es.' },
+  { si: ['respaldar manuales', 'plantillas'], tip: 'Mientras llega el técnico, avísanos por aquí qué archivos necesitas conservar y dónde están guardados, para que no se pierdan al dar mantenimiento.' },
+  { si: ['conflictos de software'], tip: 'No instales ni desinstales programas por tu cuenta. El técnico revisará qué software provoca el conflicto.' },
+  { si: ['posicion se encuentre desocupada'], tip: 'Perfecto. Cuando llegue el técnico, confirma con tu supervisor que la posición puede quedar fuera de operación el tiempo necesario.' }
+];
+const buscarConsejoEspecifico = (textoNormalizado) => {
+  const hallado = CONSEJOS_ESPECIFICOS.find(c => c.si.some(f => textoNormalizado.includes(f)));
+  return hallado ? hallado.tip : null;
+};
+
+// ============================================================================
 // 3. EVALUADOR DEL ÁRBOL DE RESPUESTAS (Sub-opciones de 2do nivel y Cierre)
 // ============================================================================
 const evaluarSiguienteRespuestaChat = (ticket, remitente, textoUsuario, mensajesDelSistema, folioAnteriorMes = null) => {
@@ -230,14 +293,18 @@ const evaluarSiguienteRespuestaChat = (ticket, remitente, textoUsuario, mensajes
   const elem = (ticket.elemento || '').toUpperCase();
   const esDispositivo = cat.includes('DISPOSITIVO') || cat.includes('HARDWARE');
   const texto = (textoUsuario || '').trim();
-  const textoLower = texto.toLowerCase();
+  // Sin mayúsculas ni acentos: "Ya quedó", "ya quedo" y "YA QUEDÓ" valen lo mismo
+  const textoLower = sinAcentos(texto);
+  const dice = (...frases) => frases.some(f => textoLower.includes(f));
+  // Negaciones: "no está solucionado" no debe cerrar el folio
+  const niega = /\b(no|nunca|tampoco|todavia|aun|sigue|siguen|persiste|falla|fallando)\b/.test(textoLower);
 
   // --------------------------------------------------------------------------
   // CASO ESPECIAL: DISPOSITIVO REPETIDO EN EL MES (Valida si ya hizo Centinela)
   // --------------------------------------------------------------------------
   if (esDispositivo && folioAnteriorMes) {
     if (mensajesDelSistema === 1) {
-      const dijoQueNo = textoLower.includes('no') || textoLower.includes('aun') || textoLower.includes('aún');
+      const dijoQueNo = /\bno\b/.test(textoLower) || textoLower.includes('aun no');
       if (dijoQueNo) {
         return {
           textoRespuesta: `🛡️ Te invitamos a generar tu Reporte Centinela desde el Asistente Guiado para este nodo (${nodo}). Validamos que un técnico ya se acercó previamente a realizar pruebas (Folio origen: #${folioAnteriorMes}). Te agradecemos que lo sigas reportando en Centinela para que tu campaña llegue al 100% y se hagan los cambios solicitados.`,
@@ -271,7 +338,7 @@ const evaluarSiguienteRespuestaChat = (ticket, remitente, textoUsuario, mensajes
   }
 
   // Si en cualquier momento el usuario escribe que ya se solucionó
-  if (textoLower.includes('ya quedo') || textoLower.includes('ya quedó') || textoLower.includes('ya funciono') || textoLower.includes('ya funcionó') || textoLower.includes('solucionado')) {
+  if (!niega && dice('ya quedo', 'ya funciono', 'solucionado', 'ya sirvio', 'ya se arreglo', 'ya quedo resuelto')) {
     return {
       textoRespuesta: `🎉 ¡Excelente! Qué gusto que ya haya quedado funcionando correctamente. Este folio #${folio} se cerrará automáticamente en este momento. ¡Que tengas un excelente turno!`,
       cerrarTicket: true
@@ -279,7 +346,7 @@ const evaluarSiguienteRespuestaChat = (ticket, remitente, textoUsuario, mensajes
   }
 
   // Si el usuario hace clic en "Aún falla, quedo en espera"
-  if (textoLower.includes('aún falla') || textoLower.includes('aun falla') || textoLower.includes('espera del técnico') || textoLower.includes('espera de tecnico')) {
+  if (dice('aun falla', 'espera del tecnico', 'espera de tecnico') || (mensajesDelSistema >= 2 && niega && dice('solucionado', 'quedo', 'funciona', 'sirve', 'igual', 'resuelto'))) {
     return {
       textoRespuesta: `Entendido. Mantendremos el folio #${folio} abierto y en breve un técnico se acercará a tu posición para brindarte el soporte necesario.`,
       cerrarTicket: false
@@ -294,7 +361,7 @@ const evaluarSiguienteRespuestaChat = (ticket, remitente, textoUsuario, mensajes
 
     // --- TOUCHPOINT: FOLIO DE SOPORTE (Historial) ---
     if (cat.includes('TOUCHPOINT') && sub.includes('FOLIO DE SOPORTE')) {
-      if (textoLower.includes('hola') || textoLower.includes('falla') || textoLower.includes('volvio') || textoLower.includes('volvió')) {
+      if (textoLower.includes('hola') || textoLower.includes('falla') || textoLower.includes('volvio') || textoLower.includes('volvio')) {
         return {
           textoRespuesta: `¡Hola! Registramos tu mensaje. Como nos indicas que la falla en Touchpoint persiste o requieres apoyo, en un momento un técnico se acercará a tu posición para revisarlo.`,
           cerrarTicket: false
@@ -304,7 +371,7 @@ const evaluarSiguienteRespuestaChat = (ticket, remitente, textoUsuario, mensajes
 
     // --- TOUCHPOINT: FALLA DE AUDIO ---
     if (cat.includes('TOUCHPOINT') && sub.includes('AUDIO')) {
-      if (textoLower.includes('no me escucha') || textoLower.includes('micrófono') || textoLower.includes('microfono')) {
+      if (textoLower.includes('no me escucha') || textoLower.includes('microfono') || textoLower.includes('microfono')) {
         return {
           textoRespuesta: armarMensajeConOpciones(
             `Comprendemos la situación. Para verificar si podemos agilizar el ajuste de la posición, ayúdanos seleccionando cuál de estos escenarios describe mejor lo que pasa:`,
@@ -317,7 +384,7 @@ const evaluarSiguienteRespuestaChat = (ticket, remitente, textoUsuario, mensajes
           cerrarTicket: false
         };
       }
-      if (textoLower.includes('no escucho') || textoLower.includes('bocinas') || textoLower.includes('audífonos') || textoLower.includes('audifonos')) {
+      if (textoLower.includes('no escucho') || textoLower.includes('bocinas') || textoLower.includes('audifonos') || textoLower.includes('audifonos')) {
         return {
           textoRespuesta: armarMensajeConOpciones(
             `Entendido. Para descartar un detalle rápido de configuración en Windows, indícanos qué notas en tus audífonos:`,
@@ -399,7 +466,7 @@ const evaluarSiguienteRespuestaChat = (ticket, remitente, textoUsuario, mensajes
           cerrarTicket: false
         };
       }
-      if (textoLower.includes('toda la campaña') || textoLower.includes('isla completa')) {
+      if (textoLower.includes('toda la campana') || textoLower.includes('isla completa')) {
         return {
           textoRespuesta: armarMensajeConOpciones(
             `Registramos la alerta de gran impacto. Para coordinar el apoyo inmediato con tu campaña, confírmanos:`,
@@ -481,7 +548,7 @@ const evaluarSiguienteRespuestaChat = (ticket, remitente, textoUsuario, mensajes
           cerrarTicket: false
         };
       }
-      if (textoLower.includes('dejó de responder') || textoLower.includes('no enciende')) {
+      if (textoLower.includes('dejo de responder') || textoLower.includes('no enciende')) {
         return {
           textoRespuesta: armarMensajeConOpciones(
             `Entendido. Para descartar un detalle rápido de conexión en el equipo, ayúdanos seleccionando:`,
@@ -640,13 +707,13 @@ const evaluarSiguienteRespuestaChat = (ticket, remitente, textoUsuario, mensajes
     // ----- TIPS TÉCNICOS SEGÚN LA RESPUESTA ANTERIOR -----
     
     // TOUCHPOINT: AUDIO
-    if (textoLower.includes('volumen se percibe muy bajo') || textoLower.includes('estática constante')) {
+    if (textoLower.includes('volumen se percibe muy bajo') || textoLower.includes('estatica constante')) {
       consejoTecnico = "Como primer paso, por favor desconecta tu diadema del puerto USB frontal y conéctala en uno de los puertos USB de la parte trasera del CPU (directo a la placa base).";
-    } else if (textoLower.includes('botón \'mute\'') || textoLower.includes('no escuchan nada') || textoLower.includes('un solo lado')) {
+    } else if (textoLower.includes('boton \'mute\'') || textoLower.includes('no escuchan nada') || textoLower.includes('un solo lado')) {
       consejoTecnico = "Por favor verifica que el volumen en la barra de tareas de Windows esté al 100%, y asegúrate de que el plug de la diadema (si es desprendible) esté bien conectado al control de volumen del cable.";
     } 
     // TOUCHPOINT: DESCONEXIÓN Y RED
-    else if (textoLower.includes('saca al agente') || textoLower.includes('se queda cargando') || textoLower.includes('foquito de red') || textoLower.includes('notificación de \'red no identificada\'')) {
+    else if (textoLower.includes('saca al agente') || textoLower.includes('se queda cargando') || textoLower.includes('foquito de red') || textoLower.includes('notificacion de \'red no identificada\'')) {
       consejoTecnico = "Antes de que el técnico llegue, por favor intenta presionar CTRL + SHIFT + R en tu navegador para forzar una recarga limpia, o asegúrate de que el cable de red gris/azul detrás de tu CPU esté bien conectado hasta escuchar un 'clic'.";
     }
     // DISPOSITIVOS: TECLADO Y MOUSE
@@ -654,9 +721,12 @@ const evaluarSiguienteRespuestaChat = (ticket, remitente, textoUsuario, mensajes
       consejoTecnico = "Si el equipo lo permite, prueba desconectando el dispositivo y conectándolo en otro puerto USB libre para descartar una falla del puerto actual.";
     }
     // NOTAS CENTINELA O DAÑO FÍSICO
-    else if (textoLower.includes('reemplazo por stock') || textoLower.includes('borrosos o desgastados') || textoLower.includes('cerca de la base del mouse') || textoLower.includes('advertencia sobre la unidad') || textoLower.includes('líquidos sobre el teclado')) {
+    else if (textoLower.includes('reemplazo por stock') || textoLower.includes('borrosos o desgastados') || textoLower.includes('cerca de la base del mouse') || textoLower.includes('advertencia sobre la unidad') || textoLower.includes('liquidos sobre el teclado')) {
       consejoTecnico = "Registramos la necesidad física del componente en la posición.\n\n🛡️ *Nota importante: Te recordamos que cuando un periférico presenta daño físico definitivo o desgaste total y requiere reemplazo, el trámite final para inventario debe registrarse en el apartado de Reporte Centinela.*";
     }
+
+    const consejoEspecifico = buscarConsejoEspecifico(textoLower);
+    if (consejoEspecifico) consejoTecnico = consejoEspecifico;
 
     return {
       textoRespuesta: armarMensajeConOpciones(
@@ -666,6 +736,14 @@ const evaluarSiguienteRespuestaChat = (ticket, remitente, textoUsuario, mensajes
           `⏳ Aún falla, quedo en espera del técnico`
         ]
       ),
+      cerrarTicket: false
+    };
+  }
+
+  // Mensaje libre al final del flujo: se acusa recibo una sola vez (el paso se cuenta por mensajes del sistema)
+  if (mensajesDelSistema === 3 && texto && sinTecnicoAun) {
+    return {
+      textoRespuesta: `📩 Recibimos tu mensaje y lo agregamos al folio #${folio} para que el técnico lo vea. Si el problema ya quedó resuelto, escríbenos «ya quedó»; si no, un técnico te atenderá en cuanto esté disponible.`,
       cerrarTicket: false
     };
   }
