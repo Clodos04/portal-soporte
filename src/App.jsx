@@ -18,6 +18,7 @@ import CentinelaDetallesView from './views/CentinelaDetallesView';
 import BuzonSugerenciasView from './views/BuzonSugerenciasView';
 import AdminAsistenteView from './views/AdminAsistenteView';
 import AlertaIncidenteMasivo from './components/AlertaIncidenteMasivo';
+import AlertaUrgentesFueraHorario from './components/AlertaUrgentesFueraHorario';
 import ActividadesView from './views/ActividadesView';
 
 import AdminGruposView from './views/AdminGruposView';
@@ -475,7 +476,10 @@ function App() {
 
       <main id="contenido" tabIndex={-1} className="p-4 sm:p-6 pb-10 max-w-7xl w-full mx-auto relative z-0 outline-none">
         {user?.role === 'support' && currentView !== 'live-chat' && (
-          <AlertaIncidenteMasivo onVerTickets={() => setCurrentView('solicitudes')} />
+          <>
+            <AlertaUrgentesFueraHorario onVerTickets={() => setCurrentView('solicitudes')} />
+            <AlertaIncidenteMasivo onVerTickets={() => setCurrentView('solicitudes')} />
+          </>
         )}
         <div key={currentView} className="animate-entrada">
         {currentView === 'inicio' && (
