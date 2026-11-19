@@ -1,0 +1,22 @@
+name: Pruebas
+
+# Se ejecuta en cada Pull Request y en cada push a main: revisa que el chat, la seguridad y la compilación sigan funcionando.
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  pruebas:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Pruebas del asistente y de seguridad (sin base de datos real)
+        run: npm test
+      - name: Compilación del portal
+        run: npm run build
