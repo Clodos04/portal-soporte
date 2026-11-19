@@ -162,6 +162,7 @@ dbCentinela.getConnection((err, conn) => {
 // AUTENTICACIÓN Y AUTORIZACIÓN (JWT en cookie httpOnly)
 // ============================================================================
 const emitirSesion = (res, usuario) => {
+  estadoUsuarios.set(Number(usuario.id), { activo: true, admin: usuario.nivelNormalizado === 'ADMINISTRADOR' });
   const token = jwt.sign(
     { id: usuario.id, username: usuario.username, nivel: usuario.nivelNormalizado, nombre: usuario.nombreCompleto },
     JWT_SECRET,
@@ -174,8 +175,52 @@ const leerSesion = (token) => {
   try { return jwt.verify(token, JWT_SECRET); } catch (e) { return null; }
 };
 
+// Estado vigente de cada usuario: quien se da de baja, se elimina o cambia de nivel lo pierde en menos de un minuto,
+// sin esperar a que venza su sesión. Si la base de datos no responde se usa lo que dice la sesión.
+const estadoUsuarios = new Map();
+let estadoUsuariosListo = false;
+let ultimoRefrescoUsuarios = 0;
+const refrescarEstadoUsuarios = () => {
+  db.query('SELECT id, estatus, nivel FROM usuarios', (err, filas) => {
+    if (err || !Array.isArray(filas) || filas.length === 0) return;
+    estadoUsuarios.clear();
+    filas.forEach(u => estadoUsuarios.set(Number(u.id), { activo: String(u.estatus || '').toUpperCase() === 'ACTIVO', admin: String(u.nivel || '').toUpperCase().includes('ADMIN') }));
+    estadoUsuariosListo = true;
+    ultimoRefrescoUsuarios = Date.now();
+  });
+};
+setInterval(refrescarEstadoUsuarios, 60 * 1000).unref();
+setTimeout(refrescarEstadoUsuarios, 2000).unref();
+const sesionVigente = (sesion) => {
+  if (!sesion || !estadoUsuariosListo) return sesion;
+  const e = estadoUsuarios.get(Number(sesion.id));
+  if (!e) return (sesion.iat * 1000 < ultimoRefrescoUsuarios) ? null : sesion; // eliminado después de iniciar sesión
+  if (!e.activo) return null;
+  return { ...sesion, nivel: e.admin ? 'ADMINISTRADOR' : 'CLIENTE' };
+};
+
+// Intentos fallidos por nombre de usuario (además del límite por IP): frena a quien prueba contraseñas desde varias IP
+const intentosPorUsuario = new Map();
+const VENTANA_LOGIN_MS = 15 * 60 * 1000;
+const MAX_INTENTOS_USUARIO = 20;
+const usuarioBloqueado = (usuario) => {
+  const k = String(usuario).toLowerCase();
+  const r = intentosPorUsuario.get(k);
+  if (!r) return false;
+  if (Date.now() - r.desde > VENTANA_LOGIN_MS) { intentosPorUsuario.delete(k); return false; }
+  return r.n >= MAX_INTENTOS_USUARIO;
+};
+const registrarFalloLogin = (usuario, ip) => {
+  const k = String(usuario).toLowerCase();
+  if (intentosPorUsuario.size > 5000) intentosPorUsuario.clear();
+  const r = intentosPorUsuario.get(k);
+  if (!r || Date.now() - r.desde > VENTANA_LOGIN_MS) intentosPorUsuario.set(k, { n: 1, desde: Date.now() });
+  else r.n += 1;
+  console.warn(`Intento de acceso fallido: usuario "${String(usuario).slice(0, 40)}" desde ${ip}`);
+};
+
 const requireAuth = (req, res, next) => {
-  const sesion = leerSesion(req.cookies && req.cookies[COOKIE_NAME]);
+  const sesion = sesionVigente(leerSesion(req.cookies && req.cookies[COOKIE_NAME]));
   if (!sesion) return res.status(401).json({ error: 'Sesión no válida o expirada. Inicia sesión de nuevo.' });
   req.sesion = sesion;
   next();
@@ -299,7 +344,7 @@ io.use((socket, next) => {
       return [c.slice(0, i), decodeURIComponent(c.slice(i + 1))];
     })
   );
-  const sesion = leerSesion(cookies[COOKIE_NAME]);
+  const sesion = sesionVigente(leerSesion(cookies[COOKIE_NAME]));
   if (!sesion) return next(new Error('No autorizado'));
   socket.data.sesion = sesion;
   next();
@@ -349,10 +394,11 @@ const handleLogin = (req, res) => {
   const username = String((req.body && req.body.username) || '');
   const password = String((req.body && req.body.password) || '');
   if (!username || !password) return res.status(400).json({ error: 'Usuario y contraseña son obligatorios.' });
+  if (usuarioBloqueado(username)) return res.status(429).json({ error: 'Demasiados intentos fallidos para este usuario. Espera 15 minutos e inténtalo de nuevo.' });
 
   db.query('SELECT * FROM usuarios WHERE username = ? AND estatus = "ACTIVO" LIMIT 1', [username], (err, results) => {
     if (err) return res.status(500).json({ error: 'Error en el servidor' });
-    if (results.length === 0) return res.status(401).json({ error: 'Credenciales incorrectas o usuario inactivo.' });
+    if (results.length === 0) { registrarFalloLogin(username, req.ip); return res.status(401).json({ error: 'Credenciales incorrectas o usuario inactivo.' }); }
     const usuario = results[0];
 
     // Compatibilidad: si la contraseña aún está en texto plano, se valida y se migra a bcrypt automáticamente.
@@ -369,7 +415,8 @@ const handleLogin = (req, res) => {
         });
       }
     }
-    if (!valida) return res.status(401).json({ error: 'Credenciales incorrectas o usuario inactivo.' });
+    if (!valida) { registrarFalloLogin(username, req.ip); return res.status(401).json({ error: 'Credenciales incorrectas o usuario inactivo.' }); }
+    intentosPorUsuario.delete(username.toLowerCase());
 
     const nivelUpper = (usuario.nivel || '').toUpperCase();
     const rolNormalizado = nivelUpper.includes('ADMIN') ? 'support' : 'client';
@@ -419,6 +466,7 @@ const rutasAdminEscritura = [
   { metodo: 'PUT', ruta: /^\/(CTI\/)?(api\/)?buzon\/[^/]+\/?$/ },
   { metodo: 'DELETE', ruta: /^\/(CTI\/)?(api\/)?buzon\/[^/]+\/?$/ },
   { metodo: 'GET', ruta: /^\/(api\/)?tickets\/[^/]+\/historial\/?$/ },
+  { metodo: 'GET', ruta: /^\/(api\/)?kpis\/tiempos\/?$/ },
   // Actividades: solo soporte (los clientes no ven ni la lista)
   { metodo: 'GET', ruta: /^\/(api\/)?actividades(\/.*)?$/ },
   { metodo: 'POST', ruta: /^\/(api\/)?actividades(\/.*)?$/ },
@@ -916,6 +964,8 @@ db.query(`
 const rawAdjunto = express.raw({ type: () => true, limit: ADJUNTO_MAX_BYTES });
 
 app.post(['/api/tickets/:folio/adjuntos', '/tickets/:folio/adjuntos'], (req, res, next) => {
+  autorizarFolio(req, res, req.params.folio, next);
+}, (req, res, next) => {
   rawAdjunto(req, res, (err) => {
     if (err) return res.status(err.status === 413 ? 413 : 400).json({ error: err.status === 413 ? `El archivo supera el máximo de ${ADJUNTO_MAX_BYTES / 1024 / 1024} MB.` : 'No se pudo leer el archivo.' });
     next();
@@ -952,7 +1002,9 @@ app.post(['/api/tickets/:folio/adjuntos', '/tickets/:folio/adjuntos'], (req, res
   }
 });
 
-app.get(['/api/tickets/:folio/adjuntos', '/tickets/:folio/adjuntos'], async (req, res) => {
+app.get(['/api/tickets/:folio/adjuntos', '/tickets/:folio/adjuntos'], (req, res, next) => {
+  autorizarFolio(req, res, req.params.folio, next, { vacio: true });
+}, async (req, res) => {
   try {
     const filas = await consulta('SELECT id, nombre_original AS nombre, tipo, tamano, subido_por AS subidoPor, created_at AS fecha FROM ticket_adjuntos WHERE folio = ? ORDER BY id', [req.params.folio]);
     res.json(filas);
@@ -965,12 +1017,14 @@ app.get(['/api/adjuntos/:id', '/adjuntos/:id'], async (req, res) => {
     const filas = await consulta('SELECT * FROM ticket_adjuntos WHERE id = ? LIMIT 1', [parseInt(req.params.id, 10) || 0]);
     if (filas.length === 0) return res.status(404).json({ error: 'Archivo no encontrado.' });
     const a = filas[0];
-    const ruta = path.join(UPLOADS_DIR, path.basename(a.nombre_archivo));
-    if (!fs.existsSync(ruta)) return res.status(404).json({ error: 'El archivo ya no está en el servidor.' });
-    res.set('X-Content-Type-Options', 'nosniff');
-    res.set('Content-Type', a.tipo);
-    res.set('Content-Disposition', `attachment; filename*=UTF-8''${encodeURIComponent(a.nombre_original)}`);
-    fs.createReadStream(ruta).pipe(res);
+    autorizarFolio(req, res, a.folio, () => {
+      const ruta = path.join(UPLOADS_DIR, path.basename(a.nombre_archivo));
+      if (!fs.existsSync(ruta)) return res.status(404).json({ error: 'El archivo ya no está en el servidor.' });
+      res.set('X-Content-Type-Options', 'nosniff');
+      res.set('Content-Type', a.tipo);
+      res.set('Content-Disposition', `attachment; filename*=UTF-8''${encodeURIComponent(a.nombre_original)}`);
+      fs.createReadStream(ruta).pipe(res);
+    });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
@@ -1036,15 +1090,40 @@ app.get(['/api/campanas', '/campanas'], (req, res) => {
   });
 });
 
-app.get(['/api/chat/:folio', '/chat/:folio'], (req, res) => {
-  db.query('SELECT * FROM mensajes_chat WHERE folio = ? ORDER BY id ASC', [req.params.folio], (err, results) => {
-    if (err) return res.status(500).json({ error: 'Error al obtener mensajes' });
-    res.json(results);
+// Un cliente solo puede ver y escribir en las solicitudes que él creó; soporte, en todas.
+const autorizarFolio = (req, res, folio, siguiente, opciones = {}) => {
+  if (req.sesion && req.sesion.nivel === 'ADMINISTRADOR') return siguiente();
+  db.query('SELECT creador FROM tickets WHERE folio = ? LIMIT 1', [String(folio || '')], (err, filas) => {
+    if (err) return res.status(500).json({ error: 'Error en el servidor' });
+    if (!filas || filas.length === 0) return opciones.vacio ? res.json([]) : res.status(404).json({ error: 'No se encontró la solicitud.' });
+    const mio = String((req.sesion && req.sesion.nombre) || '').trim().toLowerCase();
+    if (!mio || String(filas[0].creador || '').trim().toLowerCase() !== mio) return res.status(403).json({ error: 'No tienes acceso a esta solicitud.' });
+    siguiente();
   });
+};
+
+app.get(['/api/chat/:folio', '/chat/:folio'], (req, res) => {
+  autorizarFolio(req, res, req.params.folio, () => {
+    db.query('SELECT * FROM mensajes_chat WHERE folio = ? ORDER BY id ASC', [req.params.folio], (err, results) => {
+      if (err) return res.status(500).json({ error: 'Error al obtener mensajes' });
+      res.json(results);
+    });
+  }, { vacio: true });
 });
 
 app.post(['/api/chat', '/chat'], (req, res) => {
-  const { folio, remitente, texto, hora } = req.body;
+  const cuerpo = req.body || {};
+  const folio = String(cuerpo.folio || '');
+  const texto = String(cuerpo.texto == null ? '' : cuerpo.texto).slice(0, 2000);
+  if (!folio || !texto.trim()) return res.status(400).json({ error: 'El mensaje no puede estar vacío.' });
+  // El remitente sale de la sesión: nadie puede escribir a nombre de otra persona. Solo soporte puede enviar como «Sistema».
+  const esAdminSesion = req.sesion && req.sesion.nivel === 'ADMINISTRADOR';
+  const pedido = String(cuerpo.remitente || '');
+  const remitente = esAdminSesion && pedido.toUpperCase() === 'SISTEMA' ? 'Sistema' : nombreActor(req);
+  autorizarFolio(req, res, folio, () => procesarMensajeChat(req, res, { folio, remitente, texto, hora: cuerpo.hora }));
+});
+
+const procesarMensajeChat = (req, res, { folio, remitente, texto, hora }) => {
   const { fechaSolo, horaCorta } = obtenerFechaHoraMexico();
   const horaActual = hora || horaCorta;
   const anioMesActual = fechaSolo.slice(0, 7);
@@ -1112,9 +1191,16 @@ app.post(['/api/chat', '/chat'], (req, res) => {
       });
     });
   });
+};
+
+// Cambios de usuarios (alta, edición, baja): se actualiza al instante quién sigue activo y con qué nivel
+app.use(['/api/usuarios', '/usuarios'], (req, res, next) => {
+  if (req.method !== 'GET') res.on('finish', refrescarEstadoUsuarios);
+  next();
 });
 
 app.get(['/api/usuarios', '/usuarios'], (req, res) => {
+  const esAdminSesion = req.sesion && req.sesion.nivel === 'ADMINISTRADOR';
   db.query('SELECT * FROM usuarios', (err, results) => {
     if (err) return res.status(500).json({ error: err.message });
     const usuariosFormateados = results.map(u => {
@@ -1122,7 +1208,11 @@ app.get(['/api/usuarios', '/usuarios'], (req, res) => {
       if (typeof grupos === 'string') {
         try { grupos = JSON.parse(grupos); } catch (e) { grupos = []; }
       }
-      return { ...sanitizarUsuario(u), gruposAsignados: grupos || [] };
+      const completo = { ...sanitizarUsuario(u), gruposAsignados: grupos || [] };
+      if (esAdminSesion) return completo;
+      // Un cliente solo necesita saber quién es quién, no los grupos ni otros datos internos
+      const { id, username, nombre, paterno, materno, nivel, estatus, campana } = completo;
+      return { id, username, nombre, paterno, materno, nivel, estatus, campana };
     });
     res.json(usuariosFormateados);
   });
@@ -1971,14 +2061,21 @@ app.get(['/api/asistente/consejos/:id/imagen'], async (req, res) => {
 // MÓDULO: BUZÓN DE SUGERENCIAS Y REPORTE DE ERRORES (FEEDBACK DEL PORTAL)
 // ============================================================================
 app.get(['/api/buzon', '/buzon', '/CTI/api/buzon'], (req, res) => {
-  db.query('SELECT * FROM buzon_sugerencias ORDER BY id DESC', (err, results) => {
+  const esAdminSesion = req.sesion && req.sesion.nivel === 'ADMINISTRADOR';
+  const consulta = esAdminSesion
+    ? ['SELECT * FROM buzon_sugerencias ORDER BY id DESC', []]
+    : ['SELECT * FROM buzon_sugerencias WHERE LOWER(username) = ? ORDER BY id DESC', [String((req.sesion && req.sesion.username) || '').toLowerCase()]];
+  db.query(consulta[0], consulta[1], (err, results) => {
     if (err) return res.status(500).json({ error: err.message });
     res.json(results);
   });
 });
 
 app.post(['/api/buzon', '/buzon', '/CTI/api/buzon'], (req, res) => {
-  const { usuario, username, campana, tipo, mensaje } = req.body;
+  const { campana, tipo, mensaje } = req.body || {};
+  // Quién escribe sale de la sesión, no de lo que mande el navegador
+  const usuario = (req.sesion && req.sesion.nombre) || 'Anónimo';
+  const username = (req.sesion && req.sesion.username) || '';
   if (!mensaje || !String(mensaje).trim()) {
     return res.status(400).json({ error: 'El mensaje no puede estar vacío.' });
   }
