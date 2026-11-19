@@ -347,6 +347,7 @@ io.use((socket, next) => {
   const sesion = sesionVigente(leerSesion(cookies[COOKIE_NAME]));
   if (!sesion) return next(new Error('No autorizado'));
   socket.data.sesion = sesion;
+  if (sesion.nivel === 'ADMINISTRADOR') socket.join('soporte'); // sala de soporte: avisos que no son para clientes
   next();
 });
 
@@ -632,7 +633,10 @@ const continuarInsercionTicket = (ticketData, res, actor = 'Sistema', opcionesCr
         io.emit('ticketActualizado', { folio: ticketData.folio });
         if (!fueraDeHorario) alCrearTicketAsistente(ticketData);
         else registrarAuditoria(ticketData.folio, 'Sistema', 'CIERRE_AUTOMATICO', [{ campo: 'estatus', anterior: 'Abierto', nuevo: 'Cerrado (fuera de horario)' }]);
-        if (urgente) registrarAuditoria(ticketData.folio, 'Sistema', 'URGENTE_FUERA_HORARIO', [{ campo: 'motivo', anterior: null, nuevo: masivo ? 'falla masiva' : 'categoría urgente' }]);
+        if (urgente) {
+          registrarAuditoria(ticketData.folio, 'Sistema', 'URGENTE_FUERA_HORARIO', [{ campo: 'motivo', anterior: null, nuevo: masivo ? 'falla masiva' : 'categoría urgente' }]);
+          io.to('soporte').emit('urgenteFueraHorario', { folio: ticketData.folio });
+        }
         registrarAuditoria(ticketData.folio, actor, 'CREADO', [{ campo: 'asunto', anterior: null, nuevo: ticketData.asunto || ticketData.subcategoria || '' }]);
         res.json({ message: 'Ticket creado exitosamente', id: result.insertId, folio: ticketData.folio, fecha: fechaSolo, folioPrevio, fueraDeHorario });
       });
@@ -1797,6 +1801,18 @@ const alCrearTicketAsistente = (ticketData) => {
     }).catch(() => {});
   } catch (e) { console.error('Error en el asistente al crear ticket:', e.message); }
 };
+
+// Casos urgentes que llegaron fuera de horario y todavía no tienen técnico ni están cerrados
+app.get(['/api/asistente/urgentes'], requireAdmin, async (req, res) => {
+  try {
+    const filas = await consulta(
+      `SELECT t.folio, t.creador, t.campana, t.categoria, t.subcategoria, MAX(a.valor_nuevo) AS motivo
+         FROM tickets t JOIN auditoria_tickets a ON a.folio = t.folio AND a.accion = 'URGENTE_FUERA_HORARIO'
+        WHERE LOWER(t.estatus) NOT LIKE '%cerrado%' AND (t.tecnico IS NULL OR t.tecnico = '' OR t.tecnico = 'Sin Asignar')
+        GROUP BY t.id, t.folio, t.creador, t.campana, t.categoria, t.subcategoria ORDER BY t.id DESC LIMIT 20`);
+    res.json(filas);
+  } catch (e) { res.status(500).json({ error: 'No se pudieron consultar los casos urgentes.' }); }
+});
 
 app.get(['/api/asistente/incidentes'], requireAdmin, async (req, res) => {
   try { res.json(await consultarIncidentes()); }

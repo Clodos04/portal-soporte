@@ -134,6 +134,10 @@ setTimeout(async () => {
     ok(s === 403, 'cliente no ve KPIs', s);
     [s] = await llamar('GET', '/api/kpis/tiempos', admin);
     ok(s === 200, 'soporte ve KPIs', s);
+    [s] = await llamar('GET', '/api/asistente/urgentes', cliente);
+    ok(s === 403, 'cliente no ve los casos urgentes de soporte', s);
+    [s] = await llamar('GET', '/api/asistente/urgentes', admin);
+    ok(s === 200, 'soporte ve los casos urgentes', s);
     [s, j] = await llamar('GET', '/api/usuarios', cliente);
     ok(s === 200 && Array.isArray(j) && j[0] && !('gruposAsignados' in j[0]) && !('password' in j[0]), 'cliente recibe usuarios sin grupos ni contraseña');
     [s, j] = await llamar('GET', '/api/usuarios', admin);
