@@ -152,6 +152,11 @@ setTimeout(async () => {
     [s] = await llamar('GET', '/api/chat/F1', cookie({ id: 99, username: 'z', nivel: 'CLIENTE', nombre: 'CLIENTE PRUEBA', iat: Math.floor(Date.now() / 1000) - 3600 }));
     ok(s === 401, 'usuario eliminado pierde el acceso', s);
 
+    // --- errores sin detalles internos
+    const mal = await fetch(`http://127.0.0.1:${PUERTO}/api/chat`, { method: 'POST', headers: { 'Content-Type': 'application/json', Cookie: cliente }, body: '{esto no es json' });
+    const txtMal = await mal.text();
+    ok(mal.status === 400 && /formato/.test(txtMal) && !/at \w|node_modules|server\.cjs/.test(txtMal), 'un JSON roto responde 400 sin mostrar el stack', `${mal.status} ${txtMal.slice(0, 80)}`);
+
     // --- límite de intentos por usuario (cada intento llega desde otra IP para saltar el límite por IP)
     let ultimo;
     for (let i = 0; i < 22; i++) {

@@ -2151,5 +2151,48 @@ app.get(['/', '/SAV_tiV2', '/SAV_tiV2/'], (req, res) => {
   res.redirect('/CTI/');
 });
 
+// ============================================================================
+// ERRORES Y LIMPIEZA PERIÓDICA
+// ============================================================================
+// Cualquier error que no se haya atendido responde en JSON y sin detalles internos (nunca se muestra el stack al cliente).
+app.use((err, req, res, next) => {
+  if (res.headersSent) return next(err);
+  const esJsonInvalido = err && (err.type === 'entity.parse.failed' || err instanceof SyntaxError);
+  const status = esJsonInvalido ? 400 : (err && err.status >= 400 && err.status < 500 ? err.status : 500);
+  if (status === 500) console.error(`Error no controlado en ${req.method} ${req.path}:`, err && err.stack ? err.stack : err);
+  res.status(status).json({ error: status === 400 ? 'La solicitud no tiene un formato válido.' : status === 413 ? 'El contenido enviado es demasiado grande.' : status === 500 ? 'Error en el servidor.' : 'No se pudo procesar la solicitud.' });
+});
+// Una promesa rechazada sin atender no debe tumbar el portal: se deja constancia en el log y se sigue.
+process.on('unhandledRejection', (motivo) => console.error('Promesa rechazada sin atender:', motivo && motivo.stack ? motivo.stack : motivo));
+
+// Limpieza diaria de lo que ya no sirve: textos sin coincidencia viejos y archivos adjuntos sin registro en la base.
+// No toca tickets, chats, encuestas ni auditoría.
+const DIAS_SIN_COINCIDENCIA = parseInt(process.env.LIMPIEZA_DIAS_SIN_COINCIDENCIA, 10) || 180;
+const limpiezaPeriodica = async () => {
+  try {
+    const r = await consulta('DELETE FROM chat_sin_coincidencia WHERE fecha < ?', [haceMinutos(DIAS_SIN_COINCIDENCIA * 1440)]);
+    if (r && r.affectedRows) console.log(`Limpieza: ${r.affectedRows} textos sin coincidencia con más de ${DIAS_SIN_COINCIDENCIA} días eliminados.`);
+  } catch (e) { console.error('Limpieza de textos sin coincidencia falló:', e.message); }
+  try {
+    const registrados = await consulta('SELECT nombre_archivo FROM ticket_adjuntos');
+    // Si la consulta no devuelve una lista no se borra nada: mejor dejar un archivo de más que perder uno válido
+    if (!Array.isArray(registrados)) return;
+    const enBd = new Set(registrados.map(f => f.nombre_archivo));
+    const limite = Date.now() - 2 * 24 * 60 * 60 * 1000; // solo archivos de más de 2 días (un adjunto recién subido puede estar a medio registrar)
+    let borrados = 0;
+    for (const nombre of await fs.promises.readdir(UPLOADS_DIR)) {
+      if (enBd.has(nombre) || !/^[0-9a-f]{32}\.[a-z0-9]{2,5}$/.test(nombre)) continue;
+      const ruta = path.join(UPLOADS_DIR, nombre);
+      const info = await fs.promises.stat(ruta);
+      if (info.isFile() && info.mtimeMs < limite) { await fs.promises.unlink(ruta); borrados++; }
+    }
+    if (borrados) console.log(`Limpieza: ${borrados} archivos adjuntos huérfanos eliminados.`);
+  } catch (e) { if (e.code !== 'ENOENT') console.error('Limpieza de adjuntos huérfanos falló:', e.message); }
+};
+if (process.env.LIMPIEZA_AUTOMATICA !== 'false') {
+  setTimeout(limpiezaPeriodica, 10 * 60 * 1000).unref();
+  setInterval(limpiezaPeriodica, 24 * 60 * 60 * 1000).unref();
+}
+
 const PORT = process.env.PORT || 80;
 server.listen(PORT, () => console.log(`Servidor en tiempo real corriendo en el puerto ${PORT}`));
