@@ -18,6 +18,7 @@ import CentinelaDetallesView from './views/CentinelaDetallesView';
 import BuzonSugerenciasView from './views/BuzonSugerenciasView';
 import AdminAsistenteView from './views/AdminAsistenteView';
 import AlertaIncidenteMasivo from './components/AlertaIncidenteMasivo';
+import ActividadesView from './views/ActividadesView';
 
 import AdminGruposView from './views/AdminGruposView';
 import AdminUsuariosView from './views/AdminUsuariosView';
@@ -495,6 +496,10 @@ function App() {
             onIrAEncuesta={(ticket) => { setTicketParaEncuesta(ticket && ticket.folio ? ticket : null); setCurrentView('encuesta-ti'); }}
             onIrABuzon={() => setCurrentView('buzon')}
           />
+        )}
+
+        {currentView === 'actividades' && user?.role === 'support' && (
+          <ActividadesView user={user} usuarios={usuarios} />
         )}
 
         {currentView === 'buzon' && (
