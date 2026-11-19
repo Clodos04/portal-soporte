@@ -117,6 +117,22 @@ db.getConnection((err, conn) => {
       if (errTabla) console.error('Error al crear/verificar tabla buzon_sugerencias:', errTabla);
       else console.log('Tabla buzon_sugerencias verificada correctamente en BD sav');
     });
+    // Actividades: listas de tareas (checklist) asignadas a técnicos
+    db.query(`
+      CREATE TABLE IF NOT EXISTS actividades (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        titulo VARCHAR(200) NOT NULL,
+        descripcion TEXT,
+        asignado_a VARCHAR(150) NOT NULL,
+        creado_por VARCHAR(150) NOT NULL,
+        fecha_limite DATE NULL,
+        items LONGTEXT,
+        fecha_creacion DATETIME,
+        fecha_completada DATETIME NULL
+      )
+    `, (errAct) => {
+      if (errAct) console.error('Error al crear/verificar tabla actividades:', errAct);
+    });
   }
 });
 
@@ -353,11 +369,16 @@ const rutasAdminEscritura = [
   { metodo: 'POST', ruta: /^\/(api\/)?categorias\/sincronizar\/?$/ },
   { metodo: 'PUT', ruta: /^\/(CTI\/)?(api\/)?buzon\/[^/]+\/?$/ },
   { metodo: 'DELETE', ruta: /^\/(CTI\/)?(api\/)?buzon\/[^/]+\/?$/ },
-  { metodo: 'GET', ruta: /^\/(api\/)?tickets\/[^/]+\/historial\/?$/ }
+  { metodo: 'GET', ruta: /^\/(api\/)?tickets\/[^/]+\/historial\/?$/ },
+  // Actividades: solo soporte (los clientes no ven ni la lista)
+  { metodo: 'GET', ruta: /^\/(api\/)?actividades(\/.*)?$/ },
+  { metodo: 'POST', ruta: /^\/(api\/)?actividades(\/.*)?$/ },
+  { metodo: 'PUT', ruta: /^\/(api\/)?actividades(\/.*)?$/ },
+  { metodo: 'DELETE', ruta: /^\/(api\/)?actividades(\/.*)?$/ }
 ];
 app.use((req, res, next) => {
   const esApi = req.path.startsWith('/api/') || req.path.startsWith('/CTI/api/') ||
-    /^\/(tickets|usuarios|grupos|categorias|subcategorias|elementos|campanas|centinela|chat|encuestas|kpis|buzon)(\/|$)/.test(req.path);
+    /^\/(tickets|usuarios|grupos|categorias|subcategorias|elementos|campanas|centinela|chat|encuestas|kpis|buzon|actividades)(\/|$)/.test(req.path);
   if (!esApi || req.path === '/api/login' || req.path === '/login' || req.path === '/api/logout' || req.path === '/logout' || req.path === '/api/me' || req.path === '/me' || req.path === '/api/health') return next();
   const requiereAdmin = rutasAdminEscritura.some(r => r.metodo === req.method && r.ruta.test(req.path));
   return (requiereAdmin ? requireAdmin : requireAuth)(req, res, next);
@@ -1316,6 +1337,118 @@ app.get(['/api/kpis/tiempos', '/kpis/tiempos'], (req, res) => {
   db.query(`SELECT id, folio, estatus, created_at, updated_at${conCierre ? ', fecha_cierre' : ''} FROM tickets`, (err, results) => {
     if (err) return res.status(500).json({ error: err.message });
     res.json(results.map(t => ({ id: t.id, folio: t.folio, minutos_resolucion: Math.round(((t.estatus === 'Cerrado' ? new Date(t.fecha_cierre || t.updated_at) : new Date()) - new Date(t.created_at)) / (1000 * 60)) || 5 })));
+  });
+});
+
+// ============================================================================
+// MÓDULO: ACTIVIDADES (checklist asignado a técnicos). Solo soporte/administradores.
+// Cualquier técnico las ve; solo quien la creó la edita o elimina; el asignado (o quien la creó) marca los pasos.
+// ============================================================================
+const limpiarItemsActividad = (items) => {
+  if (!Array.isArray(items)) return [];
+  return items
+    .map((it, i) => {
+      const texto = String(typeof it === 'string' ? it : (it && it.texto) || '').trim().slice(0, 300);
+      if (!texto) return null;
+      return {
+        id: (it && it.id) || `${Date.now().toString(36)}${i}`,
+        texto,
+        hecho: !!(it && it.hecho),
+        hecho_por: (it && it.hecho && it.hecho_por) || null,
+        fecha_hecho: (it && it.hecho && it.fecha_hecho) || null
+      };
+    })
+    .filter(Boolean)
+    .slice(0, 50);
+};
+const filaActividad = (f) => ({ ...f, items: parseJsonSeguro(f.items) || [] });
+const todoHecho = (items) => items.length > 0 && items.every(i => i.hecho);
+const fechaLimiteValida = (v) => (/^\d{4}-\d{2}-\d{2}$/.test(String(v || '')) ? v : null);
+
+app.get(['/api/actividades', '/actividades'], (req, res) => {
+  db.query('SELECT * FROM actividades ORDER BY (fecha_completada IS NOT NULL), id DESC', (err, filas) => {
+    if (err) return res.status(500).json({ error: 'No se pudieron cargar las actividades.' });
+    res.json(filas.map(filaActividad));
+  });
+});
+
+app.post(['/api/actividades', '/actividades'], (req, res) => {
+  const titulo = String(req.body.titulo || '').trim().slice(0, 200);
+  const asignado = String(req.body.asignado_a || '').trim().slice(0, 150);
+  const items = limpiarItemsActividad(req.body.items);
+  if (!titulo) return res.status(400).json({ error: 'Escribe un título para la actividad.' });
+  if (!asignado) return res.status(400).json({ error: 'Elige a quién se le asigna.' });
+  if (items.length === 0) return res.status(400).json({ error: 'Agrega al menos un paso a la lista.' });
+  db.query(
+    'INSERT INTO actividades (titulo, descripcion, asignado_a, creado_por, fecha_limite, items, fecha_creacion) VALUES (?, ?, ?, ?, ?, ?, NOW())',
+    [titulo, String(req.body.descripcion || '').trim().slice(0, 2000), asignado, nombreActor(req), fechaLimiteValida(req.body.fecha_limite), JSON.stringify(items)],
+    (err, r) => {
+      if (err) return res.status(500).json({ error: 'No se pudo crear la actividad.' });
+      io.emit('actividadesCambio', { asignado_a: asignado, titulo, accion: 'asignada' });
+      res.json({ id: r.insertId });
+    }
+  );
+});
+
+app.put(['/api/actividades/:id', '/actividades/:id'], (req, res) => {
+  db.query('SELECT * FROM actividades WHERE id = ? LIMIT 1', [req.params.id], (err, filas) => {
+    if (err || filas.length === 0) return res.status(404).json({ error: 'Actividad no encontrada.' });
+    const a = filaActividad(filas[0]);
+    if (a.creado_por !== nombreActor(req)) return res.status(403).json({ error: 'Solo quien creó la actividad puede editarla.' });
+    const titulo = String(req.body.titulo || a.titulo).trim().slice(0, 200);
+    const asignado = String(req.body.asignado_a || a.asignado_a).trim().slice(0, 150);
+    const previos = new Map(a.items.map(i => [i.id, i]));
+    // Los pasos que ya existían conservan su avance; los nuevos empiezan sin marcar
+    const items = limpiarItemsActividad(req.body.items).map(i => {
+      const antes = previos.get(i.id);
+      return antes ? { ...i, hecho: antes.hecho, hecho_por: antes.hecho_por, fecha_hecho: antes.fecha_hecho } : { ...i, hecho: false, hecho_por: null, fecha_hecho: null };
+    });
+    if (!titulo || items.length === 0) return res.status(400).json({ error: 'La actividad necesita título y al menos un paso.' });
+    db.query(
+      'UPDATE actividades SET titulo = ?, descripcion = ?, asignado_a = ?, fecha_limite = ?, items = ?, fecha_completada = ? WHERE id = ?',
+      [titulo, String(req.body.descripcion || '').trim().slice(0, 2000), asignado, fechaLimiteValida(req.body.fecha_limite), JSON.stringify(items), todoHecho(items) ? (a.fecha_completada || new Date()) : null, a.id],
+      (errU) => {
+        if (errU) return res.status(500).json({ error: 'No se pudo guardar la actividad.' });
+        io.emit('actividadesCambio', { asignado_a: asignado, titulo, accion: asignado !== a.asignado_a ? 'asignada' : 'editada' });
+        res.json({ ok: true });
+      }
+    );
+  });
+});
+
+// Marcar o desmarcar un paso del checklist
+app.put(['/api/actividades/:id/items/:itemId', '/actividades/:id/items/:itemId'], (req, res) => {
+  db.query('SELECT * FROM actividades WHERE id = ? LIMIT 1', [req.params.id], (err, filas) => {
+    if (err || filas.length === 0) return res.status(404).json({ error: 'Actividad no encontrada.' });
+    const a = filaActividad(filas[0]);
+    const yo = nombreActor(req);
+    if (a.asignado_a !== yo && a.creado_por !== yo) return res.status(403).json({ error: 'Solo el técnico asignado puede marcar los pasos.' });
+    const paso = a.items.find(i => String(i.id) === String(req.params.itemId));
+    if (!paso) return res.status(404).json({ error: 'Paso no encontrado.' });
+    paso.hecho = !!req.body.hecho;
+    paso.hecho_por = paso.hecho ? yo : null;
+    paso.fecha_hecho = paso.hecho ? new Date().toISOString() : null;
+    const completa = todoHecho(a.items);
+    db.query('UPDATE actividades SET items = ?, fecha_completada = ? WHERE id = ?',
+      [JSON.stringify(a.items), completa ? (a.fecha_completada || new Date()) : null, a.id],
+      (errU) => {
+        if (errU) return res.status(500).json({ error: 'No se pudo guardar el cambio.' });
+        io.emit('actividadesCambio', { asignado_a: a.asignado_a, titulo: a.titulo, accion: completa ? 'completada' : 'avance' });
+        res.json({ ok: true, completa });
+      }
+    );
+  });
+});
+
+app.delete(['/api/actividades/:id', '/actividades/:id'], (req, res) => {
+  db.query('SELECT creado_por FROM actividades WHERE id = ? LIMIT 1', [req.params.id], (err, filas) => {
+    if (err || filas.length === 0) return res.status(404).json({ error: 'Actividad no encontrada.' });
+    if (filas[0].creado_por !== nombreActor(req)) return res.status(403).json({ error: 'Solo quien creó la actividad puede eliminarla.' });
+    db.query('DELETE FROM actividades WHERE id = ?', [req.params.id], (errD) => {
+      if (errD) return res.status(500).json({ error: 'No se pudo eliminar.' });
+      io.emit('actividadesCambio', { accion: 'eliminada' });
+      res.json({ ok: true });
+    });
   });
 });
 

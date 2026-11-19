@@ -1,6 +1,6 @@
 import React from 'react';
 import {
-  Home, Ticket, BookOpen, Inbox, Users, UserCog, FolderTree, Megaphone, BarChart3, Search, X
+  Home, Ticket, BookOpen, Inbox, ClipboardCheck, Users, UserCog, FolderTree, Megaphone, BarChart3, Search, X
 } from 'lucide-react';
 import logoContactus from '../assets/logo.png';
 
@@ -75,6 +75,9 @@ function Menu({ currentView, setCurrentView, user, abierto, onCerrar, onAbrirBus
             <Enlace vista="solicitudes" onIr={ir} icono={Ticket} activo={currentView === 'solicitudes' || currentView === 'nueva-solicitud' || currentView === 'live-chat'}>Solicitudes</Enlace>
             {user?.role === 'client' && (
               <Enlace vista="guia-tickets" onIr={ir} icono={BookOpen} activo={currentView === 'guia-tickets'}>Guía de ayuda</Enlace>
+            )}
+            {esAdmin && (
+              <Enlace vista="actividades" onIr={ir} icono={ClipboardCheck} activo={currentView === 'actividades'}>Actividades</Enlace>
             )}
             <Enlace vista="buzon" onIr={ir} icono={Inbox} activo={currentView === 'buzon'}>Buzón</Enlace>
           </Seccion>
