@@ -220,6 +220,8 @@ function AsistenteTipificacionView({ categorias = [], campanas = [], equipos = [
           ...ticketNuevo,
           folio: data.folio || nuevoFolio,
           id: data.id,
+          // Fuera de horario el servidor lo deja cerrado desde el inicio
+          ...(data.fueraDeHorario ? { estatus: 'Cerrado', colorEstatus: 'bg-red-600' } : {}),
           yaGuardadoEnBD: true
         });
       }

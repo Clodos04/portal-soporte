@@ -19,6 +19,11 @@ const {
   armarResolucionCentinela,
   obtenerFlujoPreguntas,
   evaluarSiguienteRespuestaChat,
+  estaFueraDeHorario,
+  ventanaFueraDeHorario,
+  mensajeFueraDeHorario,
+  resolucionFueraDeHorario,
+  agregarAvisoEspera,
   CONSEJOS_BASE,
   consejoParaTicket,
   sinAcentos
@@ -492,15 +497,27 @@ app.get(['/api/tickets/contar-hoy', '/tickets/contar-hoy'], (req, res) => {
   });
 });
 
-const continuarInsercionTicket = (ticketData, res, actor = 'Sistema') => {
+const continuarInsercionTicket = (ticketData, res, actor = 'Sistema', opcionesCreacion = {}) => {
   const { fechaSolo, fechaHora, horaCorta } = obtenerFechaHoraMexico();
   const anioMesActual = fechaSolo.slice(0, 7);
   const catUpper = (ticketData.categoria || '').toUpperCase();
   const esDispositivo = catUpper.includes('DISPOSITIVO') || catUpper.includes('HARDWARE');
 
-  const guardarTicketYPrimerMensaje = (folioPrevio = null) => {
+  // Fuera de horario (por defecto 22:00 a 06:00, hora de México) el ticket de un cliente nace cerrado
+  const ventana = ventanaFueraDeHorario();
+  const fueraDeHorario = !opcionesCreacion.esAdmin && ticketData.tipo_solicitud !== 'CENTINELA' && estaFueraDeHorario(parseInt(horaCorta.slice(0, 2), 10), ventana);
+
+  const guardarTicketYPrimerMensaje = (folioPrevio = null, abiertosSinTecnico = 0) => {
     const flujo = obtenerFlujoPreguntas(ticketData, folioPrevio, { consejos: consejosCache });
-    const primerMensaje = flujo[0];
+    const primerMensaje = fueraDeHorario
+      ? mensajeFueraDeHorario(ticketData.folio, ventana)
+      : agregarAvisoEspera(flujo[0], abiertosSinTecnico);
+    if (fueraDeHorario) {
+      ticketData.estatus = 'Cerrado';
+      ticketData.colorEstatus = 'bg-red-600';
+      ticketData.resolucion = resolucionFueraDeHorario(ventana);
+      ticketData.fecha_cierre = fechaHora;
+    }
 
     for (let key in ticketData) {
       if (typeof ticketData[key] === 'object' && ticketData[key] !== null) {
@@ -514,9 +531,10 @@ const continuarInsercionTicket = (ticketData, res, actor = 'Sistema') => {
       if (err) return res.status(500).json({ error: err.message });
       db.query('INSERT INTO mensajes_chat (folio, remitente, texto, hora) VALUES (?, ?, ?, ?)', [ticketData.folio, 'Sistema', primerMensaje, horaCorta], () => {
         io.emit('ticketActualizado', { folio: ticketData.folio });
-        alCrearTicketAsistente(ticketData);
+        if (!fueraDeHorario) alCrearTicketAsistente(ticketData);
+        else registrarAuditoria(ticketData.folio, 'Sistema', 'CIERRE_AUTOMATICO', [{ campo: 'estatus', anterior: 'Abierto', nuevo: 'Cerrado (fuera de horario)' }]);
         registrarAuditoria(ticketData.folio, actor, 'CREADO', [{ campo: 'asunto', anterior: null, nuevo: ticketData.asunto || ticketData.subcategoria || '' }]);
-        res.json({ message: 'Ticket creado exitosamente', id: result.insertId, folio: ticketData.folio, fecha: fechaSolo, folioPrevio });
+        res.json({ message: 'Ticket creado exitosamente', id: result.insertId, folio: ticketData.folio, fecha: fechaSolo, folioPrevio, fueraDeHorario });
       });
     });
   };
@@ -531,11 +549,18 @@ const continuarInsercionTicket = (ticketData, res, actor = 'Sistema') => {
     `;
     db.query(queryPrevio, [ticketData.equipo, ticketData.subcategoria, `${anioMesActual}%`], (errPrev, resPrev) => {
       const folioAnterior = (!errPrev && resPrev && resPrev.length > 0) ? resPrev[0].folio : null;
-      guardarTicketYPrimerMensaje(folioAnterior);
+      contarSinTecnico((n) => guardarTicketYPrimerMensaje(folioAnterior, n));
     });
   } else {
-    guardarTicketYPrimerMensaje(null);
+    contarSinTecnico((n) => guardarTicketYPrimerMensaje(null, n));
   }
+};
+
+// Cuántas solicitudes abiertas siguen sin técnico (para avisar si hay mucha espera)
+const contarSinTecnico = (cb) => {
+  db.query("SELECT COUNT(*) AS n FROM tickets WHERE LOWER(estatus) NOT LIKE '%cerrado%' AND (tecnico IS NULL OR tecnico = '' OR tecnico = 'Sin Asignar')", (err, filas) => {
+    cb(!err && filas && filas[0] ? Number(filas[0].n) || 0 : 0);
+  });
 };
 
 app.post(['/api/tickets', '/tickets'], (req, res) => {
@@ -627,7 +652,7 @@ app.post(['/api/tickets', '/tickets'], (req, res) => {
         });
       });
     } else {
-      continuarInsercionTicket(ticketData, res, nombreActor(req));
+      continuarInsercionTicket(ticketData, res, nombreActor(req), { esAdmin: !!(req.sesion && req.sesion.nivel === 'ADMINISTRADOR') });
     }
   });
 });
@@ -967,12 +992,15 @@ app.post(['/api/chat', '/chat'], (req, res) => {
 
       const ticket = ticketsRes[0];
 
-      db.query('SELECT COUNT(*) AS totalSistema FROM mensajes_chat WHERE folio = ? AND remitente = "Sistema"', [folio], (errCount, countRes) => {
+      // La pregunta «¿Confirmas que ya funciona?» no cuenta como paso del flujo
+      db.query('SELECT COUNT(*) AS totalSistema FROM mensajes_chat WHERE folio = ? AND remitente = "Sistema" AND texto NOT LIKE "%Confirmas que ya funciona%"', [folio], (errCount, countRes) => {
         if (errCount || !countRes) {
           return res.json({ success: true, id: result.insertId });
         }
 
         const mensajesDelSistema = countRes[0].totalSistema;
+      db.query('SELECT texto FROM mensajes_chat WHERE folio = ? AND remitente = "Sistema" ORDER BY id DESC LIMIT 1', [folio], (errUlt, ultRes) => {
+        const ultimoSistema = !errUlt && ultRes && ultRes[0] ? ultRes[0].texto : '';
 
         const queryPrevio = `
           SELECT folio FROM tickets 
@@ -986,10 +1014,11 @@ app.post(['/api/chat', '/chat'], (req, res) => {
         db.query(queryPrevio, [ticket.equipo, ticket.subcategoria, `${anioMesActual}%`, ticket.id], (errPrev, resPrev) => {
           const folioAnteriorMes = (!errPrev && resPrev && resPrev.length > 0) ? resPrev[0].folio : null;
 
-          const evaluacion = evaluarSiguienteRespuestaChat(ticket, remitente, texto, mensajesDelSistema, folioAnteriorMes, { consejos: consejosCache });
+          const evaluacion = evaluarSiguienteRespuestaChat(ticket, remitente, texto, mensajesDelSistema, folioAnteriorMes, { consejos: consejosCache, ultimoSistema });
 
           if (evaluacion && evaluacion.textoRespuesta) {
             registrarUsoConsejo(folio, ticket, evaluacion);
+            if (evaluacion.sinConsejo) registrarSinCoincidencia(folio, ticket, texto);
             if (evaluacion.cerrarTicket) {
               const horaMexActual = obtenerFechaMySQL();
               db.query("UPDATE tickets SET estatus = 'Cerrado', colorEstatus = 'bg-red-600', updated_at = ?, fecha_cierre = ? WHERE folio = ?", [horaMexActual, horaMexActual, folio], (errCierre) => {
@@ -1006,6 +1035,7 @@ app.post(['/api/chat', '/chat'], (req, res) => {
             return res.json({ success: true, id: result.insertId });
           }
         });
+      });
       });
     });
   });
@@ -1536,6 +1566,28 @@ const registrarUsoConsejo = (folio, ticket, evaluacion) => {
   }
 };
 
+// Textos que el agente escribió con sus palabras y no coincidieron con ningún consejo (para crear consejos nuevos)
+db.query(`
+  CREATE TABLE IF NOT EXISTS chat_sin_coincidencia (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    folio VARCHAR(20) NOT NULL,
+    categoria VARCHAR(100) DEFAULT '',
+    subcategoria VARCHAR(100) DEFAULT '',
+    texto VARCHAR(300) NOT NULL,
+    fecha DATETIME,
+    INDEX idx_sc_fecha (fecha)
+  )
+`, (err) => { if (err) console.error('Error al crear/verificar tabla chat_sin_coincidencia:', err.message); });
+
+const registrarSinCoincidencia = (folio, ticket, texto) => {
+  const limpio = String(texto || '').trim();
+  // Los botones empiezan con emoji y siempre tienen consejo: solo interesa lo escrito a mano
+  if (limpio.length < 4 || /^\p{Extended_Pictographic}/u.test(limpio)) return;
+  db.query('INSERT INTO chat_sin_coincidencia (folio, categoria, subcategoria, texto, fecha) VALUES (?, ?, ?, ?, ?)',
+    [String(folio), ticket.categoria || '', ticket.subcategoria || '', limpio.slice(0, 300), obtenerFechaMySQL()],
+    (e) => { if (e) console.error('No se pudo registrar el texto sin coincidencia:', e.message); });
+};
+
 // Posible incidente masivo: varios tickets abiertos de la misma campaña y categoría en pocos minutos
 const INCIDENTE_MINUTOS = parseInt(process.env.INCIDENTE_MINUTOS, 10) || 15;
 const INCIDENTE_MINIMO = parseInt(process.env.INCIDENTE_MINIMO, 10) || 3;
@@ -1565,6 +1617,55 @@ const alCrearTicketAsistente = (ticketData) => {
 app.get(['/api/asistente/incidentes'], requireAdmin, async (req, res) => {
   try { res.json(await consultarIncidentes()); }
   catch (e) { res.status(500).json({ error: 'No se pudieron consultar los incidentes.' }); }
+});
+
+app.get(['/api/asistente/sin-coincidencia'], requireAdmin, async (req, res) => {
+  try {
+    const dias = Math.max(1, Math.min(365, parseInt(req.query.dias, 10) || 30));
+    const filas = await consulta(
+      `SELECT MIN(texto) AS texto, COUNT(*) AS veces, MAX(categoria) AS categoria, MAX(subcategoria) AS subcategoria, MAX(fecha) AS ultima
+         FROM chat_sin_coincidencia WHERE fecha >= ? GROUP BY LOWER(texto) ORDER BY veces DESC, ultima DESC LIMIT 40`, [haceMinutos(dias * 1440)]);
+    res.json(filas.map(f => ({ ...f, veces: Number(f.veces) })));
+  } catch (e) { res.status(500).json({ error: 'No se pudieron consultar los textos sin coincidencia.' }); }
+});
+
+app.post(['/api/asistente/sin-coincidencia/descartar'], requireAdmin, async (req, res) => {
+  const texto = String((req.body && req.body.texto) || '').trim();
+  if (!texto) return res.status(400).json({ error: 'Indica el texto a descartar.' });
+  try {
+    await consulta('DELETE FROM chat_sin_coincidencia WHERE LOWER(texto) = LOWER(?)', [texto]);
+    res.json({ message: 'Descartado' });
+  } catch (e) { res.status(500).json({ error: 'No se pudo descartar.' }); }
+});
+
+// Simulador: recorre el chat con un ticket ficticio, sin guardar nada ni crear folios
+app.post(['/api/asistente/simular'], requireAdmin, (req, res) => {
+  try {
+    const b = req.body || {};
+    const ticket = {
+      folio: 'SIMULACION', equipo: 'SIM-01', campana: 'Prueba', creador: 'Simulador', tecnico: 'Sin Asignar',
+      categoria: String(b.categoria || '').slice(0, 100), subcategoria: String(b.subcategoria || '').slice(0, 100),
+      elemento: String(b.elemento || '').slice(0, 150), tipo_solicitud: ''
+    };
+    const mensajes = Array.isArray(b.mensajes) ? b.mensajes.slice(0, 12).map(m => String(m || '').slice(0, 300)) : [];
+    const transcripcion = [];
+    let primero = obtenerFlujoPreguntas(ticket, null, { consejos: consejosCache })[0];
+    const abierto = consejoParaTicket(ticket, consejosCache);
+    transcripcion.push({ rol: 'sistema', texto: primero, consejoId: abierto && abierto.id ? abierto.id : null });
+    let pasos = 1;
+    let ultimoSistema = primero;
+    let cerrado = false;
+    for (const texto of mensajes) {
+      transcripcion.push({ rol: 'cliente', texto });
+      const ev = evaluarSiguienteRespuestaChat(ticket, 'Simulador', texto, pasos, null, { consejos: consejosCache, ultimoSistema });
+      if (!ev || !ev.textoRespuesta) continue;
+      transcripcion.push({ rol: 'sistema', texto: ev.textoRespuesta, consejoId: ev.consejoId || null, sinConsejo: !!ev.sinConsejo });
+      ultimoSistema = ev.textoRespuesta;
+      if (!/Confirmas que ya funciona/i.test(ev.textoRespuesta)) pasos++;
+      if (ev.cerrarTicket) { cerrado = true; break; }
+    }
+    res.json({ transcripcion, cerrado });
+  } catch (e) { res.status(500).json({ error: 'No se pudo simular: ' + e.message }); }
 });
 
 app.get(['/api/asistente/metricas'], requireAdmin, async (req, res) => {

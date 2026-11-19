@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Bot, BarChart3, MessageSquareText, ImagePlus, Trash2, Plus, Save } from 'lucide-react';
+import { Bot, BarChart3, MessageSquareText, ImagePlus, Trash2, Plus, Save, Copy, Download, FlaskConical, Search, Send, RotateCcw } from 'lucide-react';
 import { EstadoVacio } from '../components/Estados';
 import { useAvisos } from '../components/Avisos';
 
@@ -21,9 +21,32 @@ const etiquetaAmbito = (a) => (AMBITOS.find(([v]) => v === a) || [a, a || 'Cualq
 const comoLista = (t) => String(t || '').split(',').map(x => x.trim()).filter(Boolean);
 const campo = 'w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-indigo-500';
 const pct = (a, b) => (b ? Math.round((a / b) * 100) : 0);
+const MINIMO_PARA_JUZGAR = 5; // con menos casos el porcentaje no dice nada
+const UMBRAL_BAJO = 40;
+
+const descargarCsv = (nombre, filas) => {
+  const celda = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`;
+  const texto = '\uFEFF' + filas.map(f => f.map(celda).join(',')).join('\r\n');
+  const url = URL.createObjectURL(new Blob([texto], { type: 'text/csv;charset=utf-8' }));
+  const a = document.createElement('a');
+  a.href = url; a.download = nombre; a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+};
+
+// El chat guarda botones e imagen dentro del texto: aquí se separan igual que en el chat real
+const separarMarcadores = (crudo = '') => {
+  let texto = String(crudo);
+  let imagen = null;
+  const im = texto.match(/\[\[IMAGEN:(\/api\/asistente\/consejos\/\d+\/imagen)\]\]/);
+  if (im) { imagen = im[1]; texto = texto.replace(im[0], ''); }
+  const op = texto.match(/\[\[OPCIONES:(.*?)\]\]/s);
+  const opciones = op ? op[1].split('|').map(x => x.trim()).filter(Boolean) : [];
+  if (op) texto = texto.replace(op[0], '');
+  return { texto: texto.trim(), opciones, imagen };
+};
 
 // ---------------------------------------------------------------- Resultados
-function Resultados() {
+function Resultados({ onCrearDesdeTexto }) {
   const [dias, setDias] = useState(30);
   const [datos, setDatos] = useState(null);
   const [error, setError] = useState('');
@@ -42,6 +65,13 @@ function Resultados() {
   if (!datos) return <p className="text-sm text-slate-400">Cargando resultados…</p>;
   const { resumen, porSubcategoria, porConsejo } = datos;
   const sinRespuesta = Math.max(0, resumen.total - resumen.resueltos - resumen.escalados);
+  const exportar = () => {
+    descargarCsv(`asistente-${dias || 'todo'}-dias.csv`, [
+      ['Tipo', 'Categoría', 'Subcategoría / Consejo', 'Casos', 'Resueltos', 'Escalados', '% resuelto'],
+      ...porSubcategoria.map(f => ['Por falla', f.categoria, f.subcategoria, f.total, f.resueltos, f.escalados, pct(f.resueltos, f.total)]),
+      ...porConsejo.map(c => ['Por consejo', c.grupo || '', c.texto || c.clave, c.total, c.resueltos, c.escalados, pct(c.resueltos, c.total)])
+    ]);
+  };
 
   const Tarjeta = ({ titulo, valor, nota, color = 'text-white' }) => (
     <div className="bg-slate-800 border border-slate-700 rounded-2xl p-4">
@@ -64,7 +94,12 @@ function Resultados() {
           <button key={v} role="tab" aria-selected={dias === v} onClick={() => setDias(v)}
             className={`px-3 py-1.5 rounded-lg text-sm border cursor-pointer transition-colors ${dias === v ? 'bg-slate-700 border-slate-500 text-white' : 'bg-slate-800 border-slate-700 text-slate-400 hover:text-slate-200'}`}>{t}</button>
         ))}
+        {resumen.total > 0 && (
+          <button onClick={exportar} className="ml-auto inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm border bg-slate-800 border-slate-700 text-slate-300 hover:text-white cursor-pointer"><Download size={14} /> Exportar CSV</button>
+        )}
       </div>
+
+      <SinCoincidencia dias={dias} onCrear={onCrearDesdeTexto} />
 
       {resumen.total === 0 ? (
         <div className="bg-slate-800 border border-slate-700 rounded-2xl">
@@ -114,6 +149,9 @@ function Resultados() {
                     <Barra r={c.resueltos} e={c.escalados} t={c.total} />
                     <span className="text-xs font-medium tabular-nums text-emerald-400 w-10 text-right">{pct(c.resueltos, c.total)}%</span>
                   </div>
+                  {c.total >= MINIMO_PARA_JUZGAR && pct(c.resueltos, c.total) < UMBRAL_BAJO && (
+                    <span className="text-xs px-2 py-0.5 rounded-md bg-amber-500/15 text-amber-300 sm:w-28 text-center shrink-0">Conviene reescribirlo</span>
+                  )}
                 </li>
               ))}
             </ul>
@@ -121,6 +159,48 @@ function Resultados() {
         </>
       )}
     </div>
+  );
+}
+
+// Lo que los agentes escriben con sus palabras y no coincide con ningún consejo: candidatos a consejos nuevos
+function SinCoincidencia({ dias, onCrear }) {
+  const { avisar } = useAvisos();
+  const [lista, setLista] = useState([]);
+  const cargar = useCallback(() => {
+    fetch(`/api/asistente/sin-coincidencia?dias=${dias || 365}`)
+      .then(r => (r.ok ? r.json() : []))
+      .then(d => { if (Array.isArray(d)) setLista(d); })
+      .catch(() => {});
+  }, [dias]);
+  useEffect(() => { cargar(); }, [cargar]);
+
+  const descartar = async (texto) => {
+    const res = await fetch('/api/asistente/sin-coincidencia/descartar', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ texto }) });
+    if (!res.ok) return avisar('No se pudo descartar.', 'error');
+    cargar();
+  };
+  if (lista.length === 0) return null;
+
+  return (
+    <section className="bg-slate-800 border border-slate-700 rounded-2xl p-5">
+      <h2 className="text-sm font-semibold text-white mb-1 flex items-center gap-2"><Search size={15} /> Lo que escriben y el asistente no entendió</h2>
+      <p className="text-xs text-slate-400 mb-3">Frases escritas por los agentes que no activaron ningún consejo. Las que más se repiten merecen un consejo propio.</p>
+      <ul className="divide-y divide-slate-700/60">
+        {lista.map(f => (
+          <li key={f.texto} className="py-2.5 flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
+            <div className="flex-1 min-w-0">
+              <p className="text-sm text-slate-200 break-words">“{f.texto}”</p>
+              <p className="text-xs text-slate-400">{[f.categoria, f.subcategoria].filter(Boolean).join(' · ') || 'Sin categoría'}</p>
+            </div>
+            <span className="text-xs text-slate-400 tabular-nums shrink-0">{f.veces} {f.veces === 1 ? 'vez' : 'veces'}</span>
+            <div className="flex items-center gap-2 shrink-0">
+              <button onClick={() => onCrear(f.texto)} className="px-3 py-1.5 rounded-lg text-xs bg-indigo-600 hover:bg-indigo-500 text-white font-medium cursor-pointer">Crear consejo</button>
+              <button onClick={() => descartar(f.texto)} className="px-3 py-1.5 rounded-lg text-xs text-slate-300 hover:bg-slate-700 cursor-pointer">Descartar</button>
+            </div>
+          </li>
+        ))}
+      </ul>
+    </section>
   );
 }
 
@@ -164,6 +244,17 @@ function TarjetaConsejo({ c, onGuardado, onEliminado }) {
     if (!await confirmar('¿Quitar la imagen de este consejo?')) return;
     const res = await fetch(`/api/asistente/consejos/${c.id}/imagen`, { method: 'DELETE' });
     if (!res.ok) return avisar('No se pudo quitar la imagen.', 'error');
+    onGuardado();
+  };
+
+  const duplicar = async () => {
+    const res = await fetch('/api/asistente/consejos', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ grupo: c.grupo, ambito: c.ambito, texto: c.texto, frases: c.frases, libres: c.libres, soloElemento: !!c.soloElemento })
+    });
+    const d = await res.json().catch(() => ({}));
+    if (!res.ok) return avisar(d.error || 'No se pudo duplicar.', 'error');
+    avisar('Consejo duplicado: aparece como personalizado en el mismo grupo.', 'exito');
     onGuardado();
   };
 
@@ -211,6 +302,7 @@ function TarjetaConsejo({ c, onGuardado, onEliminado }) {
         <input ref={inputArchivo} type="file" accept="image/png,image/jpeg,image/gif,image/webp" className="hidden" onChange={e => { subirImagen(e.target.files[0]); e.target.value = ''; }} />
 
         <div className="ml-auto flex items-center gap-2">
+          <button onClick={duplicar} className="px-3 py-1.5 rounded-lg text-xs text-slate-300 hover:text-white hover:bg-slate-700 inline-flex items-center gap-1.5 cursor-pointer"><Copy size={13} /> Duplicar</button>
           {!c.base && <button onClick={eliminar} className="px-3 py-1.5 rounded-lg text-xs text-slate-300 hover:text-red-400 hover:bg-slate-700 cursor-pointer">Eliminar</button>}
           <button onClick={guardar} disabled={!cambiado || guardando} className="px-3.5 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 text-white text-xs font-medium inline-flex items-center gap-1.5 cursor-pointer">
             <Save size={13} /> {guardando ? 'Guardando…' : 'Guardar'}
@@ -221,9 +313,9 @@ function TarjetaConsejo({ c, onGuardado, onEliminado }) {
   );
 }
 
-function NuevoConsejo({ onCreado, onCancelar }) {
+function NuevoConsejo({ onCreado, onCancelar, inicial = {} }) {
   const { avisar } = useAvisos();
-  const [f, setF] = useState({ grupo: '', ambito: '', texto: '', frases: '', libres: '', soloElemento: false });
+  const [f, setF] = useState({ grupo: '', ambito: '', texto: '', frases: '', libres: '', soloElemento: false, ...inicial });
   const [guardando, setGuardando] = useState(false);
   const crear = async (e) => {
     e.preventDefault();
@@ -275,10 +367,10 @@ function NuevoConsejo({ onCreado, onCancelar }) {
   );
 }
 
-function Consejos() {
+function Consejos({ prefill, onPrefillUsado }) {
   const [consejos, setConsejos] = useState([]);
   const [cargando, setCargando] = useState(true);
-  const [nuevo, setNuevo] = useState(false);
+  const [nuevo, setNuevo] = useState(!!prefill);
   const [busqueda, setBusqueda] = useState('');
 
   const cargar = useCallback(async () => {
@@ -306,7 +398,7 @@ function Consejos() {
         <button onClick={() => setNuevo(true)} className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium cursor-pointer"><Plus size={15} /> Nuevo consejo</button>
         <p className="text-xs text-slate-400">Los cambios se aplican de inmediato en los chats nuevos.</p>
       </div>
-      {nuevo && <NuevoConsejo onCreado={() => { setNuevo(false); cargar(); }} onCancelar={() => setNuevo(false)} />}
+      {nuevo && <NuevoConsejo inicial={prefill ? { libres: prefill } : {}} onCreado={() => { setNuevo(false); onPrefillUsado(); cargar(); }} onCancelar={() => { setNuevo(false); onPrefillUsado(); }} />}
       {grupos.length === 0 ? (
         <div className="bg-slate-800 border border-slate-700 rounded-2xl"><EstadoVacio icono={MessageSquareText} titulo="No hay consejos que coincidan" /></div>
       ) : grupos.map(([nombre, lista]) => (
@@ -319,9 +411,133 @@ function Consejos() {
   );
 }
 
+// ---------------------------------------------------------------- Simulador
+const nombreDe = (x) => (typeof x === 'string' ? x : (x && (x.nombre || x.name)) || '');
+
+function Simulador() {
+  const [categorias, setCategorias] = useState([]);
+  const [categoria, setCategoria] = useState('');
+  const [subcategoria, setSubcategoria] = useState('');
+  const [elemento, setElemento] = useState('');
+  const [mensajes, setMensajes] = useState([]);
+  const [transcripcion, setTranscripcion] = useState(null);
+  const [texto, setTexto] = useState('');
+  const [error, setError] = useState('');
+  const [cargando, setCargando] = useState(false);
+  const fin = useRef(null);
+
+  useEffect(() => {
+    fetch('/api/categorias').then(r => r.json()).then(d => { if (Array.isArray(d)) setCategorias(d); }).catch(() => {});
+  }, []);
+  useEffect(() => { if (fin.current) fin.current.scrollIntoView({ block: 'nearest' }); }, [transcripcion]);
+
+  const subcats = useMemo(() => {
+    const c = categorias.find(x => nombreDe(x) === categoria);
+    return c && Array.isArray(c.subcategorias) ? c.subcategorias : [];
+  }, [categorias, categoria]);
+  const elementos = useMemo(() => {
+    const sc = subcats.find(x => nombreDe(x) === subcategoria);
+    return sc && Array.isArray(sc.elementos) ? sc.elementos.map(nombreDe).filter(Boolean) : [];
+  }, [subcats, subcategoria]);
+
+  const correr = async (lista) => {
+    setCargando(true); setError('');
+    try {
+      const res = await fetch('/api/asistente/simular', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ categoria, subcategoria, elemento, mensajes: lista })
+      });
+      const d = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(d.error || 'No se pudo simular.');
+      setMensajes(lista);
+      setTranscripcion(d);
+    } catch (e) { setError(e.message); }
+    finally { setCargando(false); }
+  };
+
+  const iniciar = () => { setTexto(''); correr([]); };
+  const enviar = (t) => { const v = String(t || '').trim(); if (v && !cargando) { setTexto(''); correr([...mensajes, v]); } };
+  const ultimo = transcripcion && transcripcion.transcripcion[transcripcion.transcripcion.length - 1];
+  const opcionesActuales = ultimo && ultimo.rol === 'sistema' && !transcripcion.cerrado ? separarMarcadores(ultimo.texto).opciones : [];
+
+  return (
+    <div className="space-y-4">
+      <div className="bg-slate-800 border border-slate-700 rounded-2xl p-4 space-y-3">
+        <p className="text-xs text-slate-400">Prueba cómo conversaría el asistente con un agente, sin crear folios ni afectar las métricas. Elige el tipo de falla y responde como lo haría el agente.</p>
+        <div className="grid md:grid-cols-3 gap-3">
+          <label className="block text-xs text-slate-400">Categoría
+            <select className={`${campo} mt-1`} value={categoria} onChange={e => { setCategoria(e.target.value); setSubcategoria(''); setElemento(''); }}>
+              <option value="">Elige…</option>
+              {categorias.map(c => <option key={nombreDe(c)} value={nombreDe(c)}>{nombreDe(c)}</option>)}
+            </select>
+          </label>
+          <label className="block text-xs text-slate-400">Subcategoría
+            <select className={`${campo} mt-1`} value={subcategoria} onChange={e => { setSubcategoria(e.target.value); setElemento(''); }} disabled={!categoria}>
+              <option value="">Elige…</option>
+              {subcats.map(x => <option key={nombreDe(x)} value={nombreDe(x)}>{nombreDe(x)}</option>)}
+            </select>
+          </label>
+          <label className="block text-xs text-slate-400">Elemento / síntoma (opcional)
+            <select className={`${campo} mt-1`} value={elemento} onChange={e => setElemento(e.target.value)} disabled={!subcategoria}>
+              <option value="">Ninguno</option>
+              {elementos.map(x => <option key={x} value={x}>{x}</option>)}
+            </select>
+          </label>
+        </div>
+        <div className="flex gap-2">
+          <button onClick={iniciar} disabled={!categoria || !subcategoria || cargando} className="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 text-white text-sm font-medium inline-flex items-center gap-2 cursor-pointer">
+            {transcripcion ? <><RotateCcw size={14} /> Reiniciar</> : <><FlaskConical size={14} /> Empezar prueba</>}
+          </button>
+        </div>
+        {error && <p className="text-sm text-red-400">{error}</p>}
+      </div>
+
+      {transcripcion && (
+        <div className="bg-slate-900 border border-slate-700 rounded-2xl p-4 space-y-3">
+          {transcripcion.transcripcion.map((m, i) => {
+            const { texto: t, opciones, imagen } = separarMarcadores(m.texto);
+            const sistema = m.rol === 'sistema';
+            return (
+              <div key={i} className={`flex ${sistema ? 'justify-start' : 'justify-end'}`}>
+                <div className={`max-w-[85%] rounded-2xl px-4 py-2.5 text-sm whitespace-pre-wrap ${sistema ? 'bg-slate-800 border border-slate-700 text-slate-200' : 'bg-indigo-600 text-white'}`}>
+                  <p className={`text-xs mb-1 ${sistema ? 'text-slate-400' : 'text-indigo-200'}`}>{sistema ? 'Asistente TI (Sistema)' : 'Agente (tú)'}</p>
+                  {t}
+                  {imagen && <img src={imagen} alt="Imagen del consejo" className="mt-2 rounded-lg border border-slate-700 max-h-48" />}
+                  {sistema && m.sinConsejo && <p className="mt-2 text-xs text-amber-300">No se encontró un consejo para esto: es un buen candidato a crear uno.</p>}
+                  {sistema && opciones.length > 0 && i === transcripcion.transcripcion.length - 1 && <p className="mt-2 text-xs text-slate-400">Botones: {opciones.length}</p>}
+                </div>
+              </div>
+            );
+          })}
+          <div ref={fin} />
+          {transcripcion.cerrado ? (
+            <p className="text-sm text-emerald-400">El folio se habría cerrado aquí.</p>
+          ) : (
+            <>
+              {opcionesActuales.length > 0 && (
+                <div className="flex flex-wrap gap-2">
+                  {opcionesActuales.map(o => (
+                    <button key={o} onClick={() => enviar(o)} disabled={cargando} className="px-3 py-1.5 rounded-lg text-xs bg-slate-800 border border-slate-600 text-slate-200 hover:border-indigo-400 cursor-pointer text-left">{o}</button>
+                  ))}
+                </div>
+              )}
+              <form onSubmit={e => { e.preventDefault(); enviar(texto); }} className="flex gap-2">
+                <input className={campo} value={texto} onChange={e => setTexto(e.target.value)} placeholder="O escribe como lo haría el agente, con sus palabras…" aria-label="Mensaje del agente" />
+                <button type="submit" disabled={cargando || !texto.trim()} className="px-4 rounded-lg bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 text-white text-sm inline-flex items-center gap-2 cursor-pointer"><Send size={14} /> Enviar</button>
+              </form>
+            </>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ---------------------------------------------------------------- Vista
 function AdminAsistenteView() {
   const [pestana, setPestana] = useState('resultados');
+  const [prefill, setPrefill] = useState('');
+  const crearDesdeTexto = (t) => { setPrefill(t); setPestana('consejos'); };
   return (
     <div className="animate-fade-in max-w-5xl mx-auto space-y-5 text-slate-200">
       <div className="bg-slate-800 p-6 rounded-2xl border border-slate-700 shadow-lg">
@@ -329,12 +545,14 @@ function AdminAsistenteView() {
         <p className="text-slate-400 text-sm mt-1">Mide qué consejos resuelven los problemas sin visita del técnico y edita los textos que ve el agente, con imagen opcional.</p>
       </div>
       <div className="flex gap-2" role="tablist">
-        {[['resultados', 'Resultados'], ['consejos', 'Consejos']].map(([id, t]) => (
+        {[['resultados', 'Resultados'], ['consejos', 'Consejos'], ['simulador', 'Simulador']].map(([id, t]) => (
           <button key={id} role="tab" aria-selected={pestana === id} onClick={() => setPestana(id)}
             className={`px-4 py-2 rounded-lg text-sm border cursor-pointer transition-colors ${pestana === id ? 'bg-slate-700 border-slate-500 text-white' : 'bg-slate-800 border-slate-700 text-slate-400 hover:text-slate-200'}`}>{t}</button>
         ))}
       </div>
-      {pestana === 'resultados' ? <Resultados /> : <Consejos />}
+      {pestana === 'resultados' && <Resultados onCrearDesdeTexto={crearDesdeTexto} />}
+      {pestana === 'consejos' && <Consejos key={prefill} prefill={prefill} onPrefillUsado={() => setPrefill('')} />}
+      {pestana === 'simulador' && <Simulador />}
     </div>
   );
 }
