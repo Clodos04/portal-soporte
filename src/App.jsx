@@ -294,7 +294,7 @@ function App() {
         const subida = await subirAdjunto(data.folio, archivo);
         if (!subida.ok) avisar(`El ticket se creó, pero el archivo no se adjuntó: ${subida.error}`, 'error');
       }
-      const ticketConFolioOficial = { ...ticketSinArchivo, folio: folioFinal, id: data.id };
+      const ticketConFolioOficial = { ...ticketSinArchivo, folio: folioFinal, id: data.id, ...(data.fueraDeHorario ? { estatus: 'Cerrado', colorEstatus: 'bg-red-600' } : {}) };
       setTickets(prev => [ticketConFolioOficial, ...prev]);
       setFolioChatActivo(folioFinal);
       setCurrentView('live-chat'); 

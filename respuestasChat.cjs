@@ -3,6 +3,56 @@
 // Helper para empaquetar texto + botones interactivos para LiveChatView.jsx
 const sinAcentos = (t) => String(t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
 
+// Horario de atención (hora de México). Entre FUERA_HORARIO_DESDE y FUERA_HORARIO_HASTA los tickets se cierran solos.
+const horaDeEnv = (nombre, porDefecto) => {
+  const n = parseInt(process.env[nombre], 10);
+  return Number.isInteger(n) && n >= 0 && n <= 23 ? n : porDefecto;
+};
+// Ajustes guardados desde el panel (tienen prioridad sobre las variables de entorno)
+let configAsistente = {};
+const aplicarConfigAsistente = (c) => { configAsistente = { ...(c || {}) }; };
+const horaDeConfig = (valor, nombreEnv, porDefecto) => {
+  const n = parseInt(valor, 10);
+  return Number.isInteger(n) && n >= 0 && n <= 23 ? n : horaDeEnv(nombreEnv, porDefecto);
+};
+const ventanaFueraDeHorario = () => ({
+  desde: horaDeConfig(configAsistente.fueraDesde, 'FUERA_HORARIO_DESDE', 22),
+  hasta: horaDeConfig(configAsistente.fueraHasta, 'FUERA_HORARIO_HASTA', 8),
+  activo: configAsistente.fueraActivo !== false
+});
+const estaFueraDeHorario = (hora, ventana = ventanaFueraDeHorario()) => {
+  const { desde, hasta } = ventana;
+  if (ventana.activo === false || desde === hasta) return false;
+  return desde > hasta ? (hora >= desde || hora < hasta) : (hora >= desde && hora < hasta);
+};
+const etiquetaHora = (h) => `${h % 12 === 0 ? 12 : h % 12}:00 ${h < 12 ? 'a. m.' : 'p. m.'}`;
+const mensajeFueraDeHorario = (folio, ventana = ventanaFueraDeHorario()) =>
+  `🌙 Folio #${folio} registrado fuera del horario de atención (de ${etiquetaHora(ventana.desde)} a ${etiquetaHora(ventana.hasta)}). ` +
+  `En este horario soporte no atiende solicitudes, por lo que este folio se cierra automáticamente y no será atendido.\n` +
+  `Si la falla continúa, vuelve a levantar tu solicitud a partir de las ${etiquetaHora(ventana.hasta)} Si no puedes trabajar, avisa a tu supervisor.`;
+const resolucionFueraDeHorario = (ventana = ventanaFueraDeHorario()) =>
+  `Cerrado automáticamente: solicitud creada fuera del horario de atención (${etiquetaHora(ventana.desde)} a ${etiquetaHora(ventana.hasta)}). Debe volver a levantarse en horario de atención.`;
+
+// Si hay muchas solicitudes sin técnico, se avisa que la atención puede tardar (se inserta antes de los botones)
+const umbralEspera = () => {
+  const c = parseInt(configAsistente.umbralEspera, 10);
+  if (c > 0) return c;
+  const e = parseInt(process.env.ESPERA_ALTA_TICKETS, 10);
+  return e > 0 ? e : 8;
+};
+// Agrega una nota al mensaje inicial, antes de los botones
+const agregarNota = (texto, nota) => {
+  if (!texto || !nota) return texto;
+  const i = texto.indexOf('\n[[OPCIONES:');
+  return i === -1 ? texto + '\n' + nota : texto.slice(0, i) + '\n' + nota + texto.slice(i);
+};
+const agregarAvisoEspera = (texto, abiertos, umbral = umbralEspera()) => {
+  if (!texto || !(abiertos >= umbral)) return texto;
+  return agregarNota(texto, '⏱️ Hay varias solicitudes en cola, así que la atención puede tardar un poco más de lo normal.');
+};
+const avisoFolioDuplicado = (folioAbierto) =>
+  `ℹ️ Ya tienes el folio #${folioAbierto} abierto para este mismo equipo y falla. No hace falta repetir el reporte: un técnico lo atenderá por ese folio.`;
+
 const armarMensajeConOpciones = (texto, listaOpciones = []) => {
   if (!listaOpciones || listaOpciones.length === 0) return texto;
   return `${texto}\n[[OPCIONES:${listaOpciones.join('|')}]]`;
@@ -335,7 +385,13 @@ const CONSEJOS_ESPECIFICOS = [
   // ----- RED EN UNA POSICIÓN -----
   { g: 'Red', a: 'red', si: ['foquito del puerto de red'], tip: 'Revisa que el cable de red esté firme en el CPU y en el conector de la pared o del switch. Si el foquito sigue apagado, no muevas otros cables y avísanos.' },
   { g: 'Red', a: 'red', si: ['hay red pero no abre'], tip: 'Cierra y abre el navegador y presiona CTRL + SHIFT + R. Si ninguna página abre, el problema es de red: no reinicies varios equipos y avísanos para que el técnico lo revise.' },
-  { g: 'Red', a: 'red', si: ['se reconecta solo'], tip: 'No muevas el cable mientras trabajas y revisa que esté bien insertado. Si se desconecta con un leve movimiento, anótalo para el técnico.' }
+  { g: 'Red', a: 'red', si: ['se reconecta solo'], tip: 'No muevas el cable mientras trabajas y revisa que esté bien insertado. Si se desconecta con un leve movimiento, anótalo para el técnico.' },
+  // ----- FALLAS FRECUENTES (se llega a ellas escribiendo el problema con tus palabras) -----
+  { g: 'Touchpoint · No carga', a: 'touchpoint', si: ['touchpoint no carga'], libres: ['no carga', 'se queda cargando', 'pantalla en blanco', 'no abre touchpoint', 'no abre la pagina', 'se queda en blanco'], tip: 'Presiona CTRL + SHIFT + R para una recarga limpia. Si sigue igual, cierra el navegador por completo, ábrelo de nuevo y entra otra vez. Si falla también en otro navegador (Edge o Chrome), avísanos: puede ser la red o el servicio.' },
+  { g: 'Touchpoint · Usuario o contraseña', a: 'touchpoint', si: ['usuario bloqueado'], libres: ['contrasena', 'bloqueado', 'bloqueada', 'no me deja entrar', 'no me deja iniciar sesion', 'usuario incorrecto', 'credenciales'], tip: 'Por seguridad el técnico no ve ni comparte contraseñas por chat. Pide el desbloqueo o el restablecimiento a tu supervisor o líder y evita intentar varias veces seguidas para no bloquear más la cuenta.' },
+  { g: 'Diadema · Audio entrecortado', a: 'diadema', si: ['audio entrecortado'], libres: ['audio se corta', 'se corta en la llamada', 'se corta el audio', 'se entrecorta', 'entrecortado', 'se escucha cortado', 'se corta la voz', 'se oye cortado'], tip: 'Conecta la diadema en un puerto USB de la parte trasera del CPU y evita mover el cable durante la llamada. Cierra pestañas y programas que no uses. Si en varias llamadas sigue igual, avísanos para que el técnico la pruebe con otra diadema.' },
+  { g: 'Diadema · Eco', a: 'diadema', si: ['se escucha eco'], libres: ['eco', 'se escucha mi voz', 'retorno', 'me escucho'], tip: 'Baja el volumen de la diadema con la ruedita del control, acerca el micrófono a unos 2 dedos de tu boca y revisa que no haya bocinas ni otra diadema encendidas cerca. Si el eco continúa, avísanos.' },
+  { g: 'Monitor · Segundo monitor', a: 'monitor', si: ['segundo monitor sin imagen'], libres: ['segundo monitor', 'otra pantalla', 'no detecta el monitor', 'solo una pantalla', 'monitor secundario'], tip: 'Revisa que el segundo monitor esté encendido y que su cable de video esté firme en el monitor y en el CPU. Con los botones del monitor elige la entrada de video correcta. Si sigue sin imagen, avísanos.' }
 ];
 // Frases que el agente podría escribir con sus propias palabras (para saltar directo al consejo)
 const LIBRES_BASE = {
@@ -395,6 +451,7 @@ const respuestaConConsejo = (nodo, consejo, textoTip) => ({
     ]
   ),
   cerrarTicket: false,
+  sinConsejo: !consejo,
   consejoId: consejo && consejo.id ? consejo.id : null,
   consejoClave: consejo && consejo.clave ? consejo.clave : null
 });
@@ -465,8 +522,37 @@ const evaluarInterno = (ticket, remitente, textoUsuario, mensajesDelSistema, fol
     }
   }
 
+  // Confirmación antes de cerrar: si el agente escribe «ya quedó» con sus palabras, se le pregunta con botones.
+  // El botón «Ya quedó solucionado» y la respuesta a esta pregunta sí cierran de inmediato.
+  const confirmacionPendiente = /confirmas que ya funciona/.test(sinAcentos(opciones.ultimoSistema || ''));
+  if (confirmacionPendiente) {
+    if (/^✅/.test(texto) || /^si\b/.test(textoLower)) {
+      return {
+        textoRespuesta: `🎉 ¡Excelente! Qué gusto que ya haya quedado funcionando correctamente. Este folio #${folio} se cerrará automáticamente en este momento. ¡Que tengas un excelente turno!`,
+        cerrarTicket: true
+      };
+    }
+    if (/^⏳/.test(texto) || /^no\b/.test(textoLower)) {
+      return {
+        textoRespuesta: `Entendido. Mantendremos el folio #${folio} abierto y en breve un técnico se acercará a tu posición para brindarte el soporte necesario.`,
+        cerrarTicket: false,
+        evento: 'escalado'
+      };
+    }
+  }
+  const esBotonResuelto = /^✅/.test(texto);
+
   // Si en cualquier momento el usuario escribe que ya se solucionó
   if (!niega && dice('ya quedo', 'ya funciono', 'solucionado', 'ya sirvio', 'ya se arreglo', 'ya quedo resuelto')) {
+    if (!esBotonResuelto && !confirmacionPendiente) {
+      return {
+        textoRespuesta: armarMensajeConOpciones(
+          `¿Confirmas que ya funciona? Si es así, cierro el folio #${folio}; si no, seguirá abierto para que un técnico te atienda.`,
+          [`✅ Sí, ya funciona, puedes cerrarlo`, `⏳ No, sigue igual`]
+        ),
+        cerrarTicket: false
+      };
+    }
     return {
       textoRespuesta: `🎉 ¡Excelente! Qué gusto que ya haya quedado funcionando correctamente. Este folio #${folio} se cerrará automáticamente en este momento. ¡Que tengas un excelente turno!`,
       cerrarTicket: true
@@ -905,6 +991,15 @@ const evaluarSiguienteRespuestaChat = (...args) => {
 };
 
 module.exports = {
+  estaFueraDeHorario,
+  aplicarConfigAsistente,
+  umbralEspera,
+  agregarNota,
+  avisoFolioDuplicado,
+  ventanaFueraDeHorario,
+  mensajeFueraDeHorario,
+  resolucionFueraDeHorario,
+  agregarAvisoEspera,
   armarResolucionCentinela,
   obtenerMensajeCentinela,
   obtenerFlujoPreguntas,
