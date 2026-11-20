@@ -17,6 +17,8 @@ const VISTA_A_RUTA = {
   'admin-grupos': '/admin/grupos',
   'admin-categorias': '/admin/categorias',
   'admin-campanas': '/admin/campanas',
+  'admin-asistente': '/admin/asistente',
+  actividades: '/actividades',
   'centinela-detalles': '/admin/centinela'
 };
 
